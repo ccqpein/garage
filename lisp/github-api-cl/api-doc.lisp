@@ -80,14 +80,13 @@
     :type string
     :accessor api)
 
-   (method
-    ;;:initarg :method
+   (http-method
     :type string
-    :accessor method)
+    :accessor http-method)
 
-   ;; ((slot-name . val)...)
+   ;; (slot-name...)
    (slots
-    :type list
+    :type cons
     :accessor slots)
 
    (fmt-control
@@ -97,32 +96,72 @@
 (defmethod initialize-instance :after ((api api-doc) &key)
   (let ((api-detail (parse-api (api api))))
     ;; update method
-    (setf (method api) (car api-detail))
+    (setf (http-method api) (car api-detail)
+          (control-str api) (cadr api-detail))
 
-    ;;:= TODO: update slots
-    
-    )
-  )
+    (setf (slots api)
+          (cddr api-detail))
+    ))
 
 (defun parse-api (str)
+  "give an api entry, return (method format-control slots)"
   (declare (string str))
   (let* ((a (str:split " " str))
-         (method (car a))
+         (http-method (car a))
          ;; split api url
          (b (str:split "/" (cadr a)))
          (fmt-control '())
+         (cache '())
          (slots '()))
     
     (dolist (x b)
       (unless (string= "" x)
-        (push "/" fmt-control)
+        (push "/" cache)
         (if (str:starts-with? ":" x)
-            (progn (push "~a" fmt-control)
-                   (push x slots))
-            (push x fmt-control))))
+            (progn (push "~a" cache)
+                   (push x slots)
+                   (push (str:join "" (reverse cache)) fmt-control)
+                   (setf cache '())
+                   )
+            (push x cache))))
 
-    (append
-     (list method
-           (str:join "" (reverse fmt-control)))
-     (reverse slots))
+    (push (str:join "" (reverse cache)) fmt-control)
+    
+    (the (cons string *)
+         (append
+          (list http-method
+                (reverse fmt-control))
+          (reverse slots)))
     ))
+
+(defmethod print-object ((api api-doc) stream)
+  (format stream
+          "api-doc object:
+api: ~a,
+http method: ~a,
+slots: ~a,
+fmt-control: ~a"
+          (api api) (http-method api) (slots api) (control-str api)
+          ))
+
+(defgeneric make-call-url (api &key &allow-other-keys)
+  (:documentation "Return the url of this api http call"))
+
+(defmethod make-call-url ((api api-doc) &key)
+  "make the url of this api ask user to input data and return call
+url"
+  (let ((result (make-string-output-stream)))
+    (loop
+      for k in (slots api)
+      for ss in (control-str api)
+      for v = (progn (format t "What's ~a: " k)
+                     (read))
+      do (format result ss v)
+      finally (format result
+                      (car (last (control-str api)))))
+
+    (get-output-stream-string result)
+    ))
+
+
+
