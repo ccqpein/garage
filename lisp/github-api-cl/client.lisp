@@ -1,6 +1,6 @@
 ;;; client of github api call
 (defpackage #:github-client
-  (:use #:CL)
+  (:use #:CL #:github-api-doc)
   (:shadow #:get) ;; shadow get from CL
   )
 
@@ -32,6 +32,11 @@
         (setf (token clt) (symbol-name (read)))
         )))
 
+(defgeneric get (client api &key &allow-other-keys))
+
+;;:= MAYBE need :before method to check if need token or not
+
 ;;; client get 
-(defmethod get ((clt api-client)))
+(defmethod get ((clt api-client) (api api-doc) &key token)
+  )
 

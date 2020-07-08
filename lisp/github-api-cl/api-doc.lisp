@@ -162,6 +162,3 @@ url"
 
     (get-output-stream-string result)
     ))
-
-
-

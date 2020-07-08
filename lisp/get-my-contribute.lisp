@@ -11,3 +11,16 @@
 
 ;; parse time
 (decode-universal-time (+ 1593302400 (encode-universal-time 0 0 0 1 1 1970 5)) 5)
+
+;; find method of generic function
+(sb-mop:specializer-direct-generic-functions (find-class 'string))
+
+
+(defmethod test :before ((a string))
+  (print "bbb"))
+
+(defmethod test ((a string))
+  (print "aa"))
+
+(defmethod test :after ((a string))
+  (print a))
