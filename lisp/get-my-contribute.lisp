@@ -16,11 +16,14 @@
 (sb-mop:specializer-direct-generic-functions (find-class 'string))
 
 
-(defmethod test :before ((a string))
+(defmethod test :before ((a string) &key aa &allow-other-keys)
+  (print :allow-other-keys)
+  (print aa)
   (print "bbb"))
 
-(defmethod test ((a string))
+(defmethod test ((a string) &key)
+  ;(print aa)
   (print "aa"))
 
-(defmethod test :after ((a string))
+(defmethod test :after ((a string) &key)
   (print a))

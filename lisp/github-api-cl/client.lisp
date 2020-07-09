@@ -34,9 +34,15 @@
 
 (defgeneric get (client api &key &allow-other-keys))
 
+(defgeneric run (client api &key &allow-other-keys))
+
 ;;:= MAYBE need :before method to check if need token or not
 
+(defmethod run ((clt api-client) (api api-doc) &key owner repo)
+  (let ((url (make-call-url api)))
+    
+    ))
+
 ;;; client get 
-(defmethod get ((clt api-client) (api api-doc) &key token)
-  )
+(defmethod get ((clt api-client) (api api-doc) &key token))
 

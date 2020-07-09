@@ -144,7 +144,7 @@ fmt-control: ~a"
           (api api) (http-method api) (slots api) (control-str api)
           ))
 
-(defgeneric make-call-url (api &key &allow-other-keys)
+(defgeneric make-call-url (api &rest args &key &allow-other-keys)
   (:documentation "Return the url of this api http call"))
 
 (defmethod make-call-url ((api api-doc) &key)
@@ -162,3 +162,24 @@ url"
 
     (get-output-stream-string result)
     ))
+
+(defmethod make-call-url ((api api-doc) &rest arg &key &allow-other-keys)
+  (destructuring-bind
+      (&key
+         (owner "" owner-p)
+         (repo "" repo-p)
+         &allow-other-keys)
+      args
+
+    (let ((result (make-string-output-stream)))
+      (loop
+        for k in (slots api)
+        for ss in (control-str api)
+        for v = (progn (format t "What's ~a: " k)
+                       (read))
+        do (format result ss v)
+        finally (format result
+                        (car (last (control-str api)))))
+
+      (get-output-stream-string result)
+      )))
