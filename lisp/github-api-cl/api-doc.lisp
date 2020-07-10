@@ -147,39 +147,42 @@ fmt-control: ~a"
 (defgeneric make-call-url (api &rest args &key &allow-other-keys)
   (:documentation "Return the url of this api http call"))
 
-(defmethod make-call-url ((api api-doc) &key)
+(defmethod make-call-url ((api api-doc) &rest args &key &allow-other-keys)
   "make the url of this api ask user to input data and return call
 url"
-  (let ((result (make-string-output-stream)))
+  (let ((result (make-string-output-stream))
+        (slot-finder (parse-make-url-keys args)))
     (loop
       for k in (slots api)
       for ss in (control-str api)
-      for v = (progn (format t "What's ~a: " k)
-                     (read))
-      do (format result ss v)
+      for v = (funcall slot-finder k)
+      do (format result ss v) ;; push url to result one by one
       finally (format result
                       (car (last (control-str api)))))
 
     (get-output-stream-string result)
     ))
 
-(defmethod make-call-url ((api api-doc) &rest arg &key &allow-other-keys)
+(declaim (inline parse-make-url-keys))
+(defun parse-make-url-keys (args)
+  "use in make-call-url method, for make parse keywords function"
   (destructuring-bind
       (&key
          (owner "" owner-p)
          (repo "" repo-p)
          &allow-other-keys)
       args
-
-    (let ((result (make-string-output-stream)))
-      (loop
-        for k in (slots api)
-        for ss in (control-str api)
-        for v = (progn (format t "What's ~a: " k)
-                       (read))
-        do (format result ss v)
-        finally (format result
-                        (car (last (control-str api)))))
-
-      (get-output-stream-string result)
-      )))
+    (declare (string owner repo))
+    (lambda (slot)
+      (declare (string slot))
+      (cond 
+        ((string= slot ":owner")
+         (if owner-p
+             owner
+             (progn (format t "What's ~a: " slot)
+                    (string-downcase (read)))))
+        ((string= slot ":repo")
+         (if repo-p
+             repo
+             (progn (format t "What's ~a: " slot)
+                    (string-downcase (read)))))))))

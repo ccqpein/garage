@@ -6,6 +6,8 @@
 
 (in-package #:github-client)
 
+(ql:quickload '("dexador" "yason"))
+
 (defclass api-client ()
   ((username
     :initarg :username
@@ -32,17 +34,11 @@
         (setf (token clt) (symbol-name (read)))
         )))
 
-(defgeneric get (client api &key &allow-other-keys))
+(defgeneric http-call (client url &rest args &key method &allow-other-keys))
 
-(defgeneric run (client api &key &allow-other-keys))
-
-;;:= MAYBE need :before method to check if need token or not
-
-(defmethod run ((clt api-client) (api api-doc) &key owner repo)
-  (let ((url (make-call-url api)))
-    
-    ))
-
-;;; client get 
-(defmethod get ((clt api-client) (api api-doc) &key token))
-
+(defmethod http-call ((clt api-client) url &key (method :get))
+  (declare (ignore clt))
+  (let ((call-func (ecase method
+                     (:get #'dex:get)
+                     (:post #'dex:post))))
+    (funcall call-func url)))
