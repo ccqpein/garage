@@ -5,74 +5,26 @@
 
 (in-package #:github-api-doc)
 
-(ql:quickload "str")
+(ql:quickload '("str" "yason"))
 
 (defvar *api-root-url* "https://api.github.com/")
+(defvar *api-json-file-path* "./api.json")
 
-(defvar *api-docs*
-  '(
-    ("events"
-     ("GET /events"
-      "GET /repos/:owner/:repo/events"
-      "GET /networks/:owner/:repo/events"
-      "GET /orgs/:org/events"
-      "GET /users/:username/received_events"
-      "GET /users/:username/received_events/public"
-      "GET /users/:username/events"
-      "GET /users/:username/events/public"
-      "GET /users/:username/events/orgs/:org"))
+(defun read-api-json ()
+  "read json api file from *api-json-file-path*, return yason json
+object"
+  (with-open-file (s *api-json-file-path*)
+    (let ((data (make-string (file-length s))))
+      (read-sequence data s)
+      (yason:parse data))))
 
-    ("feeds"
-     ("GET /feeds"))
-
-    ("notifications"
-     ("GET /notifications"
-      "GET /repos/:owner/:repo/notifications"
-      "PUT /notifications"
-      "PUT /repos/:owner/:repo/notifications"
-      "GET /notifications/threads/:thread_id"
-      "PATCH /notifications/threads/:thread_id"
-      "GET /notifications/threads/:thread_id/subscription"
-      "PUT /notifications/threads/:thread_id/subscription"
-      "DELETE /notifications/threads/:thread_id/subscription"))
-
-    ("starring"
-     ("GET /repos/:owner/:repo/stargazers"
-      "GET /users/:username/starred"
-      "GET /user/starred"
-      "GET /user/starred/:owner/:repo"
-      "PUT /user/starred/:owner/:repo"
-      "DELETE /user/starred/:owner/:repo"))
-
-    ("watching"
-     ("GET /repos/:owner/:repo/subscribers"
-      "GET /users/:username/subscriptions"
-      "GET /user/subscriptions"
-      "GET /repos/:owner/:repo/subscription"
-      "PUT /repos/:owner/:repo/subscription"
-      "DELETE /repos/:owner/:repo/subscription"))
-
-    ("check runs"
-     ("POST /repos/:owner/:repo/check-runs"
-      "PATCH /repos/:owner/:repo/check-runs/:check_run_id"
-      "GET /repos/:owner/:repo/commits/:ref/check-runs"
-      "GET /repos/:owner/:repo/check-suites/:check_suite_id/check-runs"
-      "GET /repos/:owner/:repo/check-runs/:check_run_id"
-      "GET /repos/:owner/:repo/check-runs/:check_run_id/annotations"))
-
-    ("check suites"
-     ("GET /repos/:owner/:repo/check-suites/:check_suite_id"
-      "GET /repos/:owner/:repo/commits/:ref/check-suites"
-      "PATCH /repos/:owner/:repo/check-suites/preferences"
-      "POST /repos/:owner/:repo/check-suites"
-      "POST /repos/:owner/:repo/check-suites/:check_suite_id/rerequest"))
-
-    ("code scanning"
-     ("GET /repos/:owner/:repo/code-scanning/alerts"
-      "GET /repos/:owner/:repo/code-scanning/alerts/:alert_id"))
-
-    ;;;; stop here
-    ))
+(defun make-api-doc-from-json (json-obj &rest paths)
+  "call with read-api-json usually"
+  (let ((api-detail (dolist (p paths json-obj)
+                      (setf json-obj (gethash p json-obj)))))
+    (make-instance 'api-doc
+                   :api (gethash "api" api-detail)
+                   :parameters (gethash "parameters" api-detail))))
 
 (defclass api-doc ()
   ((api
@@ -91,7 +43,13 @@
 
    (fmt-control
     :type string
-    :accessor control-str)))
+    :accessor control-str)
+
+   (parameters
+    :initarg :parameters
+    :initform '()
+    :type cons
+    :accessor parameters)))
 
 (defmethod initialize-instance :after ((api api-doc) &key)
   (let ((api-detail (parse-api (api api))))
@@ -137,11 +95,12 @@
 (defmethod print-object ((api api-doc) stream)
   (format stream
           "api-doc object:
-api: ~a,
-http method: ~a,
-slots: ~a,
-fmt-control: ~a"
-          (api api) (http-method api) (slots api) (control-str api)
+  api: ~a,
+  http method: ~a,
+  slots: ~a,
+  fmt-control: ~a
+  parameters: ~a"
+          (api api) (http-method api) (slots api) (control-str api) (parameters api)
           ))
 
 (defgeneric make-call-url (api &rest args &key &allow-other-keys)
@@ -151,7 +110,7 @@ fmt-control: ~a"
   "make the url of this api ask user to input data and return call
 url"
   (let ((result (make-string-output-stream))
-        (slot-finder (parse-make-url-keys args)))
+        (slot-finder (parse-keys args))) ;; make slot finder funtion
     (loop
       for k in (slots api)
       for ss in (control-str api)
@@ -163,26 +122,28 @@ url"
     (get-output-stream-string result)
     ))
 
-(declaim (inline parse-make-url-keys))
-(defun parse-make-url-keys (args)
-  "use in make-call-url method, for make parse keywords function"
-  (destructuring-bind
-      (&key
-         (owner "" owner-p)
-         (repo "" repo-p)
-         &allow-other-keys)
-      args
-    (declare (string owner repo))
+(declaim (inline parse-keys))
+(defun parse-keys (args)
+  "for make parse keywords function, make flexible of keywords input"
+  (if (not (evenp (length args)))
+      (return-from
+       parse-keys (error "args length should be even")))
+  
+  (let ((keywords-pairs (loop
+                          for i from 2 to (length args) by 2
+                          collect (subseq args (- i 2) i))))
     (lambda (slot)
       (declare (string slot))
-      (cond 
-        ((string= slot ":owner")
-         (if owner-p
-             owner
-             (progn (format t "What's ~a: " slot)
-                    (string-downcase (read)))))
-        ((string= slot ":repo")
-         (if repo-p
-             repo
-             (progn (format t "What's ~a: " slot)
-                    (string-downcase (read)))))))))
+      (let* ((k-slot (read-from-string slot))
+             (pair (find-if #'(lambda (pair) (eql (car pair) k-slot))
+                            keywords-pairs)))
+        (if pair
+            (cadr pair)
+            (progn (format t "What's ~a: " slot)
+                   (string-downcase (read))))))))
+
+(defmethod make-call-parameters ((api api-doc) &rest args &key &allow-other-keys)
+  (if (zerop (length args))
+      (dolist (pa (parameters api))
+        (progn (format t "What's ~a: " pa)
+                   (string-downcase (read))))))
