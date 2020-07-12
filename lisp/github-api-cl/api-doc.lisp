@@ -36,7 +36,7 @@ object"
     :type string
     :accessor http-method)
 
-   ;; (slot-name...)
+   ;; (:slot-name...)
    (slots
     :type cons
     :accessor slots)
@@ -134,16 +134,47 @@ url"
                           collect (subseq args (- i 2) i))))
     (lambda (slot)
       (declare (string slot))
-      (let* ((k-slot (read-from-string slot))
+      (let* ((k-slot (read-from-string slot)) ;; make string to keyword
              (pair (find-if #'(lambda (pair) (eql (car pair) k-slot))
                             keywords-pairs)))
         (if pair
             (cadr pair)
             (progn (format t "What's ~a: " slot)
-                   (string-downcase (read))))))))
+                   (string-downcase (read-line))))))))
 
 (defmethod make-call-parameters ((api api-doc) &rest args &key &allow-other-keys)
-  (if (zerop (length args))
-      (dolist (pa (parameters api))
-        (progn (format t "What's ~a: " pa)
-                   (string-downcase (read))))))
+  (let (values-list
+        (parameters-str (make-string-output-stream)))
+    (setf values-list
+          (if (zerop (length args))
+              (loop ;; if input nothing, ask one by one
+                    for pa in (parameters api)
+                    collect (progn (format t "What's ~a: " pa)
+                                   (list pa (string-downcase (read-line)))))
+
+              ;; else, parse keyword
+              (let ((keywords-pairs (loop
+                                      for i from 2 to (length args) by 2
+                                      collect (subseq args (- i 2) i))))
+                ;; keywords-pairs = ((keyword val)...)
+                (loop
+                  for pa in (parameters api)
+                  do (print pa)
+                  collect (list pa (cadr
+                                    (find-if #'(lambda (x)
+                                                 (equal (string-downcase
+                                                         (string
+                                                          (car x)))
+                                                        pa))
+                                             keywords-pairs)))))
+              ))
+    ;; make parameters
+    ;;:= TODO: parameters maybe not always string
+    (format parameters-str
+            "~{~#[~:;?~{~a=~s~}~#[~:;&~]~]~}"
+            ;; clean all list if value is empty or nil
+            (loop 
+              for (p v) in values-list
+              when (and (string/= "" v) v)
+                collect (list p v)))    
+    (get-output-stream-string parameters-str)))
