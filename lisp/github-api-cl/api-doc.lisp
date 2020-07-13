@@ -7,7 +7,7 @@
 
 (ql:quickload '("str" "yason"))
 
-(defvar *api-root-url* "https://api.github.com/")
+(defvar *api-root-url* "https://api.github.com")
 (defvar *api-json-file-path* "./api.json")
 
 (defun read-api-json ()
@@ -45,6 +45,7 @@ object"
     :type string
     :accessor control-str)
 
+   ;; ((para, type)...)
    (parameters
     :initarg :parameters
     :initform '()
@@ -106,11 +107,12 @@ object"
 (defgeneric make-call-url (api &rest args &key &allow-other-keys)
   (:documentation "Return the url of this api http call"))
 
-(defmethod make-call-url ((api api-doc) &rest args &key &allow-other-keys)
+(defmethod make-call-url ((api api-doc) &rest args &key (root *api-root-url*) &allow-other-keys)
   "make the url of this api ask user to input data and return call
 url"
   (let ((result (make-string-output-stream))
         (slot-finder (parse-keys args))) ;; make slot finder funtion
+    (format result root)
     (loop
       for k in (slots api)
       for ss in (control-str api)
@@ -119,7 +121,7 @@ url"
       finally (format result
                       (car (last (control-str api)))))
 
-    (get-output-stream-string result)
+    (the string (get-output-stream-string result))
     ))
 
 (declaim (inline parse-keys))
@@ -142,15 +144,46 @@ url"
             (progn (format t "What's ~a: " slot)
                    (string-downcase (read-line))))))))
 
+;; ss should be integar or string
+(declaim (inline coerce-parameter-type))
+(defun coerce-parameter-type (ss type-ss)
+  (declare (string type-ss))
+  (cond
+    ((not ss) nil)
+    
+    ((string= type-ss "string")
+     ss)
+    
+    ((string= type-ss "boolean") ;; it might be "true", "false", or ""
+     (cond
+       ((string= ss "true") ss)
+       ((string= ss "false") ss)
+       (t ""))) 
+
+    ;; integer can be integer from keyword, or string from (read-line)
+    ;; return "" instead of 0 is fine. It will be cleaned anyway.
+    ((string= type-ss "integer")
+     (if (integerp ss) ;; if from keyword ss is int
+         ss
+         (if (string/= ss "")
+             (parse-integer ss)
+             ss)))
+    
+    (t ss)))
+
 (defmethod make-call-parameters ((api api-doc) &rest args &key &allow-other-keys)
   (let (values-list
         (parameters-str (make-string-output-stream)))
     (setf values-list
           (if (zerop (length args))
-              (loop ;; if input nothing, ask one by one
-                    for pa in (parameters api)
-                    collect (progn (format t "What's ~a: " pa)
-                                   (list pa (string-downcase (read-line)))))
+              ;; if input nothing, ask one by one
+              ;; all values input are string
+              (loop 
+                for (pa type) in (parameters api)
+                collect (progn (format t "What's ~a (type is ~a)?: " pa type)
+                               (list pa (coerce-parameter-type
+                                         (string-downcase (read-line))
+                                         type))))
 
               ;; else, parse keyword
               (let ((keywords-pairs (loop
@@ -158,23 +191,28 @@ url"
                                       collect (subseq args (- i 2) i))))
                 ;; keywords-pairs = ((keyword val)...)
                 (loop
-                  for pa in (parameters api)
-                  do (print pa)
-                  collect (list pa (cadr
-                                    (find-if #'(lambda (x)
-                                                 (equal (string-downcase
-                                                         (string
-                                                          (car x)))
-                                                        pa))
-                                             keywords-pairs)))))
+                  for (pa type) in (parameters api)
+                  collect (list pa (coerce-parameter-type
+                                    (cadr
+                                     (find-if #'(lambda (x)
+                                                  (equal (string-downcase
+                                                          (string
+                                                           (car x)))
+                                                         pa))
+                                              keywords-pairs))
+                                    type))))
               ))
     ;; make parameters
-    ;;:= TODO: parameters maybe not always string
     (format parameters-str
             "~{~#[~:;?~{~a=~s~}~#[~:;&~]~]~}"
             ;; clean all list if value is empty or nil
-            (loop 
+            (loop
+              ;; check the value legal or not. Clean nil and ""
+              with check-val = (lambda (x)
+                                 (if (stringp x)
+                                     (string/= x "")
+                                     (if x x)))
               for (p v) in values-list
-              when (and (string/= "" v) v)
+              when (funcall check-val v)
                 collect (list p v)))    
-    (get-output-stream-string parameters-str)))
+    (the string (get-output-stream-string parameters-str))))

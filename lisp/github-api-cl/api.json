@@ -3,9 +3,9 @@
         "repositories": {
           "List repositories for a user": {
                 "parameters": [
-                    "type",
-                    "sort",
-                    "direction"
+                  ["type", "string"],
+                  ["sort","string"],
+                  ["direction","string"]
                 ],
                 "api": "GET /users/:username/repos",
                 "link": "https://developer.github.com/v3/repos/#list-repositories-for-a-user"
