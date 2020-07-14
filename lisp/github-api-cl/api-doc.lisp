@@ -1,11 +1,10 @@
 ;;; github api documents
 (defpackage #:github-api-doc
   (:use #:CL)
+  (:export #:api-doc)
   )
 
 (in-package #:github-api-doc)
-
-(ql:quickload '("str" "yason"))
 
 (defvar *api-root-url* "https://api.github.com")
 (defvar *api-json-file-path* "./api.json")

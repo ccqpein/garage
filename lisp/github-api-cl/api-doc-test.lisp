@@ -1,5 +1,3 @@
-(ql:quickload "lisp-unit")
-
 (defpackage #:api-doc-test
   (:use #:CL  #:lisp-unit))
 

@@ -6,8 +6,6 @@
 
 (in-package #:github-client)
 
-(ql:quickload '("dexador" "yason"))
-
 (defclass api-client ()
   ((token
     :initarg :token
