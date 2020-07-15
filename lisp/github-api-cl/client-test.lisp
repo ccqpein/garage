@@ -13,28 +13,43 @@
 ;;:= TODO: make fake http server and receive http-call
 (define-test http-call-test
   (let (handler
-        env)
-    (declare (special env))
+        env
+        (clt (make-instance 'github-client::api-client
+                            :token "123")))
     (unwind-protect
          (progn (setf handler
                       (clack:clackup
-                       (lambda (env)
-                         (setf (locally (declare (special env))
-                                 env)
-                               env)
-                         ;;(format t "~s~%" env)
-                         (maphash (lambda (k v) (format t "~a: ~a~%" k v)) (car (last env)))
+                       (lambda (request)
+                         (setf env request) ;; update env
                          (list 200
                                '(:content-type "text/plain")
-                               (list (gethash "method" (car (last env))))))
+                               (list (gethash "authorization" (car (last env))))))
                        :server :woo))
-                (assert-equal "get"
-                              (github-client::http-call
-                               (make-instance 'github-client::api-client :token "123")
-                               "http://localhost:5000"))
-                (format t "~s" env)
-                )
-      (clack:stop handler))))
+
+                ;; default method is :GET
+                (assert-equal :GET
+                              (progn (github-client::http-call clt "http://localhost:5000")
+                                     (alexandria:doplist (k v env)
+                                       (if (eq k :REQUEST-METHOD)
+                                           (return v)))))
+
+                ;; give some method
+                (assert-equal :DELETE
+                              (progn (github-client::http-call clt
+                                                               "http://localhost:5000"
+                                                               :method "delete")
+                                     (alexandria:doplist (k v env)
+                                       (if (eq k :REQUEST-METHOD)
+                                           (return v)))))
+
+                ;;:= TEST: give token
+
+                ;;:= TEST: don't give token, use client token
+
+                ;;:= TEST: give username and passd
+
+                ;;(format t "~s" env)
+                (clack:stop handler)))))
 
 (let ((*print-errors* t)
       (*print-failures* t))
