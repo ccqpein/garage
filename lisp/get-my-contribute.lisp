@@ -13,8 +13,7 @@
 (decode-universal-time (+ 1593302400 (encode-universal-time 0 0 0 1 1 1970 5)) 5)
 
 ;; find method of generic function
-(sb-mop:specializer-direct-generic-functions (find-class 'string))
-
+(sb-mop:specializer-direct-generic-functions (find-class 'api-doc))
 
 (defmethod test :before ((a string) &key aa &allow-other-keys)
   (print :allow-other-keys)

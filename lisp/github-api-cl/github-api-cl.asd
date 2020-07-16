@@ -11,7 +11,7 @@
   :author "ccQpein"
   :maintainer "ccQpein"
 
-  :defsystem-depends-on ("str" "yason" "dexador" "lisp-unit" "woo" "clack" "alexandria")
+  :defsystem-depends-on ("str" "yason" "dexador" "lisp-unit" "woo" "clack" "alexandria" "cl-base64")
 
   ;;:= TODO: maybe test have different way to load
   :components ((:file "api-doc")

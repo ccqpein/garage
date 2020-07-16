@@ -2,7 +2,12 @@
 (defpackage #:github-client
   (:use #:CL #:github-api-doc)
   (:shadow #:get) ;; shadow get from CL
-  )
+  (:export #:token-p
+           #:token
+           #:token-p-or-input
+           #:api-client
+           #:http-call
+           #:github-api-call))
 
 (in-package #:github-client)
 
