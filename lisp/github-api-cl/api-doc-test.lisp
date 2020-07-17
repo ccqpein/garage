@@ -30,7 +30,7 @@
                                               ("private" "boolean")
                                               ("team_id" "integer")))))
     ;; fake input from repl
-    (assert-equal "?name=\"aa\"&?private=\"true\"&?team_id=1"
+    (assert-equal "?name=\"aa\"&private=\"true\"&team_id=1"
                   (with-input-from-string (*standard-input* "aa
 true
 1")
@@ -41,7 +41,7 @@ true
                   (make-call-parameters api-doc :username "aa" :private "true" :integer 1))
 
     ;; input by keywords
-    (assert-equal "?name=\"aa\"&?private=\"true\"&?team_id=1"
+    (assert-equal "?name=\"aa\"&private=\"true\"&team_id=1"
                   (make-call-parameters api-doc :name "aa" :private "true" :team_id 1))
     ))
 

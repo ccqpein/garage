@@ -1,18 +1,28 @@
 ;;; github api documents
 (defpackage #:github-api-doc
   (:use #:CL)
-  (:export #:api-doc)
+  (:export #:api-doc
+           #:http-method
+           #:read-api-json
+           #:make-api-doc-from-json
+           #:make-call-parameters
+           #:make-call-url)
   )
 
 (in-package #:github-api-doc)
 
-(defvar *api-root-url* "https://api.github.com")
-(defvar *api-json-file-path* "./api.json")
+(defparameter *api-root-url* "https://api.github.com")
+(defparameter *api-json-file-path*
+  (merge-pathnames (asdf:component-pathname
+                    (asdf:find-system :github-api-cl))
+                   #P"/api.json")
+  "api json file path")
 
-(defun read-api-json ()
+(defun read-api-json (&optional (file-path *api-json-file-path*))
   "read json api file from *api-json-file-path*, return yason json
 object"
-  (with-open-file (s *api-json-file-path*)
+  (declare (pathname file-path))
+  (with-open-file (s file-path)
     (let ((data (make-string (file-length s))))
       (read-sequence data s)
       (yason:parse data))))
@@ -203,7 +213,7 @@ url"
               ))
     ;; make parameters
     (format parameters-str
-            "~{~#[~:;?~{~a=~s~}~#[~:;&~]~]~}"
+            "?~{~#[~:;~{~a=~s~}~#[~:;&~]~]~}"
             ;; clean all list if value is empty or nil
             (loop
               ;; check the value legal or not. Clean nil and ""

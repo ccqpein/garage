@@ -46,7 +46,7 @@
     (destructuring-bind
         (&key
            (token (token clt) token-p)
-           (username "")
+           (user-name "")
            (passd "" passd-p)
            &allow-other-keys)
         args
@@ -62,24 +62,24 @@
                                                     (format nil "token ~a" token)))))))
           
           ;; If neither client's token or keyword token is given
-          ;; try use username and password
+          ;; try use user-name and password
           (passd-p
            (setf lambda-list
                  (append lambda-list
-                         (list :basic-auth (cons username passd))))))
+                         (list :basic-auth (cons user-name passd))))))
 
         (apply call-func url lambda-list)
         ))))
 
 (defgeneric github-api-call (client api &rest args &key &allow-other-keys))
 
-;; Except token, username, and passd, all other keywords are parameters for this api
+;; Except token, user-name, and passd, all other keywords are parameters for this api
 (defmethod github-api-call ((clt api-client) (api api-doc)
                             &rest args)
-  (let* ((url (make-call-url api))
-         (parameters (apply make-call-parameters api args)) ;;:= TODO: need test
+  (let* ((url (apply #'make-call-url api args))
+         (parameters (apply #'make-call-parameters api args))
          (whole-url (concatenate 'string url parameters)))
-    (apply http-call clt whole-url
+    (apply #'http-call clt whole-url
            :method (http-method api)
            args)
     ))
