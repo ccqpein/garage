@@ -1,5 +1,5 @@
 (defpackage #:api-doc-test
-  (:use #:CL  #:lisp-unit)
+  (:use #:CL #:lisp-unit)
   (:import-from #:github-api-doc
                 #:api-doc
                 #:make-call-parameters

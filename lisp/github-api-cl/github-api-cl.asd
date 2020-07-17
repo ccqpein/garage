@@ -11,16 +11,26 @@
   :author "ccQpein"
   :maintainer "ccQpein"
 
-  :defsystem-depends-on ("str" "yason" "dexador" "lisp-unit" "woo" "clack" "alexandria" "cl-base64")
+  :defsystem-depends-on ("str"
+                         "yason"
+                         "dexador"
+                         "woo"
+                         "clack"
+                         "alexandria"
+                         "cl-base64")
 
-  ;;:= TODO: maybe test have different way to load
   :components ((:file "api-doc")
 
-               (:file "api-doc-test"
-                :depends-on ("api-doc"))
-
                (:file "client"
-                :depends-on ("api-doc"))
+                :depends-on ("api-doc")))
+  )
 
-               (:file "client-test"
-                :depends-on ("client"))))
+(defmethod perform ((o test-op) (c (eql (find-system :github-api-cl))))
+  (load-system :github-api-cl/tests)
+  ;;(oos 'test-op :github-api-cl/tests)
+  )
+
+(defsystem github-api-cl/tests
+  :defsystem-depends-on ("lisp-unit")
+  :components ((:file "api-doc-test")
+               (:file "client-test")))

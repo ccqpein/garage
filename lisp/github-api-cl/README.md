@@ -8,6 +8,8 @@ Documents link is [here](https://developer.github.com/v3/)
 
 ## Usage ##
 
+You can check `./example`
+
 ### Dependencies ###
 
 I use [yason](https://github.com/phmarek/yason) for json parser, [dexador](https://github.com/fukamachi/dexador) for http client.
