@@ -1,6 +1,11 @@
 use std::io::{stdout, Result, Write};
 use std::{thread, time};
 
+/// Carriage_return(\r or 0xD): To take control at starting of same line.
+///
+/// Line_Feed(\n or 0xA): To Take control at starting of next line.
+///
+/// form_feed(\f or 0xC): To take control at starting of next page.
 fn test() -> Result<()> {
     let msgs = vec!["hello", "I am ", "robot"];
     let mut std_out = stdout();
