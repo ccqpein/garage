@@ -1,17 +1,32 @@
+use rand::*;
 use std::io::{repeat, stdout, Error, ErrorKind, Read, Result, Stdout, Write};
+use termion::event::Key;
+use termion::raw::{IntoRawMode, RawTerminal};
 
 pub struct Frame {
     row: usize,
     col: usize,
-    points: Stdout,
+    points: RawTerminal<Stdout>,
+    rng: rand::rngs::ThreadRng,
 }
 
 impl Frame {
     pub fn new(row: usize, col: usize) -> Self {
-        let mut std_out = stdout();
+        let mut std_out = stdout().into_raw_mode().unwrap();
         let mut a = vec![0; col];
         repeat(b'.').read_exact(&mut a).unwrap();
         a.push(b'\n');
+        a.push(b'\r');
+
+        write!(
+            std_out,
+            "{}{}{}",
+            termion::clear::All,
+            termion::cursor::Goto(1, 1),
+            termion::cursor::Hide
+        )
+        .unwrap();
+
         for _ in 0..row {
             std_out.write_all(&a).unwrap();
             std_out.flush().unwrap();
@@ -21,6 +36,7 @@ impl Frame {
             row,
             col,
             points: std_out,
+            rng: rand::thread_rng(),
         }
     }
 
@@ -54,6 +70,13 @@ impl Frame {
             .unwrap()
         };
         self.points.flush()
+    }
+
+    pub fn random_point(&mut self) -> (usize, usize) {
+        (
+            self.rng.gen_range(0, self.row),
+            self.rng.gen_range(0, self.col),
+        )
     }
 }
 
@@ -95,7 +118,14 @@ impl Snake {
         }
     }
 
-    /// can only show when the change happen, have bug of showing snake when the length > 2
+    pub fn head(&self) -> (i32, i32) {
+        self.body.first().unwrap().clone()
+    }
+
+    pub fn add_tail(&mut self, d: (i32, i32)) {
+        self.body.push(d);
+    }
+
     pub fn show(&mut self, frame: &mut Frame) -> Result<()> {
         for b in &self.body {
             frame.write(b.0, b.1, String::from("◼"))?;
@@ -103,10 +133,12 @@ impl Snake {
         Ok(())
     }
 
-    pub fn move_one_step(&mut self) -> Result<Option<(i32, i32)>> {
+    // return the tail
+    pub fn move_one_step(&mut self, k: &Direction) -> Result<(i32, i32)> {
+        self.dir = *k;
         let step = match self.dir {
-            Direction::Up => (1, 0),
-            Direction::Down => (-1, 0),
+            Direction::Up => (-1, 0),
+            Direction::Down => (1, 0),
             Direction::Left => (0, -1),
             Direction::Right => (0, 1),
         };
@@ -115,8 +147,16 @@ impl Snake {
         let a = self.body.first().unwrap();
         let new_head = (a.0 as i32 + step.0, a.1 as i32 + step.1);
 
+        if self.included(&(new_head.0 as usize, new_head.1 as usize)) {
+            return Err(Error::new(ErrorKind::AlreadyExists, ""));
+        }
+
         self.body.insert(0, new_head);
 
-        Ok(Some(tail))
+        Ok(tail)
+    }
+
+    pub fn included(&self, point: &(usize, usize)) -> bool {
+        self.body.contains(&(point.0 as i32, point.1 as i32))
     }
 }
