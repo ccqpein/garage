@@ -1,6 +1,5 @@
 use rand::*;
 use std::io::{repeat, stdout, Error, ErrorKind, Read, Result, Stdout, Write};
-use termion::event::Key;
 use termion::raw::{IntoRawMode, RawTerminal};
 
 pub struct Frame {

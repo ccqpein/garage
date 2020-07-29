@@ -1,9 +1,7 @@
 use snake_game::*;
-use std::io::{stdin, Read, Result};
+use std::io::{Read, Result};
 use std::{thread::sleep, time::Duration};
 use termion::async_stdin;
-use termion::event::Key;
-use termion::input::TermRead;
 
 fn parse_key(buff: &[Option<Result<u8>>; 3]) -> Option<Direction> {
     if buff
@@ -25,8 +23,8 @@ fn parse_key(buff: &[Option<Result<u8>>; 3]) -> Option<Direction> {
 }
 
 fn main() -> Result<()> {
-    let mut a = Frame::new(9, 9);
-    let mut snake = Snake::new((5, 5), Direction::Right, 2);
+    let mut a = Frame::new(10, 20); //:= TODO: can modify frame
+    let mut snake = Snake::new((5, 5), Direction::Right, 2); //:= TODO: should random?
 
     let mut food = a.random_point();
     a.write(food.0 as i32, food.1 as i32, String::from("x"))?;
@@ -55,6 +53,7 @@ fn main() -> Result<()> {
                         snake.add_tail(tt);
                         food = a.random_point();
                         while snake.included(&food) {
+                            //:= TODO: this part need optimise
                             food = a.random_point();
                         }
                         a.write(food.0 as i32, food.1 as i32, String::from("x"))?;
