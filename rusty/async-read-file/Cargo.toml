@@ -1,0 +1,10 @@
+[package]
+name = "async-read-file"
+version = "0.1.0"
+authors = ["ccQpein"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+tokio = {version = "0.2", features = ["rt-threaded", "macros", "tcp", "io-util", "fs"]}
+futures = "0.3"
