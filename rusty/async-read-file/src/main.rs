@@ -1,8 +1,13 @@
 use std::io::Result;
 use std::time::Instant;
-use std::{ffi::OsString, path::Path};
+use std::{
+    ffi::OsString,
+    path::Path,
+    thread::{self, Thread},
+};
 
 use futures::future::join_all;
+use thread::JoinHandle;
 use tokio::{join, main, net::TcpListener};
 
 fn read_all_files_in_this_dir(p: &Path) -> Result<Vec<OsString>> {
@@ -58,6 +63,10 @@ fn read_all_lines_in_file(p: impl AsRef<Path>) -> usize {
     count
 }
 
+fn read_all_lines_in_files(ps: Vec<String>) -> usize {
+    ps.iter().map(|p| read_all_lines_in_file(p)).sum::<usize>()
+}
+
 // maybe cause too many files open
 async fn read_all_lines_in_file_a(p: impl AsRef<Path>) -> usize {
     use tokio::fs::File;
@@ -111,20 +120,19 @@ async fn read_all_lines_in_file_a_2(ps: Vec<String>) -> usize {
     count
 }
 
-#[tokio::main(core_threads = 1, max_threads = 1)]
+#[tokio::main]
 async fn main() -> Result<()> {
-    let all_files: Vec<OsString> = read_all_files_in_this_dir(Path::new("."))?;
+    let mut all_files: Vec<String> = read_all_files_in_this_dir_2(Path::new("."))?;
 
-    let now = Instant::now();
+    let mut now = Instant::now();
 
     let a = all_files
         .iter()
         .map(|p| read_all_lines_in_file(p))
         .sum::<usize>();
 
-    println!("Cost: {:?}, a: {}", now.elapsed(), a);
+    println!("Cost: {:?}, a: {}, sync", now.elapsed(), a);
 
-    let mut all_files: Vec<String> = read_all_files_in_this_dir_2(Path::new("."))?;
     let b = {
         let mut cache: Vec<Vec<String>> = vec![];
         let mut count = 0;
@@ -140,6 +148,8 @@ async fn main() -> Result<()> {
         cache
     };
 
+    now = Instant::now();
+
     let bb = b
         .iter()
         .map(|x| {
@@ -147,14 +157,31 @@ async fn main() -> Result<()> {
             tokio::spawn(async move { read_all_lines_in_file_a_2(xx).await })
         })
         .collect::<Vec<_>>();
-    //.sum::<usize>();
 
     let re = join_all(bb)
         .await
         .iter()
         .map(|h| h.as_ref().unwrap())
         .sum::<usize>();
-    println!("Cost: {:?}, a: {}", now.elapsed(), re);
+
+    println!("Cost: {:?}, a: {}, async", now.elapsed(), re);
+
+    now = Instant::now();
+
+    let c = b
+        .iter()
+        .map(|x| {
+            let xx = (*x).clone();
+            thread::spawn(|| read_all_lines_in_files(xx))
+        })
+        .collect::<Vec<JoinHandle<usize>>>();
+
+    let mut re1 = 0;
+    for h in c {
+        re1 += h.join().unwrap();
+    }
+
+    println!("Cost: {:?}, a: {}, mutli threads", now.elapsed(), re1);
 
     Ok(())
 }
