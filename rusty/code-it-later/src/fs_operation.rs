@@ -1,20 +1,18 @@
+use super::config::FsOpConfig;
 use std::fs::read_dir;
 use std::io::Result;
 use std::path::Path;
 use std::path::PathBuf;
-
 use std::sync::mpsc::{Receiver, Sender};
-struct FsOpConfig {
-    filetype: Option<Vec<String>>,
-}
 
-fn all_files_in_dir<T: AsRef<Path> + Sized>(
+//:= TODO: maybe stackoverflow
+pub fn all_files_in_dir<T: AsRef<Path> + Sized>(
     p: T,
     conf: &FsOpConfig,
     ch: Sender<Vec<PathBuf>>,
 ) -> Result<()> {
     let (files, dirs) = files_and_dirs_in_path(p)?;
-    ch.send(files);
+    ch.send(files).unwrap_or_else(|e| println!("{}", e));
 
     if dirs.len() != 0 {
         dirs.iter()
