@@ -1,47 +1,41 @@
 use clap::Clap;
-use std::env;
+use std::{env, ffi::OsString};
 
-pub struct FsOpConfig {
-    filetypes: Option<Vec<String>>,
+#[derive(Default)]
+pub struct Config {
+    pub(super) filetypes: Vec<OsString>,
+    pub(super) ignore_dirs: Vec<OsString>,
     keywords: Option<Vec<String>>,
     dirs: Option<Vec<String>>,
 }
 
-/// argvs struct from command line
-#[derive(Default, Clap, Debug)]
-#[clap(version = "0.1.0", author = "ccQpein")]
-pub struct Argvs {
-    #[clap(short, long)]
-    filetypes: Vec<String>,
-
-    #[clap(short, long, default_value = ".")]
-    dirs: Vec<String>,
-
-    #[clap(short = "dx", long = "ignore-dir")]
-    ignore_dir: Vec<String>,
-
-    #[clap(short, long)]
-    keywords: Vec<String>,
-
-    #[clap(short, long)]
-    jsonx: String,
+impl From<&Args> for Config {
+    fn from(a: &Args) -> Self {
+        Self {
+            filetypes: a.filetypes.clone(),
+            ignore_dirs: a.ignore_dir.clone(),
+            keywords: a.keywords.clone(),
+            dirs: a.dirs.clone(),
+        }
+    }
 }
 
-impl Argvs {
-    fn new() -> Self {
-        let mut argvs = env::args();
-        let mut a: Self = Default::default();
-        while let Some(x) = argvs.next() {
-            match x.as_str() {
-                "-f" | "--filetype" => {}
-                "-k" | "--keyword" => {}
-                "-d" | "--dir" => {}
-                "-j" | "--jsonx" => {}
-                "-dx" | "--ignore-dir" => {}
-                _ => {}
-            }
-        }
+/// Args struct from command line
+#[derive(Default, Clap, Debug)]
+#[clap(version = "0.1.0", author = "ccQpein")]
+pub struct Args {
+    #[clap(short, long)]
+    filetypes: Vec<OsString>,
 
-        a
-    }
+    #[clap(short, long, default_value = ".")]
+    dirs: Option<Vec<String>>,
+
+    #[clap(short = "x", long = "ignore-dir")]
+    ignore_dir: Vec<OsString>,
+
+    #[clap(short, long)]
+    keywords: Option<Vec<String>>,
+
+    #[clap(short, long)]
+    jsonx: Option<String>,
 }
