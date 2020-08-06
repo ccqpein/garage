@@ -1,12 +1,14 @@
 use super::config::Config;
 use std::fs::read_dir;
+use std::fs::*;
+use std::io::prelude::*;
 use std::io::Result;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
 //:= TODO: maybe stackoverflow
-pub fn all_files_in_dir<T: AsRef<Path> + Sized>(
+pub fn all_files_in_dir<T: AsRef<Path>>(
     p: T,
     conf: &Config,
     ch: Sender<Vec<PathBuf>>,
@@ -68,13 +70,46 @@ fn files_and_dirs_in_path(p: impl AsRef<Path>, conf: &Config) -> Result<(Files, 
     Ok((f, d))
 }
 
+struct Crumb {
+    line_num: usize,
+    content: String,
+}
+
+//:= TODO: need regex here
+fn filter_line(line: &str, line_num: usize) -> Option<Crumb> {
+    None
+}
+
+fn op_file(file: PathBuf, conf: &Config) -> Result<Vec<Crumb>> {
+    let mut buf = vec![];
+    let mut f: File = File::open(file)?;
+    f.read_to_end(&mut buf)?;
+
+    let mut line_num = 0;
+    let mut ss = String::new();
+    let mut buf = buf.as_slice();
+    let mut result = vec![];
+    loop {
+        line_num += 1;
+        match buf.read_line(&mut ss) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => match filter_line(&ss, line_num) {
+                Some(cb) => result.push(cb),
+                None => (),
+            },
+        }
+    }
+
+    Ok(result)
+}
+
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
     fn test_files_and_dirs_in_path() -> Result<()> {
-        let (fs, dirs) = files_and_dirs_in_path("./tests", Default::default())?;
+        let (fs, dirs) = files_and_dirs_in_path("./tests", &Default::default())?;
 
         assert_eq!(dirs.len(), 0);
         assert_eq!(fs, vec![PathBuf::from("./tests/test.py"),]);
