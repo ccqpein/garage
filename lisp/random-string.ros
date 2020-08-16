@@ -1,0 +1,27 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '() :silent t)
+  )
+
+(defpackage :ros.script.random-string.3806423786
+  (:use :cl))
+(in-package :ros.script.random-string.3806423786)
+
+(defun random-string (len)
+  "65 - 122"
+  (loop repeat len
+        collect (case (random 3)
+                  (0 (random 10))
+                  (1 (code-char (+ 65 (random (- 91 65)))))
+                  (2 (code-char (+ 97 (random (- 123 97))))))))
+
+(defun main (len &rest argv)
+  (declare (ignorable argv))
+  (format t "~{~a~}" (random-string (parse-integer len)))
+  )
+;;; vim: set ft=lisp lisp:
