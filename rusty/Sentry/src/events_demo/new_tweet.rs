@@ -6,4 +6,4 @@ struct NewTweet {
     content: String,
 }
 
-impl Event for NewTweet {}
+impl HappenEvent for NewTweet {}
