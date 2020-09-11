@@ -2,13 +2,17 @@ use rand::seq::SliceRandom;
 use std::io::{Error, ErrorKind, Result};
 
 #[derive(Clone, Debug)]
-struct Rotor {
+pub struct Rotor {
+    /// How many "contacter"
     len: usize,
+
+    /// Index of this vec is input, like output_vec[0] = 3
+    /// means first contactor connected to fourth contactor
     output_vec: Vec<usize>,
 }
 
 impl Rotor {
-    fn init(mut contactor_len: u32) -> Result<Self> {
+    fn init(contactor_len: u32) -> Result<Self> {
         if contactor_len % 2 != 0 {
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -23,7 +27,7 @@ impl Rotor {
         Ok(Self {
             len: contactor_len as usize,
             output_vec: {
-                contactors.shuffle(&mut rng);
+                contactors.shuffle(&mut rng); // randomize contactors
                 contactors
             },
         })
@@ -48,6 +52,8 @@ impl Rotor {
         Ok(())
     }
 
+    /// input the index of contacter of one side, return the index of other side.
+    /// both sides are mirror to each other
     fn input(&self, i: usize) -> Result<usize> {
         if i >= self.len() {
             Err(Error::new(
@@ -59,6 +65,8 @@ impl Rotor {
         }
     }
 
+    /// input the index of contactor of another side, compare with input(),
+    /// return the index of other side
     fn rev_input(&self, i: usize) -> Result<usize> {
         if let Some(p) = self.output_vec.iter().position(|x| *x == i) {
             Ok(p)
@@ -70,6 +78,7 @@ impl Rotor {
         }
     }
 
+    /// input with offset of rotor rotate
     fn input_with_offset(&self, i: usize, offset: usize) -> Result<usize> {
         let a = (i + offset) % self.len();
         let mut re = self.input(a).unwrap() as i32 - offset as i32;
@@ -80,6 +89,7 @@ impl Rotor {
         Ok(re as usize)
     }
 
+    /// input with offset of rotor rotate from other side
     fn rev_input_with_offset(&self, i: usize, offset: usize) -> Result<usize> {
         let a = (i + offset) % self.len();
         let mut re = self.rev_input(a).unwrap() as i32 - offset as i32;
@@ -88,14 +98,6 @@ impl Rotor {
         }
         Ok(re as usize)
     }
-
-    // fn spin(&mut self, s: usize) {
-    //     self.output_vec.rotate_left(s);
-    // }
-
-    // fn spin_one(&mut self) {
-    //     self.spin(1);
-    // }
 }
 
 impl Default for Rotor {
@@ -105,7 +107,7 @@ impl Default for Rotor {
 }
 
 #[derive(Debug)]
-struct Reflector {
+pub struct Reflector {
     input: Vec<usize>,
     output: Vec<usize>,
 }
@@ -114,7 +116,7 @@ impl Reflector {
     /// reflector input and output should be if A->B, then B->A.
     /// diff than Rotor. Rotor can be A->B, B->C, C->A, and follow A<-B
     /// that's why the output is input's reverse
-    pub fn init(mut length: usize) -> Result<Self> {
+    pub fn init(length: usize) -> Result<Self> {
         if length % 2 != 0 {
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -135,6 +137,7 @@ impl Reflector {
         })
     }
 
+    /// reflector input
     fn input(&self, i: usize) -> Result<usize> {
         if let Some(p) = self.input.iter().position(|x| *x == i) {
             Ok(self.output[p])
@@ -152,14 +155,14 @@ impl Reflector {
 }
 
 #[derive(Debug)]
-struct RotorChain<'a> {
+pub struct RotorChain<'a> {
     spin_status: Vec<usize>,
-    chain: Vec<&'a mut Rotor>,
+    chain: Vec<&'a Rotor>,
     reflect: &'a Reflector,
 }
 
 impl<'a> RotorChain<'a> {
-    fn new(rotors: Vec<&'a mut Rotor>, reflect: &'a Reflector) -> Result<Self> {
+    pub fn new(rotors: Vec<&'a Rotor>, reflect: &'a Reflector) -> Result<Self> {
         if !rotors.iter().all(|x| x.len() == reflect.len()) {
             return Err(Error::new(
                 ErrorKind::NotFound,
@@ -174,10 +177,10 @@ impl<'a> RotorChain<'a> {
         })
     }
 
-    fn input(&mut self, i: &usize) -> Result<usize> {
-        let mut temp = *i;
+    pub fn input(&mut self, i: usize) -> Result<usize> {
+        let mut temp = i;
 
-        // in order
+        // handle input in order
         for ind in 0..self.chain.len() {
             temp = self.chain[ind].input_with_offset(temp, self.spin_status[ind])?;
         }
@@ -204,6 +207,10 @@ impl<'a> RotorChain<'a> {
 
     fn reset_spin_status(&mut self) {
         self.spin_status = self.chain.iter().map(|_| 0).collect();
+    }
+
+    pub fn len(&self) -> usize {
+        self.reflect.len()
     }
 }
 
