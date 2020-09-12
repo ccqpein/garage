@@ -1,3 +1,5 @@
 mod enigma_machine;
-mod plugboard;
+pub mod plugboard;
 mod rotor;
+
+pub use crate::enigma_machine::*;

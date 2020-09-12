@@ -12,7 +12,7 @@ pub struct Rotor {
 }
 
 impl Rotor {
-    fn init(contactor_len: u32) -> Result<Self> {
+    pub fn init(contactor_len: usize) -> Result<Self> {
         if contactor_len % 2 != 0 {
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -106,7 +106,7 @@ impl Default for Rotor {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Reflector {
     input: Vec<usize>,
     output: Vec<usize>,
@@ -155,14 +155,14 @@ impl Reflector {
 }
 
 #[derive(Debug)]
-pub struct RotorChain<'a> {
-    spin_status: Vec<usize>,
-    chain: Vec<&'a Rotor>,
-    reflect: &'a Reflector,
+pub struct RotorChain {
+    pub spin_status: Vec<usize>,
+    chain: Vec<Rotor>,
+    reflect: Reflector,
 }
 
-impl<'a> RotorChain<'a> {
-    pub fn new(rotors: Vec<&'a Rotor>, reflect: &'a Reflector) -> Result<Self> {
+impl RotorChain {
+    pub fn new(rotors: &Vec<Rotor>, reflect: &Reflector) -> Result<Self> {
         if !rotors.iter().all(|x| x.len() == reflect.len()) {
             return Err(Error::new(
                 ErrorKind::NotFound,
@@ -172,11 +172,13 @@ impl<'a> RotorChain<'a> {
 
         Ok(Self {
             spin_status: rotors.iter().map(|_| 0).collect(),
-            chain: rotors,
-            reflect,
+            chain: rotors.clone(),
+            reflect: reflect.clone(),
         })
     }
 
+    /// Side effect: will change self.spin_status
+    /// major part of whole enigma machine
     pub fn input(&mut self, i: usize) -> Result<usize> {
         let mut temp = i;
 
@@ -209,6 +211,11 @@ impl<'a> RotorChain<'a> {
         self.spin_status = self.chain.iter().map(|_| 0).collect();
     }
 
+    /// set status
+    pub fn set_spin_status(&mut self, a: Vec<usize>) {
+        self.spin_status = a
+    }
+
     pub fn len(&self) -> usize {
         self.reflect.len()
     }
@@ -226,41 +233,42 @@ mod tests {
         assert_eq!(2, o1);
 
         let o = r.input_with_offset(2, 1).unwrap();
-        assert_eq!(r.input(3).unwrap() - 1, o);
+        let mut o2 = r.input(3).unwrap();
+        if o2 == 0 {
+            o2 = 26
+        }
+        assert_eq!(o2 - 1, o);
     }
 
     #[test]
     fn input_vs_output() {
-        let mut r1: Rotor = Default::default();
-        let mut r2: Rotor = Default::default();
-        let mut re: Reflector = Reflector::init(26).unwrap(); // reflect
+        let r1: Rotor = Default::default();
+        let r2: Rotor = Default::default();
+        let re: Reflector = Reflector::init(26).unwrap(); // reflect
 
-        let mut r12 = r1.clone();
-        let mut r22 = r2.clone();
-
-        let mut c1 = RotorChain::new(vec![&mut r1, &mut r2], &re).unwrap();
+        let mut c1 = RotorChain::new(&vec![r1.clone(), r2.clone()], &re).unwrap();
         // need the new rotorchain for test
-        let mut c2 = RotorChain::new(vec![&mut r12, &mut r22], &re).unwrap();
+        let mut c2 = RotorChain::new(&vec![r1.clone(), r2.clone()], &re).unwrap();
 
-        let output = c1.input(&3).unwrap();
-        assert_eq!(3, c2.input(&output).unwrap());
+        let output = c1.input(3).unwrap();
+        assert_eq!(3, c2.input(output).unwrap());
 
         // output shoud different
-        let output_1 = c1.input(&3).unwrap();
+        let output_1 = c1.input(3).unwrap();
         assert!(output_1 != output); // two times answers should not same as each other
-        assert_eq!(3, c2.input(&output_1).unwrap());
+        assert_eq!(3, c2.input(output_1).unwrap());
 
         // reset r1, because everytime, rotor spin one after input
         assert!(c2.spin_status[0] == c1.spin_status[0]);
         assert!(c2.spin_status[0] == 2);
         c2.reset_spin_status();
-        assert!(output == c2.input(&3).unwrap());
+        assert!(output == c2.input(3).unwrap());
 
         // check spin status overflow
         c1.reset_spin_status();
         c1.spin_status = vec![25, 25];
-        c1.input(&3);
+        c1.input(3);
         assert_eq!(c1.spin_status, vec![0, 0]);
-        assert_eq!(output, c1.input(&3).unwrap());
+        assert_eq!(output, c1.input(3).unwrap());
     }
 }
