@@ -1,4 +1,0 @@
-# README #
-
-  * [ ] tests 
-  * [ ] debug feature
