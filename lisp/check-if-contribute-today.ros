@@ -1,0 +1,62 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp(ql:quickload '("github-api-cl" "yason" "local-time") :silent t)
+  #+sbcl(sb-ext:enable-debugger)
+  )
+
+(defpackage :ros.script.check-if-contribute-today.3810566260
+  (:use :cl)
+  (:import-from #:github-client :api-client :github-api-call)
+  (:import-from #:github-api-doc :api-doc)
+  )
+(in-package :ros.script.check-if-contribute-today.3810566260)
+
+
+(defparameter *list-repos-of-me-api*
+  (make-instance 'api-doc
+                 :api "GET /users/:username/repos"
+                 :parameters '(("type" "string") 
+                               ("sort" "string") 
+                               ("direction" "string")
+                               ("per_page" "integer")
+                               ("page" "integer"))))
+
+(defun main (&rest argv)
+  (let ((token-path (car argv)))
+    (assert token-path
+            (token-path)
+            "Have to give token path"
+            )
+
+    (let* ((token (with-open-file (f token-path :direction :input :if-does-not-exist nil)
+                    (read-line f)))
+           (client (make-instance 'api-client :token token))
+           json-response
+           (update-at ""))
+      (setf json-response (car (yason:parse
+                                (github-api-call
+                                 client
+                                 *list-repos-of-me-api*
+                                 :username "ccqpein"
+                                 :type "owner"
+                                 :sort "updated"
+                                 :per_page 1
+                                 :page 1)))
+            update-at (gethash "updated_at" json-response))
+
+      (if (string= "" update-at)
+          (error "No update-at found"))
+
+      (if (string= (local-time:format-timestring nil
+                                                 (local-time:parse-timestring update-at)
+                                                 :format '(:year "-" :month "-" :day))
+                   (local-time:format-timestring nil
+                                                 (local-time:now)
+                                                 :format '(:year "-" :month "-" :day)))
+          (format t "update today")
+          (format t "not today")))))
