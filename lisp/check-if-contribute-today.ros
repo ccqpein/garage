@@ -26,30 +26,65 @@ exec ros -Q -- $0 "$@"
                                ("per_page" "integer")
                                ("page" "integer"))))
 
+(defparameter *repos-commits*
+  (make-instance 'api-doc
+                 :api "GET /repos/:owner/:repo/commits"
+                 :parameters '(("since" "string")
+                               ("per_page" "integer")
+                               ("page" "integer"))))
+
+(defun get-all-repos-names (client)
+  (loop for repo in (yason:parse
+                     (github-api-call
+                      client
+                      *list-repos-of-me-api*
+                      :username "ccqpein"
+                      :type "owner"
+                      :sort "updated"
+                      ))
+        collect (gethash "name" repo)))
+
+(defun if-repos-has-commit-since (client repos since)
+  (loop
+     for repo-name in repos
+     if (zerop (length (yason:parse
+                      (github-api-call
+                       client
+                       *repos-commits*
+                       :owner "ccqpein"
+                       :repo repo-name
+                       :since since
+                       ))))
+     do (return t) ; return if find any
+     finally (return nil)))
+
+(defun if-I-commit-today ()
+  (let* ((client (make-instance 'api-client))
+         )
+    (let* ((now-l (multiple-value-list (local-time:decode-timestamp (local-time:now))))
+           (univeral-l (multiple-value-list
+                        (decode-universal-time
+                         ;; universal time of the start of today, in current timezone
+                         (encode-universal-time 0 0 0
+                                                (nth 4 now-l) ; day
+                                                (nth 5 now-l) ; month
+                                                (nth 6 now-l)) ; year
+                         ;; decode univeral time to UTC
+                         0)))
+           (time-stamp (format nil "~d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0dZ"
+                               (nth 5 univeral-l)
+                               (nth 4 univeral-l)
+                               (nth 3 univeral-l)
+                               (nth 2 univeral-l)
+                               (nth 1 univeral-l)
+                               (nth 0 univeral-l)))
+           )    
+      (if (if-repos-has-commit-since client
+                                     (get-all-repos-names client)
+                                     time-stamp)
+          (format t "You have commit today~%")
+          (format t "You haven't commit today~%")))))
+
 (defun main (&rest argv)
   (declare (ignore argv))
-  (let* ((client (make-instance 'api-client))
-         json-response
-         (update-at ""))
-    (setf json-response (car (yason:parse
-                              (github-api-call
-                               client
-                               *list-repos-of-me-api*
-                               :username "ccqpein"
-                               :type "owner"
-                               :sort "updated"
-                               :per_page 1
-                               :page 1)))
-          update-at (gethash "updated_at" json-response))
-
-    (if (string= "" update-at)
-        (error "No update-at found"))
-
-    (if (string= (local-time:format-timestring nil
-                                               (local-time:parse-timestring update-at)
-                                               :format '(:year "-" :month "-" :day))
-                 (local-time:format-timestring nil
-                                               (local-time:now)
-                                               :format '(:year "-" :month "-" :day)))
-        (format t "update today")
-        (format t "not today"))))
+  (if-I-commit-today))
