@@ -5,7 +5,7 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '("github-api-cl" "yason" "local-time") :silent t)
+  #+quicklisp(ql:quickload '("github-api-cl" "yason") :silent t)
   #+sbcl(sb-ext:enable-debugger)
   )
 
@@ -46,30 +46,29 @@ exec ros -Q -- $0 "$@"
 
 (defun if-repos-has-commit-since (client repos since)
   (loop
-     for repo-name in repos
-     if (zerop (length (yason:parse
-                      (github-api-call
-                       client
-                       *repos-commits*
-                       :owner "ccqpein"
-                       :repo repo-name
-                       :since since
-                       ))))
-     do (return t) ; return if find any
-     finally (return nil)))
+    for repo-name in repos
+    for repo-data = (github-api-call
+                     client
+                     *repos-commits*
+                     :owner "ccqpein"
+                     :repo repo-name
+                     :since since
+                     )
+    if (not (zerop (length (yason:parse repo-data))))
+      do (return t) ;; return if find any
+    finally (return nil)))
 
 (defun if-I-commit-today ()
   (let* ((client (make-instance 'api-client))
          )
-    (let* ((now-l (multiple-value-list (local-time:decode-timestamp (local-time:now))))
-           (univeral-l (multiple-value-list
-                        (decode-universal-time
-                         ;; universal time of the start of today, in current timezone
-                         (encode-universal-time 0 0 0
-                                                (nth 4 now-l) ; day
-                                                (nth 5 now-l) ; month
-                                                (nth 6 now-l)) ; year
-                         ;; decode univeral time to UTC
+    (let* ((univeral-l (multiple-value-list
+                        (decode-universal-time ; decode the start of today's UTC time
+                         (apply #'encode-universal-time ; encode the start of today's time, current timezone
+                                (append '(0 0 0) ; sec min hour
+                                        (subseq (multiple-value-list
+                                                 (get-decoded-time))
+                                                3 6) ; day month year
+                                        ))
                          0)))
            (time-stamp (format nil "~d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0dZ"
                                (nth 5 univeral-l)
@@ -78,7 +77,8 @@ exec ros -Q -- $0 "$@"
                                (nth 2 univeral-l)
                                (nth 1 univeral-l)
                                (nth 0 univeral-l)))
-           )    
+           )
+      (format t "Timestamp is ~a~%" time-stamp)
       (if (if-repos-has-commit-since client
                                      (get-all-repos-names client)
                                      time-stamp)
