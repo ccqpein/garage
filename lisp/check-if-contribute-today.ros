@@ -5,7 +5,7 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '("github-api-cl" "yason") :silent t)
+  #+quicklisp(ql:quickload '("github-api-cl" "yason" "str") :silent t)
   #+sbcl(sb-ext:enable-debugger)
   )
 
@@ -58,33 +58,89 @@ exec ros -Q -- $0 "$@"
       do (return t) ;; return if find any
     finally (return nil)))
 
-(defun if-I-commit-today ()
-  (let* ((client (make-instance 'api-client))
+(defun time-stamp-today ()
+  (let* ((univeral-l (multiple-value-list
+                      ;; decode the start of today's UTC time
+                      (decode-universal-time
+                           ;; encode the start of today's time, current timezone
+                       (apply #'encode-universal-time 
+                              (append '(0 0 0) ;; sec min hour
+                                      (subseq (multiple-value-list
+                                               (get-decoded-time))
+                                              3 6) ;; day month year
+                                      ))
+                       0)))
+         (time-stamp (format nil "~d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0dZ"
+                             (nth 5 univeral-l)
+                             (nth 4 univeral-l)
+                             (nth 3 univeral-l)
+                             (nth 2 univeral-l)
+                             (nth 1 univeral-l)
+                             (nth 0 univeral-l)))
          )
-    (let* ((univeral-l (multiple-value-list
-                        (decode-universal-time ; decode the start of today's UTC time
-                         (apply #'encode-universal-time ; encode the start of today's time, current timezone
-                                (append '(0 0 0) ; sec min hour
-                                        (subseq (multiple-value-list
-                                                 (get-decoded-time))
-                                                3 6) ; day month year
-                                        ))
-                         0)))
-           (time-stamp (format nil "~d-~2,'0d-~2,'0dT~2,'0d:~2,'0d:~2,'0dZ"
-                               (nth 5 univeral-l)
-                               (nth 4 univeral-l)
-                               (nth 3 univeral-l)
-                               (nth 2 univeral-l)
-                               (nth 1 univeral-l)
-                               (nth 0 univeral-l)))
+    (the string time-stamp)))
+
+(defun read-the-damn-log-and-give-timestamp-to-me (&optional (file-path #P"contribution.log"))
+  (declare (pathname file-path))
+  (with-open-file (s file-path :if-does-not-exist nil)
+    (if s
+      (loop
+        for line-d = (multiple-value-list (read-line s))
+        when (cadr line-d) ;; until the last line
+          do (return (car (last (str:split " " (car (str:split ": " (car line-d))))))))
+      (error "~a not exsit or cannot open" file-path))))
+
+(defun if-I-commit-today-with-log (&optional (file-path #P"contribution.log"))
+  (let ((client (make-instance 'api-client))
+        (today (time-stamp-today))
+        last-time)
+    (tagbody
+       ;; read last commit time from log
+       (setf last-time
+             (handler-bind
+                 ((error (lambda (c)
+                           (format t "Cannot get timestamp from log, ~a~%" c)
+                           (go call-github))))
+               (read-the-damn-log-and-give-timestamp-to-me file-path)))
+
+       (format t "Find timestamp in log file~%")
+       
+       (if (string= last-time today)
+           (format t "Timestamp is ~a: ~a" today "You have commit today")
+           (progn (format t "Timestamp is not match~%") (go call-github))
            )
-      (format t "Timestamp is ~a~%" time-stamp)
-      (if (if-repos-has-commit-since client
-                                     (get-all-repos-names client)
-                                     time-stamp)
-          (format t "You have commit today~%")
-          (format t "You haven't commit today~%")))))
+       
+       (go out)
+
+     call-github
+       ;; start with creating new file and call github
+       (with-open-file (out-stream file-path :direction :output
+                                             :if-exists :overwrite
+                                             :if-does-not-exist :create)
+         (format t "Calling Github~%")
+         (if (if-repos-has-commit-since client
+                                        (get-all-repos-names client)
+                                        today)
+             (progn (format out-stream "Timestamp is ~a: ~a" today "You have commit today")
+                    (format t "Timestamp is ~a: ~a" today "You have commit today"))
+             (format t "Timestamp is ~a: ~a" today "You haven't commit today")))
+
+     out ;; out
+       )))
+
+(defun if-I-commit-today (&optional (out-stream t))
+  (let* ((client (make-instance 'api-client))
+         (time-stamp (time-stamp-today))
+         )
+    (format out-stream "Timestamp is ~a: " time-stamp)
+    (if (if-repos-has-commit-since client
+                                   (get-all-repos-names client)
+                                   time-stamp)
+        (format out-stream "You have commit today")
+        (format t "You haven't commit today"))))
 
 (defun main (&rest argv)
   (declare (ignore argv))
-  (if-I-commit-today))
+  ;;(if-I-commit-today)
+  (if-I-commit-today-with-log)
+  )
