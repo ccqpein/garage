@@ -1,21 +1,11 @@
-#!/bin/sh
-#|-*- mode:lisp -*-|#
-#|
-exec ros -Q -- $0 "$@"
-|#
-(progn ;;init forms
-  (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '("github-api-cl" "yason" "str") :silent t)
-  #+sbcl(sb-ext:enable-debugger)
-  )
+(ql:quickload '("github-api-cl" "yason" "str") :silent t)
 
-(defpackage :ros.script.check-if-contribute-today.3810566260
+(defpackage #:check-contribution
   (:use :cl)
   (:import-from #:github-client :api-client :github-api-call)
   (:import-from #:github-api-doc :api-doc)
   )
-(in-package :ros.script.check-if-contribute-today.3810566260)
-
+(in-package #:check-contribution)
 
 (defparameter *list-repos-of-me-api*
   (make-instance 'api-doc
@@ -143,9 +133,12 @@ exec ros -Q -- $0 "$@"
         (format out-stream "You have commit today")
         (format t "You haven't commit today"))))
 
-(defun main (&rest argv)
+(defun main (argv)
   (if (not argv)
       ;;(if-I-commit-today)
       (if-I-commit-today-with-log)
       (if-I-commit-today-with-log :token-file (car argv)))
+  (sb-ext:exit)
   )
+
+(main (cdr sb-ext:*posix-argv*))
