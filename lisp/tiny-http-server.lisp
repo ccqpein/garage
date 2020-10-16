@@ -19,12 +19,15 @@
                (gethash url argv-table) argvs))
     (lambda (env)
       (let ((url (getf env :REQUEST-URI)))
-        (apply (gethash url table)
-               (gethash url argv-table))))))
+        (if (gethash url table)
+            (apply (gethash url table)
+                   (gethash url argv-table))
+            '(404 (:content-type "text/plain") ("Not Found"))
+            )))))
 
 (defparameter *app* (make-handler '("/" check-contribute (:token-path "")))) ;; need add this token
 
 (defun server-start ()
-  (woo:run *app*))
+  (woo:run *app* :address "0.0.0.0" :port 9527))
 
 (server-start)
