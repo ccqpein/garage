@@ -4,6 +4,7 @@
   (:use :cl)
   (:import-from #:github-client :api-client :github-api-call)
   (:import-from #:github-api-doc :api-doc)
+  (:export #:if-I-commit-today-with-log)
   )
 (in-package #:check-contribution)
 
@@ -80,7 +81,7 @@
           do (return (car (last (str:split " " (car (str:split ": " (car line-d))))))))
       (error "~a not exsit or cannot open" file-path))))
 
-(defun if-I-commit-today-with-log (&key (file-path #P"contribution.log") token-file)
+(defun if-I-commit-today-with-log (&key (file-path #P"contribution.log") token-file (out-stream t))
   (let* ((token (if token-file
                     (with-open-file (fs (pathname token-file) :if-does-not-exist :error)
                       (read-line fs))
@@ -93,31 +94,31 @@
        (setf last-time
              (handler-bind
                  ((error (lambda (c)
-                           (format t "Cannot get timestamp from log, ~a~%" c)
+                           (format out-stream "Cannot get timestamp from log, ~a~%" c)
                            (go call-github))))
                (read-the-damn-log-and-give-timestamp-to-me file-path)))
 
-       (format t "Find timestamp in log file~%")
+       (format out-stream "Find timestamp in log file~%")
        
        (if (string= last-time today)
-           (format t "Timestamp is ~a: ~a" today "You have commit today")
-           (progn (format t "Timestamp is not match~%") (go call-github))
+           (format out-stream "Timestamp is ~a: ~a" today "You have commit today")
+           (progn (format out-stream "Timestamp is not match~%") (go call-github))
            )
        
        (go out)
 
      call-github
        ;; start with creating new file and call github
-       (with-open-file (out-stream file-path :direction :output
+       (with-open-file (file-stream file-path :direction :output
                                              :if-exists :overwrite
                                              :if-does-not-exist :create)
-         (format t "Calling Github~%")
+         (format out-stream "Calling Github~%")
          (if (if-repos-has-commit-since client
                                         (get-all-repos-names client)
                                         today)
-             (progn (format out-stream "Timestamp is ~a: ~a" today "You have commit today")
-                    (format t "Timestamp is ~a: ~a" today "You have commit today"))
-             (format t "Timestamp is ~a: ~a" today "You haven't commit today")))
+             (progn (format file-stream "Timestamp is ~a: ~a" today "You have commit today")
+                    (format out-stream "Timestamp is ~a: ~a" today "You have commit today"))
+             (format out-stream "Timestamp is ~a: ~a" today "You haven't commit today")))
 
      out ;; out
        )))
@@ -141,4 +142,4 @@
   (sb-ext:exit)
   )
 
-(main (cdr sb-ext:*posix-argv*))
+;;(main (cdr sb-ext:*posix-argv*))

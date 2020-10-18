@@ -1,14 +1,14 @@
 (ql:quickload :woo)
+(load "./check-if-contribute-today.fasl")
 
 (defun check-contribute (&key token-path)
-  (let ((out (make-string-output-stream)))
-    (sb-ext:run-program "./check-if-contribute-today.ros"
-                        (list token-path)
-                        :search t
-                        :output out)
+  (let ((out-stream (make-string-output-stream)))
+    (check-contribution:if-I-commit-today-with-log
+     :token-file token-path
+     :out-stream out-stream)
     (list 200
           '(:content-type "text/plain")
-          (list (get-output-stream-string out)))))
+          (list (get-output-stream-string out-stream)))))
 
 (defun make-handler (&rest url-handles)
   (let* ((table (make-hash-table :test 'equal))
