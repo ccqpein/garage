@@ -1,5 +1,26 @@
-(ql:quickload :woo)
+(ql:quickload '("woo" "swank"))
+
 (load "./check-if-contribute-today.fasl")
+
+(defparameter *router-map* (make-hash-table :test 'equal))
+(defparameter *argvs-map* (make-hash-table :test 'equal))
+
+(defun register-func (url func)
+  (if (symbolp func)
+      (setf (gethash url *router-map*) func)
+      ;; support lambda func
+      (setf (gethash url *router-map*) (eval func))))
+
+(defun register-argv (url argvs)
+  (setf (gethash url *argvs-map*) argvs))
+
+(defun register (ll)
+  "((url . (func argvs*)))*"
+  (loop
+    for (url . func-call) in ll
+    do (register-func url (car func-call))
+    do (register-argv url (cdr func-call))
+    ))
 
 (defun check-contribute (&key token-path)
   (let ((out-stream (make-string-output-stream)))
@@ -10,24 +31,21 @@
           '(:content-type "text/plain")
           (list (get-output-stream-string out-stream)))))
 
-(defun make-handler (&rest url-handles)
-  (let* ((table (make-hash-table :test 'equal))
-         (argv-table (make-hash-table :test 'equal)))
-    (loop
-      for (url handle argvs) in url-handles
-      do (setf (gethash url table) handle
-               (gethash url argv-table) argvs))
-    (lambda (env)
-      (let ((url (getf env :REQUEST-URI)))
-        (if (gethash url table)
-            (apply (gethash url table)
-                   (gethash url argv-table))
-            '(404 (:content-type "text/plain") ("Not Found"))
-            )))))
+(defparameter *app*
+  (lambda (env)
+    (let ((url (getf env :REQUEST-URI)))
+      (if (gethash url *router-map*)
+          (apply (gethash url *router-map*)
+                 (gethash url *argvs-map*))
+          '(404 (:content-type "text/plain") ("Not Found"))
+          ))))
 
-(defparameter *app* (make-handler '("/" check-contribute (:token-path "")))) ;; need add this token
+;; need add this token
+(register '(("/" . (check-contribute :token-path ""))
+            ("/hello" . ((lambda () '(200 (:content-type "text/plain") ("yoyoyo")))))))
 
 (defun server-start ()
+  (swank:create-server :port 4005  :dont-close t)
   (woo:run *app* :address "0.0.0.0" :port 9527))
 
 (server-start)
