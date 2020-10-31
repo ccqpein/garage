@@ -134,6 +134,7 @@ async fn main() -> Result<()> {
     println!("Cost: {:?}, a: {}, sync", now.elapsed(), a);
 
     let b = {
+        // 5 files a group
         let mut cache: Vec<Vec<String>> = vec![];
         let mut count = 0;
         let leng = all_files.len();
