@@ -24,19 +24,8 @@ impl ParserTree {
     }
 
     pub fn select_html<'a>(&self, html: &'a Html) -> Vec<ElementRef<'a>> {
-        let mut a: Vec<ElementRef<'a>> = html.select(&self.selectors[0]).collect();
-        for i in 1..self.selectors.len() {
-            a = a
-                .iter()
-                .map(|ele_ref| {
-                    ele_ref
-                        .select(&self.selectors[i])
-                        .collect::<Vec<ElementRef<'a>>>()
-                })
-                .flatten()
-                .collect();
-        }
-        a
+        let root = html.root_element();
+        self.select_ele(&root)
     }
 
     pub fn select_ele<'a>(&self, ele: &ElementRef<'a>) -> Vec<ElementRef<'a>> {
@@ -78,18 +67,19 @@ impl ParserSet {
     }
 
     pub fn select_html<'a>(&self, html: &'a Html) -> Vec<ElementRef<'a>> {
-        self.selectors
-            .iter()
-            .map(|s| html.select(s).collect::<Vec<ElementRef<'a>>>())
-            .flatten()
-            .collect()
+        let root = html.root_element();
+        self.select_ele(&root)
     }
 
     pub fn select_ele<'a>(&self, ele: &ElementRef<'a>) -> Vec<ElementRef<'a>> {
-        self.selectors
-            .iter()
-            .map(|s| ele.select(s).collect::<Vec<ElementRef<'a>>>())
-            .flatten()
-            .collect()
+        let mut result = vec![];
+        for e in ele.children() {
+            if let Some(ee) = ElementRef::wrap(e) {
+                if self.selectors.iter().any(|selector| selector.matches(&ee)) {
+                    result.push(ee);
+                }
+            }
+        }
+        result
     }
 }

@@ -30,27 +30,32 @@ fn main() {
 <h2>h2</h2>
 <h3>Getting updates</h3>
 <table></table>
-
+<div><h4>h4</h4></div>
 </div>
 </div>"#;
     let fragment = Html::parse_fragment(&page);
 
+    for ff in fragment.root_element().children() {
+        println!("{:?}", ff.value());
+    }
+
     let tree = ParserTree::new(&[r#"div[id="dev_page_content"]"#, r#"h3"#]).unwrap();
     tree.select_html(&fragment).iter().for_each(|s| {
-        if s.text().collect::<Vec<_>>()[0] == "Getting updates" {
-            println!("oh yeah");
-        }
+        println!("tree & html: {:?}", s.text().collect::<Vec<_>>());
     });
 
     /// next test
     let tree = ParserTree::new(&[r#"div[id="dev_page_content"]"#, r#"div"#]).unwrap();
-    let node = tree.select_html(&fragment)[0];
-    for n in node.children() {
-        println!("{:?}", n.value());
-    }
+    let node = tree.select_html(&fragment).iter().for_each(|s| {
+        println!("tree & element ref: {:?}", s.text().collect::<Vec<_>>());
+    });
 
-    // let set = ParserSet::new(&["p", "h2", "h3", "table"]).unwrap();
+    let set = ParserSet::new(&["p", "h2", "h3", "table", "div"]).unwrap();
     // set.select_ele(&node)
     //     .iter()
     //     .for_each(|s| println!("{:?}", s.text().collect::<Vec<_>>()));
+
+    set.select_html(&fragment)
+        .iter()
+        .for_each(|s| println!("{:?}", s.text().collect::<Vec<_>>()));
 }
