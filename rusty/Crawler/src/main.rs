@@ -4,25 +4,6 @@ use std::io::{stdout, Write};
 use Crawler::parser_chain::{ParserSet, ParserTree};
 
 fn main() {
-    /// example
-    // let mut dst = Vec::new();
-    // let mut easy = Easy::new();
-    // easy.url("https://core.telegram.org/bots/api").unwrap();
-
-    // let mut transfer = easy.transfer();
-
-    // transfer
-    //     .write_function(|data| {
-    //         dst.extend_from_slice(data);
-    //         Ok(data.len())
-    //     })
-    //     .unwrap();
-
-    // transfer.perform().unwrap();
-    // drop(transfer); // Drop!
-
-    // // make page in a huge string
-    // let page = String::from_utf8(dst).unwrap();
     let page = r#"<div id="dev_page_content">
 <div>
 <h3>aa</h3>
