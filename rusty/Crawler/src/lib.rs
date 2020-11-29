@@ -1,3 +1,3 @@
 pub mod parser_chain;
-
-pub use scraper::Html;
+pub mod tools;
+pub use scraper::{ElementRef, Html, Node};
