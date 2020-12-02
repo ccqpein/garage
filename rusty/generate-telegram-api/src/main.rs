@@ -30,22 +30,43 @@ fn find_doc_real_body<'a>(
     tags: &'a [&str],
     html: &'a Html,
 ) -> Result<ElementRef<'a>, ParseError<'a, SelectorParseErrorKind<'a>>> {
-    let mut element_ref = html.root_element();
+    let mut element_ref = vec![html.root_element()];
     for tag in tags {
         let selector = match Selector::parse(tag) {
             Ok(h) => h,
             Err(e) => return Err(e),
         };
 
-        element_ref = {
-            let a = element_ref
-                .select(&selector)
-                .collect::<Vec<ElementRef<'a>>>();
-            a[0]
-        }
+        element_ref = element_ref
+            .iter()
+            .map(|ele| ele.select(&selector).collect::<Vec<ElementRef<'a>>>())
+            .flatten()
+            .collect();
     }
 
-    Ok(element_ref)
+    Ok(element_ref[0])
+}
+
+fn pick_all_informations_with_filter<'a, P>(
+    tags: &'a [&str],
+    ele: &ElementRef<'a>,
+    predicate: &mut P,
+) -> Vec<ElementRef<'a>>
+where
+    P: FnMut(&ElementRef<'a>) -> bool,
+{
+    let selectors: Vec<Selector> = tags.iter().map(|s| Selector::parse(s).unwrap()).collect();
+    let mut result = vec![];
+    for e in ele.children() {
+        if let Some(a) = ElementRef::wrap(e) {
+            if selectors.iter().any(|sele| sele.matches(&a)) && predicate(&a) {
+                result.push(a)
+            }
+        } else {
+            //println!("not element: {:?}", e.value());
+        }
+    }
+    result
 }
 
 fn main() {
@@ -55,6 +76,34 @@ fn main() {
         r#"div[class="container clearfix"]"#,
         r#"div[id="dev_page_content"]"#,
     ];
+
+    let body = find_doc_real_body(&find_doc_parser, &fragment).unwrap();
+    //println!("{:?}", body.inner_html());
+    let set = vec!["p", "h4", "h3", "table", "ol"];
+    let mut started = false;
+    let mut pridicate = |s: &ElementRef| {
+        if started == true {
+            return true;
+        };
+        let x = s.value();
+
+        if x.name() == "p" {
+            if s.inner_html()
+                == r##"The majority of bots will be OK with the default configuration, running on our servers. But if you feel that you need one of <a href="#using-a-local-bot-api-server">these features</a>, you're welcome to switch to your own at any time."##
+            {
+                started = true;
+                return true;
+            }
+        }
+
+        false
+    };
+
+    let data = pick_all_informations_with_filter(&set, &body, &mut pridicate);
+
+    for i in 0..2 {
+        println!("{:?}", data[i].inner_html());
+    }
 
     //:= TODO: need pick all tags
     //:= TODO: then use children to check
