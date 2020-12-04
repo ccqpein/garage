@@ -1,5 +1,6 @@
 use cssparser::ParseError;
 use curl::easy::Easy;
+use scraper::node::Node;
 use scraper::{ElementRef, Html, Selector};
 use selectors::parser::SelectorParseErrorKind;
 
@@ -69,6 +70,95 @@ where
     result
 }
 
+///
+///
+#[derive(Debug)]
+enum Status {
+    Nil,
+
+    DataTypeName,
+    DataTypeDoc,
+    DataTypeTable,
+
+    MethodName,
+    MethodDoc,
+    MethodTable,
+}
+impl Status {
+    fn is_table(&self) -> bool {
+        match self {
+            Self::DataTypeTable | Self::MethodTable => true,
+            _ => false,
+        }
+    }
+}
+
+fn is_datatype(s: &str) -> bool {
+    if let Some(c) = s.chars().next() {
+        c.is_uppercase()
+    } else {
+        false
+    }
+}
+
+fn is_method(s: &str) -> bool {
+    if let Some(c) = s.chars().next() {
+        c.is_lowercase()
+    } else {
+        false
+    }
+}
+
+fn h4_check(e: &ElementRef, status: &mut Status) {
+    if let Some(node) = e.last_child() {
+        match node.value() {
+            Node::Text(te) => {
+                if is_datatype(&te) {
+                    *status = Status::DataTypeName;
+                    println!("h4: {:?}", &te);
+                } else if is_method(&te) {
+                    *status = Status::MethodName;
+                }
+            }
+            _ => {}
+        };
+    }
+}
+
+fn p_check(e: &ElementRef, status: &mut Status) {
+    match status {
+        Status::DataTypeName => *status = Status::DataTypeDoc,
+        Status::MethodName => *status = Status::MethodDoc,
+        _ => (),
+    }
+}
+
+fn table_check(e: &ElementRef, status: &mut Status) {
+    match status {
+        Status::MethodName | Status::MethodDoc => *status = Status::MethodTable,
+        Status::DataTypeName | Status::DataTypeDoc => *status = Status::DataTypeTable,
+        _ => (),
+    }
+}
+
+fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
+    let mut status = Status::Nil;
+    for ele in ele_l {
+        match ele.value().name() {
+            "h4" => h4_check(&ele, &mut status),
+            "p" => p_check(&ele, &mut status),
+            "table" => table_check(&ele, &mut status),
+            _ => {}
+        }
+
+        //:= TODO: generate struct
+
+        if status.is_table() {
+            status = Status::Nil;
+        }
+    }
+}
+
 fn main() {
     let fragment = get_telegram_html();
     let find_doc_parser = vec![
@@ -101,33 +191,11 @@ fn main() {
 
     let data = pick_all_informations_with_filter(&set, &body, &mut pridicate);
 
-    for i in 0..2 {
-        println!("{:?}", data[i].inner_html());
+    for i in 0..10 {
+        //println!("{:?}", data[i].html());
     }
 
-    //:= TODO: need pick all tags
-    //:= TODO: then use children to check
-
-    // let mut doc = find_doc_parser.select_html(&fragment)[0];
-    // let mut left_children = skip_children_after(&mut doc, |c| match c.value() {
-    //     Node::Element(x) => {
-    //         if x.name() == "p" {
-    //             if ElementRef::wrap(*c).unwrap().inner_html()
-    //                 == r##"The majority of bots will be OK with the default configuration, running on our servers. But if you feel that you need one of <a href="#using-a-local-bot-api-server">these features</a>, you're welcome to switch to your own at any time."##
-    //             {
-    //                 true
-    //             } else {
-    //                 false
-    //             }
-    //         } else {
-    //             false
-    //         }
-    //     }
-    //     _ => false,
-    // }).unwrap();
-
-    // let left_children = left_children.map(|nr| ElementRef::wrap(nr)).collect();
-
-    // let find_all_tags_parser = ParserSet::new(&[r#"h4"#, r#"h3"#, r#"p"#, r#"table"#]);
-    // find_all_tags_parser.select_ele()
+    let mut status = Status::Nil;
+    h4_check(&data[4], &mut status);
+    println!("{:?}", status);
 }
