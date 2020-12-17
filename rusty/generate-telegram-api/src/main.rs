@@ -34,10 +34,10 @@ fn main() {
     let data = pick_all_informations_with_filter(&set, &body, &mut pridicate);
 
     for i in 6..7 {
-        println!("{:?}", data[i].inner_html());
+        //println!("{:?}", data[i].inner_html());
     }
 
-    //let mut status = Status::Nil;
-    //h4_check(&data[4], &mut status);
-    //println!("{:?}", status);
+    let mut status = Status::Nil;
+    h4_check(&data[4], &mut status);
+    println!("{:?}", status);
 }

@@ -11,37 +11,42 @@ enum DataType {
     Update,
 }
 
-// struct PollAnswer {}
-
-// struct Poll {}
-
-// struct PreCheckoutQuery {}
-
-// struct ShippingQuery {}
-
-// struct Message {}
-
-// struct InlineQuery {}
-
-// struct ChosenInlineResult {}
-
-// struct CallbackQuery {}
-
-// struct Update {}
-
-struct Data {
-    name: String,
-    doc: String,
-    fields: Vec<String>,
-    types: Vec<String>,
-    descriptions: Vec<String>,
+#[derive(Default, Debug)]
+pub struct Data {
+    pub name: String,
+    pub doc: String,
+    pub fields: Vec<String>,
+    pub types: Vec<String>,
+    pub descriptions: Vec<String>,
 }
 
-struct Method {
-    name: String,
-    doc: String,
-    parameters: Vec<String>,
-    types: Vec<String>,
-    requireds: Vec<bool>,
-    descriptions: Vec<String>,
+impl Data {
+    fn clear(&mut self) {
+        self.name.clear();
+        self.doc.clear();
+        self.fields.clear();
+        self.types.clear();
+        self.descriptions.clear();
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct Method {
+    pub name: String,
+    pub doc: String,
+    pub parameters: Vec<String>,
+    pub types: Vec<String>,
+    pub requireds: Vec<bool>,
+    pub descriptions: Vec<String>,
+}
+
+impl Method {
+    fn clear(&mut self) {
+        self.name.clear();
+        self.doc.clear();
+        self.parameters.clear();
+        self.types.clear();
+        self.requireds.clear();
+        self.descriptions.clear();
+    }
 }

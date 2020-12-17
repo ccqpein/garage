@@ -1,5 +1,7 @@
 mod datatypes;
 
+use datatypes::{Data, Method};
+
 use cssparser::ParseError;
 use curl::easy::Easy;
 use scraper::node::Node;
@@ -119,7 +121,8 @@ pub fn h4_check(e: &ElementRef, status: &mut Status) {
             Node::Text(te) => {
                 if is_datatype(&te) {
                     *status = Status::DataTypeName;
-                    //println!("h4: {:?}", &te);
+                    println!("inner_html: {:?}", e.inner_html());
+                    println!("h4: {:?}", &te);
                 } else if is_method(&te) {
                     *status = Status::MethodName;
                 }
@@ -127,6 +130,10 @@ pub fn h4_check(e: &ElementRef, status: &mut Status) {
             _ => {}
         };
     }
+}
+
+fn pick_name(e: &ElementRef) -> Option<String> {
+    Some(e.last_child()?.value().as_text()?.text.clone().into())
 }
 
 pub fn p_check(e: &ElementRef, status: &mut Status) {
@@ -146,7 +153,11 @@ pub fn table_check(e: &ElementRef, status: &mut Status) {
 }
 
 pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
+    // init
     let mut status = Status::Nil;
+    let mut datatype: Data = Default::default();
+    let mut method: Method = Default::default();
+
     for ele in ele_l {
         match ele.value().name() {
             "h4" => h4_check(&ele, &mut status),
@@ -156,7 +167,15 @@ pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
         }
 
         //:= TODO: generate struct
-        //:= TODO: table parser
+        match status {
+            Status::Nil => {}
+            Status::DataTypeName => datatype.name = pick_name(&ele).unwrap_or("".to_string()),
+            Status::DataTypeDoc => {}
+            Status::DataTypeTable => {}
+            Status::MethodName => {}
+            Status::MethodDoc => {}
+            Status::MethodTable => {}
+        }
 
         if status.is_table() {
             status = Status::Nil;
@@ -171,7 +190,7 @@ pub fn clean_tag<'a>(s: &'a str, tag: &'a str) -> &'a str {
 }
 
 pub fn table_parser<'a>(e: &'a str) -> Vec<(&'a str, &'a str, &'a str)> {
-    //:= Just get tbody, first td in tr is parameter
+    // Just get tbody, first td in tr is parameter
     let mut a = e.split('\n').filter(|s| *s != "");
     let mut status = 0;
     let mut result = vec![];
