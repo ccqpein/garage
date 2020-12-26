@@ -1,9 +1,10 @@
 mod datatypes;
 
-use datatypes::{Data, Method};
+use datatypes::{Data, Method, Tableable};
 
 use cssparser::ParseError;
 use curl::easy::Easy;
+use regex::Regex;
 use scraper::node::Node;
 use scraper::{ElementRef, Html, Selector};
 use selectors::parser::SelectorParseErrorKind;
@@ -31,6 +32,7 @@ pub fn get_telegram_html() -> Html {
     Html::parse_fragment(&page)
 }
 
+/// located the real body of api in
 pub fn find_doc_real_body<'a>(
     tags: &'a [&str],
     html: &'a Html,
@@ -98,6 +100,7 @@ impl Status {
     }
 }
 
+/// upper case word is datatype
 pub fn is_datatype(s: &str) -> bool {
     if let Some(c) = s.chars().next() {
         c.is_uppercase()
@@ -106,6 +109,7 @@ pub fn is_datatype(s: &str) -> bool {
     }
 }
 
+/// lower case word is method
 pub fn is_method(s: &str) -> bool {
     if let Some(c) = s.chars().next() {
         c.is_lowercase()
@@ -121,8 +125,8 @@ pub fn h4_check(e: &ElementRef, status: &mut Status) {
             Node::Text(te) => {
                 if is_datatype(&te) {
                     *status = Status::DataTypeName;
-                    println!("inner_html: {:?}", e.inner_html());
-                    println!("h4: {:?}", &te);
+                    //println!("inner_html: {:?}", e.inner_html());
+                    //println!("h4: {:?}", &te);
                 } else if is_method(&te) {
                     *status = Status::MethodName;
                 }
@@ -132,16 +136,21 @@ pub fn h4_check(e: &ElementRef, status: &mut Status) {
     }
 }
 
+/// pick name from h4
 fn pick_name(e: &ElementRef) -> Option<String> {
     Some(e.last_child()?.value().as_text()?.text.clone().into())
 }
 
-pub fn p_check(e: &ElementRef, status: &mut Status) {
+pub fn p_check(_: &ElementRef, status: &mut Status) {
     match status {
         Status::DataTypeName => *status = Status::DataTypeDoc,
         Status::MethodName => *status = Status::MethodDoc,
         _ => (),
     }
+}
+
+fn pick_doc(e: &ElementRef) -> Option<String> {
+    Some(e.last_child()?.value().as_text()?.text.clone().into())
 }
 
 pub fn table_check(e: &ElementRef, status: &mut Status) {
@@ -170,11 +179,11 @@ pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
         match status {
             Status::Nil => {}
             Status::DataTypeName => datatype.name = pick_name(&ele).unwrap_or("".to_string()),
-            Status::DataTypeDoc => {}
-            Status::DataTypeTable => {}
-            Status::MethodName => {}
-            Status::MethodDoc => {}
-            Status::MethodTable => {}
+            Status::DataTypeDoc => datatype.doc = pick_doc(&ele).unwrap_or("".to_string()),
+            Status::DataTypeTable => pick_table(&ele, &mut datatype),
+            Status::MethodName => method.name = pick_name(&ele).unwrap_or("".to_string()),
+            Status::MethodDoc => method.doc = pick_doc(&ele).unwrap_or("".to_string()),
+            Status::MethodTable => pick_table(&ele, &mut method), //:= MARK: method needs four strings, butonly have three now
         }
 
         if status.is_table() {
@@ -189,7 +198,17 @@ pub fn clean_tag<'a>(s: &'a str, tag: &'a str) -> &'a str {
     &s[taglen..len - taglen - 1]
 }
 
-pub fn table_parser<'a>(e: &'a str) -> Vec<(&'a str, &'a str, &'a str)> {
+/// clean >text</a, <a> tags
+pub fn clean_tag_with_regex(s: &str) -> String {
+    let re = Regex::new(r">(?P<n>\w+)</a").unwrap();
+    if let Some(ca) = re.captures_iter(s).next() {
+        ca["n"].into()
+    } else {
+        s.into()
+    }
+}
+
+pub fn table_parser<'a>(e: &'a str) -> Vec<(String, String, String)> {
     // Just get tbody, first td in tr is parameter
     let mut a = e.split('\n').filter(|s| *s != "");
     let mut status = 0;
@@ -208,7 +227,23 @@ pub fn table_parser<'a>(e: &'a str) -> Vec<(&'a str, &'a str, &'a str)> {
             None => break,
         }
     }
+
     result
+        .iter()
+        .map(|(a, b, c)| {
+            (
+                clean_tag(a, "<td>").to_string(),
+                // clean tag
+                clean_tag_with_regex(clean_tag(b, "<td>")),
+                clean_tag(c, "<td>").to_string(),
+            )
+        })
+        .collect()
+}
+
+fn pick_table(e: &ElementRef, mut d: impl Tableable<Item = (String, String, String)>) {
+    let a = table_parser(&e.inner_html());
+    d.fill_from_table(a.into_iter());
 }
 
 #[cfg(test)]
@@ -216,19 +251,20 @@ mod tests {
     use super::*;
     use scraper::ElementRef;
 
+    const table_str:&'static str = "\n<thead>\n<tr>\n<th>Field</th>\n<th>Type</th>\n<th>Description</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>update_id</td>\n<td>Integer</td>\n<td>The update\'s unique identifier. Update identifiers start from a certain positive number and increase sequentially. This ID becomes especially handy if you\'re using <a href=\"#setwebhook\">Webhooks</a>, since it allows you to ignore repeated updates or to restore the correct update sequence, should they get out of order. If there are no new updates for at least a week, then identifier of the next update will be chosen randomly instead of sequentially.</td>\n</tr>\n<tr>\n<td>message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming message of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a message that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming channel post of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a channel post that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>inline_query</td>\n<td><a href=\"#inlinequery\">InlineQuery</a></td>\n<td><em>Optional</em>. New incoming <a href=\"#inline-mode\">inline</a> query</td>\n</tr>\n<tr>\n<td>chosen_inline_result</td>\n<td><a href=\"#choseninlineresult\">ChosenInlineResult</a></td>\n<td><em>Optional</em>. The result of an <a href=\"#inline-mode\">inline</a> query that was chosen by a user and sent to their chat partner. Please see our documentation on the <a href=\"/bots/inline#collecting-feedback\">feedback collecting</a> for details on how to enable these updates for your bot.</td>\n</tr>\n<tr>\n<td>callback_query</td>\n<td><a href=\"#callbackquery\">CallbackQuery</a></td>\n<td><em>Optional</em>. New incoming callback query</td>\n</tr>\n<tr>\n<td>shipping_query</td>\n<td><a href=\"#shippingquery\">ShippingQuery</a></td>\n<td><em>Optional</em>. New incoming shipping query. Only for invoices with flexible price</td>\n</tr>\n<tr>\n<td>pre_checkout_query</td>\n<td><a href=\"#precheckoutquery\">PreCheckoutQuery</a></td>\n<td><em>Optional</em>. New incoming pre-checkout query. Contains full information about checkout</td>\n</tr>\n<tr>\n<td>poll</td>\n<td><a href=\"#poll\">Poll</a></td>\n<td><em>Optional</em>. New poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot</td>\n</tr>\n<tr>\n<td>poll_answer</td>\n<td><a href=\"#pollanswer\">PollAnswer</a></td>\n<td><em>Optional</em>. A user changed their answer in a non-anonymous poll. Bots receive new votes only in polls that were sent by the bot itself.</td>\n</tr>\n</tbody>\n";
+
     #[test]
     fn table_parser_test() {
-        let data = "\n<thead>\n<tr>\n<th>Field</th>\n<th>Type</th>\n<th>Description</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>update_id</td>\n<td>Integer</td>\n<td>The update\'s unique identifier. Update identifiers start from a certain positive number and increase sequentially. This ID becomes especially handy if you\'re using <a href=\"#setwebhook\">Webhooks</a>, since it allows you to ignore repeated updates or to restore the correct update sequence, should they get out of order. If there are no new updates for at least a week, then identifier of the next update will be chosen randomly instead of sequentially.</td>\n</tr>\n<tr>\n<td>message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming message of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a message that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming channel post of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a channel post that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>inline_query</td>\n<td><a href=\"#inlinequery\">InlineQuery</a></td>\n<td><em>Optional</em>. New incoming <a href=\"#inline-mode\">inline</a> query</td>\n</tr>\n<tr>\n<td>chosen_inline_result</td>\n<td><a href=\"#choseninlineresult\">ChosenInlineResult</a></td>\n<td><em>Optional</em>. The result of an <a href=\"#inline-mode\">inline</a> query that was chosen by a user and sent to their chat partner. Please see our documentation on the <a href=\"/bots/inline#collecting-feedback\">feedback collecting</a> for details on how to enable these updates for your bot.</td>\n</tr>\n<tr>\n<td>callback_query</td>\n<td><a href=\"#callbackquery\">CallbackQuery</a></td>\n<td><em>Optional</em>. New incoming callback query</td>\n</tr>\n<tr>\n<td>shipping_query</td>\n<td><a href=\"#shippingquery\">ShippingQuery</a></td>\n<td><em>Optional</em>. New incoming shipping query. Only for invoices with flexible price</td>\n</tr>\n<tr>\n<td>pre_checkout_query</td>\n<td><a href=\"#precheckoutquery\">PreCheckoutQuery</a></td>\n<td><em>Optional</em>. New incoming pre-checkout query. Contains full information about checkout</td>\n</tr>\n<tr>\n<td>poll</td>\n<td><a href=\"#poll\">Poll</a></td>\n<td><em>Optional</em>. New poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot</td>\n</tr>\n<tr>\n<td>poll_answer</td>\n<td><a href=\"#pollanswer\">PollAnswer</a></td>\n<td><em>Optional</em>. A user changed their answer in a non-anonymous poll. Bots receive new votes only in polls that were sent by the bot itself.</td>\n</tr>\n</tbody>\n";
-        println!(
-            "{:?}",
-            table_parser(&data)
-                .iter()
-                .map(|(a, b, c)| (
-                    clean_tag(a, "<td>"),
-                    clean_tag(b, "<td>"),
-                    clean_tag(c, "<td>")
-                ))
-                .collect::<Vec<_>>()
-        );
+        println!("{:?}", table_parser(table_str));
+    }
+
+    #[test]
+    fn pick_table_test() {
+        let mut data: Data = Default::default();
+        let a = table_parser(table_str);
+        (&mut data).fill_from_table(a.into_iter());
+        dbg!(data.fields);
+        dbg!(data.types);
+        dbg!(data.descriptions);
     }
 }
