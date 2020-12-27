@@ -153,7 +153,7 @@ fn pick_doc(e: &ElementRef) -> Option<String> {
     Some(e.last_child()?.value().as_text()?.text.clone().into())
 }
 
-pub fn table_check(e: &ElementRef, status: &mut Status) {
+pub fn table_check(_e: &ElementRef, status: &mut Status) {
     match status {
         Status::MethodName | Status::MethodDoc => *status = Status::MethodTable,
         Status::DataTypeName | Status::DataTypeDoc => *status = Status::DataTypeTable,
@@ -175,7 +175,6 @@ pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
             _ => {}
         }
 
-        //:= TODO: generate struct
         match status {
             Status::Nil => {}
             Status::DataTypeName => datatype.name = pick_name(&ele).unwrap_or("".to_string()),
@@ -183,7 +182,7 @@ pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
             Status::DataTypeTable => pick_table(&ele, &mut datatype),
             Status::MethodName => method.name = pick_name(&ele).unwrap_or("".to_string()),
             Status::MethodDoc => method.doc = pick_doc(&ele).unwrap_or("".to_string()),
-            Status::MethodTable => pick_table(&ele, &mut method), //:= MARK: method needs four strings, butonly have three now
+            Status::MethodTable => pick_table(&ele, &mut method),
         }
 
         if status.is_table() {
@@ -208,20 +207,25 @@ pub fn clean_tag_with_regex(s: &str) -> String {
     }
 }
 
-pub fn table_parser<'a>(e: &'a str) -> Vec<(String, String, String)> {
+pub fn table_parser<'a>(e: &'a str) -> Vec<Vec<String>> {
     // Just get tbody, first td in tr is parameter
     let mut a = e.split('\n').filter(|s| *s != "");
     let mut status = 0;
     let mut result = vec![];
+    let mut cache = vec![];
     loop {
         match a.next() {
             Some("<tbody>") => status += 1,
             Some("<tr>") => status += 1,
             Some("</tbody>") => status -= 1,
-            Some("</tr>") => status -= 1,
+            Some("</tr>") => {
+                status -= 1;
+                result.push(cache.clone());
+                cache.clear();
+            }
             Some(v) => {
                 if status == 2 && v.starts_with("<td>") {
-                    result.push((v, a.next().unwrap(), a.next().unwrap()));
+                    cache.push(v.to_string())
                 }
             }
             None => break,
@@ -230,18 +234,16 @@ pub fn table_parser<'a>(e: &'a str) -> Vec<(String, String, String)> {
 
     result
         .iter()
-        .map(|(a, b, c)| {
-            (
-                clean_tag(a, "<td>").to_string(),
-                // clean tag
-                clean_tag_with_regex(clean_tag(b, "<td>")),
-                clean_tag(c, "<td>").to_string(),
-            )
+        .filter(|a| !a.is_empty())
+        .map(|a| {
+            a.iter()
+                .map(|tt| clean_tag_with_regex(clean_tag(tt, "<td>")))
+                .collect()
         })
         .collect()
 }
 
-fn pick_table(e: &ElementRef, mut d: impl Tableable<Item = (String, String, String)>) {
+fn pick_table(e: &ElementRef, mut d: impl Tableable<Item = Vec<String>>) {
     let a = table_parser(&e.inner_html());
     d.fill_from_table(a.into_iter());
 }
@@ -251,20 +253,33 @@ mod tests {
     use super::*;
     use scraper::ElementRef;
 
-    const table_str:&'static str = "\n<thead>\n<tr>\n<th>Field</th>\n<th>Type</th>\n<th>Description</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>update_id</td>\n<td>Integer</td>\n<td>The update\'s unique identifier. Update identifiers start from a certain positive number and increase sequentially. This ID becomes especially handy if you\'re using <a href=\"#setwebhook\">Webhooks</a>, since it allows you to ignore repeated updates or to restore the correct update sequence, should they get out of order. If there are no new updates for at least a week, then identifier of the next update will be chosen randomly instead of sequentially.</td>\n</tr>\n<tr>\n<td>message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming message of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a message that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming channel post of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a channel post that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>inline_query</td>\n<td><a href=\"#inlinequery\">InlineQuery</a></td>\n<td><em>Optional</em>. New incoming <a href=\"#inline-mode\">inline</a> query</td>\n</tr>\n<tr>\n<td>chosen_inline_result</td>\n<td><a href=\"#choseninlineresult\">ChosenInlineResult</a></td>\n<td><em>Optional</em>. The result of an <a href=\"#inline-mode\">inline</a> query that was chosen by a user and sent to their chat partner. Please see our documentation on the <a href=\"/bots/inline#collecting-feedback\">feedback collecting</a> for details on how to enable these updates for your bot.</td>\n</tr>\n<tr>\n<td>callback_query</td>\n<td><a href=\"#callbackquery\">CallbackQuery</a></td>\n<td><em>Optional</em>. New incoming callback query</td>\n</tr>\n<tr>\n<td>shipping_query</td>\n<td><a href=\"#shippingquery\">ShippingQuery</a></td>\n<td><em>Optional</em>. New incoming shipping query. Only for invoices with flexible price</td>\n</tr>\n<tr>\n<td>pre_checkout_query</td>\n<td><a href=\"#precheckoutquery\">PreCheckoutQuery</a></td>\n<td><em>Optional</em>. New incoming pre-checkout query. Contains full information about checkout</td>\n</tr>\n<tr>\n<td>poll</td>\n<td><a href=\"#poll\">Poll</a></td>\n<td><em>Optional</em>. New poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot</td>\n</tr>\n<tr>\n<td>poll_answer</td>\n<td><a href=\"#pollanswer\">PollAnswer</a></td>\n<td><em>Optional</em>. A user changed their answer in a non-anonymous poll. Bots receive new votes only in polls that were sent by the bot itself.</td>\n</tr>\n</tbody>\n";
+    const table_str_data:&'static str = "\n<thead>\n<tr>\n<th>Field</th>\n<th>Type</th>\n<th>Description</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>update_id</td>\n<td>Integer</td>\n<td>The update\'s unique identifier. Update identifiers start from a certain positive number and increase sequentially. This ID becomes especially handy if you\'re using <a href=\"#setwebhook\">Webhooks</a>, since it allows you to ignore repeated updates or to restore the correct update sequence, should they get out of order. If there are no new updates for at least a week, then identifier of the next update will be chosen randomly instead of sequentially.</td>\n</tr>\n<tr>\n<td>message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming message of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_message</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a message that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New incoming channel post of any kind — text, photo, sticker, etc.</td>\n</tr>\n<tr>\n<td>edited_channel_post</td>\n<td><a href=\"#message\">Message</a></td>\n<td><em>Optional</em>. New version of a channel post that is known to the bot and was edited</td>\n</tr>\n<tr>\n<td>inline_query</td>\n<td><a href=\"#inlinequery\">InlineQuery</a></td>\n<td><em>Optional</em>. New incoming <a href=\"#inline-mode\">inline</a> query</td>\n</tr>\n<tr>\n<td>chosen_inline_result</td>\n<td><a href=\"#choseninlineresult\">ChosenInlineResult</a></td>\n<td><em>Optional</em>. The result of an <a href=\"#inline-mode\">inline</a> query that was chosen by a user and sent to their chat partner. Please see our documentation on the <a href=\"/bots/inline#collecting-feedback\">feedback collecting</a> for details on how to enable these updates for your bot.</td>\n</tr>\n<tr>\n<td>callback_query</td>\n<td><a href=\"#callbackquery\">CallbackQuery</a></td>\n<td><em>Optional</em>. New incoming callback query</td>\n</tr>\n<tr>\n<td>shipping_query</td>\n<td><a href=\"#shippingquery\">ShippingQuery</a></td>\n<td><em>Optional</em>. New incoming shipping query. Only for invoices with flexible price</td>\n</tr>\n<tr>\n<td>pre_checkout_query</td>\n<td><a href=\"#precheckoutquery\">PreCheckoutQuery</a></td>\n<td><em>Optional</em>. New incoming pre-checkout query. Contains full information about checkout</td>\n</tr>\n<tr>\n<td>poll</td>\n<td><a href=\"#poll\">Poll</a></td>\n<td><em>Optional</em>. New poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot</td>\n</tr>\n<tr>\n<td>poll_answer</td>\n<td><a href=\"#pollanswer\">PollAnswer</a></td>\n<td><em>Optional</em>. A user changed their answer in a non-anonymous poll. Bots receive new votes only in polls that were sent by the bot itself.</td>\n</tr>\n</tbody>\n";
+
+    const table_str_method: &'static str = "\n<thead>\n<tr>\n<th>Parameter</th>\n<th>Type</th>\n<th>Required</th>\n<th>Description</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>offset</td>\n<td>Integer</td>\n<td>Optional</td>\n<td>Identifier of the first update to be returned. Must be greater by one than the highest among the identifiers of previously received updates. By default, updates starting with the earliest unconfirmed update are returned. An update is considered confirmed as soon as <a href=\"#getupdates\">getUpdates</a> is called with an <em>offset</em> higher than its <em>update_id</em>. The negative offset can be specified to retrieve updates starting from <em>-offset</em> update from the end of the updates queue. All previous updates will forgotten.</td>\n</tr>\n<tr>\n<td>limit</td>\n<td>Integer</td>\n<td>Optional</td>\n<td>Limits the number of updates to be retrieved. Values between 1-100 are accepted. Defaults to 100.</td>\n</tr>\n<tr>\n<td>timeout</td>\n<td>Integer</td>\n<td>Optional</td>\n<td>Timeout in seconds for long polling. Defaults to 0, i.e. usual short polling. Should be positive, short polling should be used for testing purposes only.</td>\n</tr>\n<tr>\n<td>allowed_updates</td>\n<td>Array of String</td>\n<td>Optional</td>\n<td>A JSON-serialized list of the update types you want your bot to receive. For example, specify [“message”, “edited_channel_post”, “callback_query”] to only receive updates of these types. See <a href=\"#update\">Update</a> for a complete list of available update types. Specify an empty list to receive all updates regardless of type (default). If not specified, the previous setting will be used.<br><br>Please note that this parameter doesn\'t affect updates created before the call to the getUpdates, so unwanted updates may be received for a short period of time.</td>\n</tr>\n</tbody>\n";
 
     #[test]
     fn table_parser_test() {
-        println!("{:?}", table_parser(table_str));
+        println!("{:?}", table_parser(table_str_data));
     }
 
     #[test]
     fn pick_table_test() {
         let mut data: Data = Default::default();
-        let a = table_parser(table_str);
+        let a = table_parser(table_str_data);
         (&mut data).fill_from_table(a.into_iter());
         dbg!(data.fields);
         dbg!(data.types);
+        dbg!(data.descriptions);
+    }
+
+    #[test]
+    fn pick_table_method_test() {
+        let mut data: Method = Default::default();
+        let a = table_parser(table_str_method);
+        (&mut data).fill_from_table(a.into_iter());
+        dbg!(data.parameters);
+        dbg!(data.types);
+        dbg!(data.requireds);
         dbg!(data.descriptions);
     }
 }

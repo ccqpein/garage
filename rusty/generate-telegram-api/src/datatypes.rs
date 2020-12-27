@@ -36,12 +36,12 @@ impl Data {
 }
 
 impl Tableable for &mut Data {
-    type Item = (String, String, String);
+    type Item = Vec<String>;
     fn fill_from_table(&mut self, d: impl Iterator<Item = Self::Item>) {
-        for (x, y, z) in d {
-            self.fields.push(x);
-            self.types.push(y);
-            self.descriptions.push(z);
+        for x in d {
+            self.fields.push(x[0].clone());
+            self.types.push(x[1].clone());
+            self.descriptions.push(x[2].clone());
         }
     }
 }
@@ -67,14 +67,14 @@ impl Method {
     }
 }
 
-impl Tableable for &mut Method {
-    type Item = (String, String, String, String);
+impl<'a> Tableable for &'a mut Method {
+    type Item = Vec<String>;
     fn fill_from_table(&mut self, d: impl Iterator<Item = Self::Item>) {
-        for (a, b, c, d) in d {
-            self.parameters.push(a);
-            self.types.push(b);
-            self.requireds.push(c);
-            self.descriptions.push(d);
+        for x in d {
+            self.parameters.push(x[0].clone());
+            self.types.push(x[1].clone());
+            self.requireds.push(x[2].clone());
+            self.descriptions.push(x[3].clone());
         }
     }
 }
