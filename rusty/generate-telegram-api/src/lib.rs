@@ -91,6 +91,7 @@ pub enum Status {
     MethodDoc,
     MethodTable,
 }
+
 impl Status {
     pub fn is_table(&self) -> bool {
         match self {
@@ -161,17 +162,21 @@ pub fn table_check(_e: &ElementRef, status: &mut Status) {
     }
 }
 
-pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
+pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) -> (Vec<Data>, Vec<Method>) {
     // init
     let mut status = Status::Nil;
     let mut datatype: Data = Default::default();
     let mut method: Method = Default::default();
+
+    let mut data_l = vec![];
+    let mut method_l = vec![];
 
     for ele in ele_l {
         match ele.value().name() {
             "h4" => h4_check(&ele, &mut status),
             "p" => p_check(&ele, &mut status),
             "table" => table_check(&ele, &mut status),
+            "hr" => {} // end
             _ => {}
         }
 
@@ -186,9 +191,18 @@ pub fn generate_structs<'a>(ele_l: Vec<ElementRef<'a>>) {
         }
 
         if status.is_table() {
+            if let Status::DataTypeTable = status {
+                data_l.push(datatype.clone());
+                datatype.clear();
+            } else if let Status::MethodTable = status {
+                method_l.push(method.clone());
+                method.clear();
+            }
+
             status = Status::Nil;
         }
     }
+    (data_l, method_l)
 }
 
 pub fn clean_tag<'a>(s: &'a str, tag: &'a str) -> &'a str {
@@ -267,9 +281,10 @@ mod tests {
         let mut data: Data = Default::default();
         let a = table_parser(table_str_data);
         (&mut data).fill_from_table(a.into_iter());
-        dbg!(data.fields);
-        dbg!(data.types);
-        dbg!(data.descriptions);
+        dbg!(data);
+        //dbg!(data.fields);
+        //dbg!(data.types);
+        //dbg!(data.descriptions);
     }
 
     #[test]
@@ -277,9 +292,16 @@ mod tests {
         let mut data: Method = Default::default();
         let a = table_parser(table_str_method);
         (&mut data).fill_from_table(a.into_iter());
-        dbg!(data.parameters);
-        dbg!(data.types);
-        dbg!(data.requireds);
-        dbg!(data.descriptions);
+        dbg!(data);
+        //dbg!(data.parameters);
+        //dbg!(data.types);
+        //dbg!(data.requireds);
+        //dbg!(data.descriptions);
+    }
+
+    #[test]
+    fn pick_data_test() {
+        //:= TODO: test whole html
+        Html::parse_fragment("./tests/api.html");
     }
 }

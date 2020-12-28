@@ -1,22 +1,12 @@
+use serde::{Deserialize, Serialize};
+use serde_json::Result;
+
 pub trait Tableable {
     type Item;
     fn fill_from_table(&mut self, d: impl Iterator<Item = Self::Item>);
 }
 
-enum DataType {
-    Integer,
-    Message,
-    InlineQuery,
-    ChosenInlineResult,
-    CallbackQuery,
-    ShippingQuery,
-    PreCheckoutQuery,
-    Poll,
-    PollAnswer,
-    Update,
-}
-
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Data {
     pub name: String,
     pub doc: String,
@@ -26,12 +16,16 @@ pub struct Data {
 }
 
 impl Data {
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.name.clear();
         self.doc.clear();
         self.fields.clear();
         self.types.clear();
         self.descriptions.clear();
+    }
+
+    pub fn to_string(&self) -> Result<String> {
+        serde_json::to_string(self)
     }
 }
 
@@ -46,7 +40,7 @@ impl Tableable for &mut Data {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Method {
     pub name: String,
     pub doc: String,
@@ -57,13 +51,17 @@ pub struct Method {
 }
 
 impl Method {
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.name.clear();
         self.doc.clear();
         self.parameters.clear();
         self.types.clear();
         self.requireds.clear();
         self.descriptions.clear();
+    }
+
+    pub fn to_string(&self) -> Result<String> {
+        serde_json::to_string(self)
     }
 }
 
