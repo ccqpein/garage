@@ -251,7 +251,7 @@ pub fn table_parser<'a>(e: &'a str) -> Vec<Vec<String>> {
         .filter(|a| !a.is_empty())
         .map(|a| {
             a.iter()
-                .map(|tt| clean_tag_with_regex(clean_tag(tt, "<td>")))
+                .map(|tt| clean_tag(tt, "<td>").to_string())
                 .collect()
         })
         .collect()

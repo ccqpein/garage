@@ -41,23 +41,39 @@ fn main() -> std::io::Result<()> {
 
     let (all_data_types, all_methods) = generate_structs(data);
 
-    let args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
-    let mut file = File::create(&args[1])?;
+    let mut args = env::args();
+    // println!("{:?}", args);
+    args.next();
 
-    file.write(b"[")?;
-    for d in all_data_types {
-        file.write_all(d.to_string()?.as_bytes());
-        file.write(b",")?;
+    // write all data
+    match args.next() {
+        Some(p) => {
+            let mut file = File::create(p)?;
+
+            file.write(b"[")?;
+            for d in all_data_types {
+                file.write_all(d.to_string()?.as_bytes());
+                file.write(b",")?;
+            }
+            file.write(b"]")?;
+        }
+        None => {}
     }
-    file.write(b"]")?;
 
-    // for i in 6..10 {
-    //     println!("{:?}", data[i].inner_html());
-    // }
+    // write all methods
+    match args.next() {
+        Some(p) => {
+            let mut file = File::create(p)?;
 
-    //let mut status = Status::Nil;
-    //h4_check(&data[4], &mut status);
-    //println!("{:?}", status);
+            file.write(b"[")?;
+            for d in all_methods {
+                file.write_all(d.to_string()?.as_bytes());
+                file.write(b",")?;
+            }
+            file.write(b"]")?;
+        }
+        None => {}
+    }
+
     Ok(())
 }
