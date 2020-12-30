@@ -151,7 +151,7 @@ pub fn p_check(_: &ElementRef, status: &mut Status) {
 }
 
 fn pick_doc(e: &ElementRef) -> Option<String> {
-    Some(e.last_child()?.value().as_text()?.text.clone().into())
+    Some(e.inner_html())
 }
 
 pub fn table_check(_e: &ElementRef, status: &mut Status) {
