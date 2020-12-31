@@ -1,0 +1,28 @@
+{"ok":false,"error_code":404,"description":"Not Found"}
+
+{
+    "result": [
+        {
+            "message": {
+                "text": "test",
+                "date": 12323456,
+                "chat": {
+                    "type": "private",
+                    "username": "aaaaaaaaaaaa",
+                    "first_name": "bbbbbbbbbb",
+                    "id": 123345546
+                },
+                "from": {
+                    "language_code": "en",
+                    "username": "aaaaaaa",
+                    "first_name": "bbbbbb",
+                    "is_bot": false,
+                    "id": 766534534
+                },
+                "message_id": 7
+            },
+            "update_id": 43534534
+        }
+    ],
+    "ok": true
+}

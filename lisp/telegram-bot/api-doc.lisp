@@ -3,8 +3,6 @@
 
 (in-package #:tele-api-doc)
 
-(ql:quickload "yason")
-
 (defstruct data-fields-pairs
   field
   type
@@ -31,10 +29,6 @@
 ;;; datatype.json and methods.json
 (defun read-api-doc (filepath)
   "read api doc"
-  (declare (type (or string pathname) filepath))
-  (setf filepath (if (stringp filepath)
-                     (pathname filepath)
-                     filepath))
   (with-open-file (s filepath)
     (let ((data (make-string (file-length s))))
       (read-sequence data s)
@@ -78,7 +72,7 @@
     (if re
         re
         (progn (format t "cannot find file ~s, input the path of ~s:~%" ff ff)
-               (pathname (read-line))))))
+               (read-line)))))
 
 (defun refresh-api-datatypes (&key (datatypes "./datatype.json"))
   (let ((path (if-exist-or-ask datatypes)))
@@ -91,13 +85,90 @@
           collect (make-api-method-from dd))))
 
 (defun refresh-api-docs (&key (datatypes "./datatype.json") (methods "./methods.json"))
-  (refresh-api-datatypes :datatypes datatypes)
-  (refresh-api-methods :methods methods))
+  (values (refresh-api-datatypes :datatypes datatypes)
+          (refresh-api-methods :methods methods)))
 
-(defparameter *all-data-types* (refresh-api-datatypes))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *source-directory*
+    (directory-namestring (asdf:system-source-directory (asdf:find-system :telegram-bot)))))
 
-(defparameter *all-methods* (refresh-api-methods))
+(defvar *static-api-doc-path* (format nil "~a~a" *source-directory* "api-doc-static.lisp"))
+(defvar *static-ignore-path* (format nil "~a~a" *source-directory* "__ignore-api-doc-static.lisp"))
 
-;;;:= TODO: generate static lisp code,...
-;;;:= should ask at the first time and load automaticly after that,...
-;;;:= also can update
+(defparameter *has-static-code*
+  (when (and (probe-file *static-api-doc-path*)
+             (not (probe-file *static-ignore-path*)))
+    (probe-file *static-api-doc-path*))) 
+
+;;; have to have these two nil value for loading static datatype/methods
+(defparameter *all-data-types-static* nil)
+(defparameter *all-methods-static* nil)
+
+;;; load here
+(if *has-static-code* (load *has-static-code*))
+
+;;; define global datatypes and methods
+(defparameter *all-data-types*
+  (if *has-static-code*
+      (progn
+        (format t "Load static code from ~a~%" *has-static-code*)
+        *all-data-types-static*)
+      (refresh-api-datatypes)))
+
+(defparameter *all-data-types-table*
+  (let ((table (make-hash-table :test 'equal)))
+    (loop for d in *all-data-types*
+          do (setf (gethash (api-datatype-name d) table) d))
+    table))
+
+(defparameter *all-methods*
+  (if *has-static-code*
+      (progn
+        (format t "Load static code from ~a~%" *has-static-code*)
+        *all-methods-static*)
+      (refresh-api-methods)))
+
+(defparameter *all-methods-table*
+  (let ((table (make-hash-table :test 'equal)))
+    (loop for d in *all-methods*
+          do (setf (gethash (api-method-name d) table) d))
+    table))
+
+(defun generate-static-api-doc-code ()
+  (let ((filepath *static-api-doc-path*)
+        )
+    
+    (when (probe-file *static-ignore-path*)
+      (format t "find ignore file placeholder, delete it")
+      (delete-file *static-ignore-path*))
+    
+    (with-open-file (s filepath :direction :output :if-exists :supersede)
+      (format t "Generating static code file of datatypes and methods in ~s~%" filepath)
+      (loop
+        initially (format s "(in-package #:tele-api-doc) ~%(defparameter *all-data-types-static* '(")
+        for d in *all-data-types*
+        do (format s "~s ~%" d)
+        finally (format s "))~%"))
+      
+      (loop
+        initially (format s "(defparameter *all-methods-static* '(")
+        for d in *all-methods*
+        do (format s "~s ~%" d)
+        finally (format s "))")))))
+
+;;; the last ask if wanna create static code
+(progn
+  (if (and (not (probe-file *static-api-doc-path*))
+           (not (probe-file *static-ignore-path*)))
+      (if (yes-or-no-p "Wanna create static code for api doc? (instead of parsing from json everytime)")
+             (generate-static-api-doc-code)
+             (if (yes-or-no-p "Ignore this message in future? (you can run (generate-static-api-doc-code) by yourself all the time)")
+                 (with-open-file (s *static-ignore-path* :direction :output)
+                   (format s "this file is placeholder for ignoring static code generater"))))))
+
+
+(defun get-method (name)
+  (gethash name *all-methods-table*))
+
+(defun get-datatype (name)
+  (gethash name *all-data-types-table*))

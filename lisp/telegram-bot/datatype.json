@@ -16,17 +16,17 @@
         ],
         "types": [
             "Integer",
-            "<a href=\"#message\">Message</a>",
-            "<a href=\"#message\">Message</a>",
-            "<a href=\"#message\">Message</a>",
-            "<a href=\"#message\">Message</a>",
-            "<a href=\"#inlinequery\">InlineQuery</a>",
-            "<a href=\"#choseninlineresult\">ChosenInlineResult</a>",
-            "<a href=\"#callbackquery\">CallbackQuery</a>",
-            "<a href=\"#shippingquery\">ShippingQuery</a>",
-            "<a href=\"#precheckoutquery\">PreCheckoutQuery</a>",
-            "<a href=\"#poll\">Poll</a>",
-            "<a href=\"#pollanswer\">PollAnswer</a>"
+            "Message",
+            "Message",
+            "Message",
+            "Message",
+            "InlineQuery",
+            "ChosenInlineResult",
+            "CallbackQuery",
+            "ShippingQuery",
+            "PreCheckoutQuery",
+            "Poll",
+            "PollAnswer"
         ],
         "fields": [
             "update_id",
@@ -143,17 +143,17 @@
             "String",
             "String",
             "String",
-            "<a href=\"#chatphoto\">ChatPhoto</a>",
+            "ChatPhoto",
             "String",
             "String",
             "String",
-            "<a href=\"#message\">Message</a>",
-            "<a href=\"#chatpermissions\">ChatPermissions</a>",
+            "Message",
+            "ChatPermissions",
             "Integer",
             "String",
             "Boolean",
             "Integer",
-            "<a href=\"#chatlocation\">ChatLocation</a>"
+            "ChatLocation"
         ],
         "fields": [
             "id",
@@ -233,56 +233,56 @@
         ],
         "types": [
             "Integer",
-            "<a href=\"#user\">User</a>",
-            "<a href=\"#chat\">Chat</a>",
+            "User",
+            "Chat",
             "Integer",
-            "<a href=\"#chat\">Chat</a>",
-            "<a href=\"#user\">User</a>",
-            "<a href=\"#chat\">Chat</a>",
-            "Integer",
-            "String",
-            "String",
-            "Integer",
-            "<a href=\"#message\">Message</a>",
-            "<a href=\"#user\">User</a>",
+            "Chat",
+            "User",
+            "Chat",
             "Integer",
             "String",
             "String",
+            "Integer",
+            "Message",
+            "User",
+            "Integer",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#animation\">Animation</a>",
-            "<a href=\"#audio\">Audio</a>",
-            "<a href=\"#document\">Document</a>",
-            "Array of <a href=\"#photosize\">PhotoSize</a>",
-            "<a href=\"#sticker\">Sticker</a>",
-            "<a href=\"#video\">Video</a>",
-            "<a href=\"#videonote\">VideoNote</a>",
-            "<a href=\"#voice\">Voice</a>",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#contact\">Contact</a>",
-            "<a href=\"#dice\">Dice</a>",
-            "<a href=\"#game\">Game</a>",
-            "<a href=\"#poll\">Poll</a>",
-            "<a href=\"#venue\">Venue</a>",
-            "<a href=\"#location\">Location</a>",
-            "Array of <a href=\"#user\">User</a>",
-            "<a href=\"#user\">User</a>",
             "String",
-            "Array of <a href=\"#photosize\">PhotoSize</a>",
+            "MessageEntity",
+            "Animation",
+            "Audio",
+            "Document",
+            "PhotoSize",
+            "Sticker",
+            "Video",
+            "VideoNote",
+            "Voice",
+            "String",
+            "MessageEntity",
+            "Contact",
+            "Dice",
+            "Game",
+            "Poll",
+            "Venue",
+            "Location",
+            "User",
+            "User",
+            "String",
+            "PhotoSize",
             "True",
             "True",
             "True",
             "True",
             "Integer",
             "Integer",
-            "<a href=\"#message\">Message</a>",
-            "<a href=\"#invoice\">Invoice</a>",
-            "<a href=\"#successfulpayment\">SuccessfulPayment</a>",
+            "Message",
+            "Invoice",
+            "SuccessfulPayment",
             "String",
-            "<a href=\"#passportdata\">PassportData</a>",
-            "<a href=\"#proximityalerttriggered\">ProximityAlertTriggered</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>"
+            "PassportData",
+            "ProximityAlertTriggered",
+            "InlineKeyboardMarkup"
         ],
         "fields": [
             "message_id",
@@ -367,7 +367,7 @@
             "Integer",
             "Integer",
             "String",
-            "<a href=\"#user\">User</a>",
+            "User",
             "String"
         ],
         "fields": [
@@ -424,7 +424,7 @@
             "Integer",
             "Integer",
             "Integer",
-            "<a href=\"#photosize\">PhotoSize</a>",
+            "PhotoSize",
             "String",
             "String",
             "Integer"
@@ -464,7 +464,7 @@
             "String",
             "String",
             "Integer",
-            "<a href=\"#photosize\">PhotoSize</a>"
+            "PhotoSize"
         ],
         "fields": [
             "file_id",
@@ -492,7 +492,7 @@
         "types": [
             "String",
             "String",
-            "<a href=\"#photosize\">PhotoSize</a>",
+            "PhotoSize",
             "String",
             "String",
             "Integer"
@@ -526,7 +526,7 @@
             "Integer",
             "Integer",
             "Integer",
-            "<a href=\"#photosize\">PhotoSize</a>",
+            "PhotoSize",
             "String",
             "String",
             "Integer"
@@ -559,7 +559,7 @@
             "String",
             "Integer",
             "Integer",
-            "<a href=\"#photosize\">PhotoSize</a>",
+            "PhotoSize",
             "Integer"
         ],
         "fields": [
@@ -626,7 +626,7 @@
     {
         "descriptions": [
             "Emoji on which the dice throw animation is based",
-            "Value of the dice, 1-6 for “<img src=\"//telegram.org/img/emoji/40/F09F8EB2.png\" alt=\"🎲\" class=\"emoji\" height=\"20\" width=\"20\">” and “<img src=\"//telegram.org/img/emoji/40/F09F8EAF.png\" class=\"emoji\" alt=\"🎯\" width=\"20\" height=\"20\">” base emoji, 1-5 for “<img class=\"emoji\" width=\"20\" height=\"20\" src=\"//telegram.org/img/emoji/40/F09F8F80.png\" alt=\"🏀\">” and “<img width=\"20\" src=\"//telegram.org/img/emoji/40/E29ABD.png\" height=\"20\" alt=\"⚽\" class=\"emoji\">” base emoji, 1-64 for “<img src=\"//telegram.org/img/emoji/40/F09F8EB0.png\" class=\"emoji\" alt=\"🎰\" height=\"20\" width=\"20\">” base emoji"
+            "Value of the dice, 1-6 for “<img src=\"//telegram.org/img/emoji/40/F09F8EB2.png\" alt=\"🎲\" class=\"emoji\" height=\"20\" width=\"20\">” and “<img src=\"//telegram.org/img/emoji/40/F09F8EAF.png\" height=\"20\" width=\"20\" alt=\"🎯\" class=\"emoji\">” base emoji, 1-5 for “<img alt=\"🏀\" src=\"//telegram.org/img/emoji/40/F09F8F80.png\" width=\"20\" height=\"20\" class=\"emoji\">” and “<img height=\"20\" alt=\"⚽\" class=\"emoji\" src=\"//telegram.org/img/emoji/40/E29ABD.png\" width=\"20\">” base emoji, 1-64 for “<img height=\"20\" class=\"emoji\" width=\"20\" alt=\"🎰\" src=\"//telegram.org/img/emoji/40/F09F8EB0.png\">” base emoji"
         ],
         "types": [
             "String",
@@ -663,7 +663,7 @@
         ],
         "types": [
             "String",
-            "<a href=\"#user\">User</a>",
+            "User",
             "Array of Integer"
         ],
         "fields": [
@@ -693,7 +693,7 @@
         "types": [
             "String",
             "String",
-            "Array of <a href=\"#polloption\">PollOption</a>",
+            "PollOption",
             "Integer",
             "Boolean",
             "Boolean",
@@ -701,7 +701,7 @@
             "Boolean",
             "Integer",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Integer",
             "Integer"
         ],
@@ -762,7 +762,7 @@
             "<em>Optional</em>. Google Places type of the venue. (See <a href=\"https://developers.google.com/places/web-service/supported_types\">supported types</a>.)"
         ],
         "types": [
-            "<a href=\"#location\">Location</a>",
+            "Location",
             "String",
             "String",
             "String",
@@ -789,8 +789,8 @@
             "The distance between the users"
         ],
         "types": [
-            "<a href=\"#user\">User</a>",
-            "<a href=\"#user\">User</a>",
+            "User",
+            "User",
             "Integer"
         ],
         "fields": [
@@ -808,7 +808,7 @@
         ],
         "types": [
             "Integer",
-            "Array of Array of <a href=\"#photosize\">PhotoSize</a>"
+            "PhotoSize"
         ],
         "fields": [
             "total_count",
@@ -847,7 +847,7 @@
             "<em>Optional</em>. Use this parameter if you want to show the keyboard to specific users only. Targets: 1) users that are @mentioned in the <em>text</em> of the <a href=\"#message\">Message</a> object; 2) if the bot's message is a reply (has <em>reply_to_message_id</em>), sender of the original message.<br><br><em>Example:</em> A user requests to change the bot's language, bot replies to the request with a keyboard to select the new language. Other users in the group don't see the keyboard."
         ],
         "types": [
-            "Array of Array of <a href=\"#keyboardbutton\">KeyboardButton</a>",
+            "KeyboardButton",
             "Boolean",
             "Boolean",
             "Boolean"
@@ -872,7 +872,7 @@
             "String",
             "Boolean",
             "Boolean",
-            "<a href=\"#keyboardbuttonpolltype\">KeyboardButtonPollType</a>"
+            "KeyboardButtonPollType"
         ],
         "fields": [
             "text",
@@ -917,7 +917,7 @@
             "Array of button rows, each represented by an Array of <a href=\"#inlinekeyboardbutton\">InlineKeyboardButton</a> objects"
         ],
         "types": [
-            "Array of Array of <a href=\"#inlinekeyboardbutton\">InlineKeyboardButton</a>"
+            "InlineKeyboardButton"
         ],
         "fields": [
             "inline_keyboard"
@@ -939,11 +939,11 @@
         "types": [
             "String",
             "String",
-            "<a href=\"#loginurl\">LoginUrl</a>",
+            "LoginUrl",
             "String",
             "String",
             "String",
-            "<a href=\"#callbackgame\">CallbackGame</a>",
+            "CallbackGame",
             "Boolean"
         ],
         "fields": [
@@ -993,8 +993,8 @@
         ],
         "types": [
             "String",
-            "<a href=\"#user\">User</a>",
-            "<a href=\"#message\">Message</a>",
+            "User",
+            "Message",
             "String",
             "String",
             "String",
@@ -1074,7 +1074,7 @@
             "<em>Optional</em>. Restricted and kicked only. Date when restrictions will be lifted for this user; unix time"
         ],
         "types": [
-            "<a href=\"#user\">User</a>",
+            "User",
             "String",
             "String",
             "Boolean",
@@ -1160,7 +1160,7 @@
             "Location address; 1-64 characters, as defined by the chat owner"
         ],
         "types": [
-            "<a href=\"#location\">Location</a>",
+            "Location",
             "String"
         ],
         "fields": [
@@ -1215,7 +1215,7 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>"
+            "MessageEntity"
         ],
         "fields": [
             "type",
@@ -1243,10 +1243,10 @@
         "types": [
             "String",
             "String",
-            "<a href=\"#inputfile\">InputFile</a> or String",
+            "InputFile",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Integer",
             "Integer",
             "Integer",
@@ -1282,10 +1282,10 @@
         "types": [
             "String",
             "String",
-            "<a href=\"#inputfile\">InputFile</a> or String",
+            "InputFile",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Integer",
             "Integer",
             "Integer"
@@ -1319,10 +1319,10 @@
         "types": [
             "String",
             "String",
-            "<a href=\"#inputfile\">InputFile</a> or String",
+            "InputFile",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Integer",
             "String",
             "String"
@@ -1354,10 +1354,10 @@
         "types": [
             "String",
             "String",
-            "<a href=\"#inputfile\">InputFile</a> or String",
+            "InputFile",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Boolean"
         ],
         "fields": [
@@ -1391,10 +1391,10 @@
             "Integer",
             "Integer",
             "Boolean",
-            "<a href=\"#photosize\">PhotoSize</a>",
+            "PhotoSize",
             "String",
             "String",
-            "<a href=\"#maskposition\">MaskPosition</a>",
+            "MaskPosition",
             "Integer"
         ],
         "fields": [
@@ -1426,8 +1426,8 @@
             "String",
             "Boolean",
             "Boolean",
-            "Array of <a href=\"#sticker\">Sticker</a>",
-            "<a href=\"#photosize\">PhotoSize</a>"
+            "Sticker",
+            "PhotoSize"
         ],
         "fields": [
             "name",
@@ -1472,8 +1472,8 @@
         ],
         "types": [
             "String",
-            "<a href=\"#user\">User</a>",
-            "<a href=\"#location\">Location</a>",
+            "User",
+            "Location",
             "String",
             "String"
         ],
@@ -1505,8 +1505,8 @@
             "String",
             "String",
             "String",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
+            "InputMessageContent",
+            "InlineKeyboardMarkup",
             "String",
             "Boolean",
             "String",
@@ -1557,9 +1557,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -1608,9 +1608,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -1660,9 +1660,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -1710,13 +1710,13 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Integer",
             "Integer",
             "Integer",
             "String",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -1759,11 +1759,11 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "String",
             "Integer",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -1801,10 +1801,10 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Integer",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -1844,12 +1844,12 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "String",
             "String",
             "String",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>",
+            "InlineKeyboardMarkup",
+            "InputMessageContent",
             "String",
             "Integer",
             "Integer"
@@ -1900,8 +1900,8 @@
             "Integer",
             "Integer",
             "Integer",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>",
+            "InlineKeyboardMarkup",
+            "InputMessageContent",
             "String",
             "Integer",
             "Integer"
@@ -1954,8 +1954,8 @@
             "String",
             "String",
             "String",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>",
+            "InlineKeyboardMarkup",
+            "InputMessageContent",
             "String",
             "Integer",
             "Integer"
@@ -2001,8 +2001,8 @@
             "String",
             "String",
             "String",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>",
+            "InlineKeyboardMarkup",
+            "InputMessageContent",
             "String",
             "Integer",
             "Integer"
@@ -2034,7 +2034,7 @@
             "String",
             "String",
             "String",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>"
+            "InlineKeyboardMarkup"
         ],
         "fields": [
             "type",
@@ -2066,9 +2066,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2104,9 +2104,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2141,9 +2141,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2171,8 +2171,8 @@
             "String",
             "String",
             "String",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2205,9 +2205,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2245,9 +2245,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2283,9 +2283,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2318,9 +2318,9 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#inlinekeyboardmarkup\">InlineKeyboardMarkup</a>",
-            "<a href=\"#inputmessagecontent\">InputMessageContent</a>"
+            "MessageEntity",
+            "InlineKeyboardMarkup",
+            "InputMessageContent"
         ],
         "fields": [
             "type",
@@ -2345,7 +2345,7 @@
         "types": [
             "String",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
+            "MessageEntity",
             "Boolean"
         ],
         "fields": [
@@ -2451,8 +2451,8 @@
         ],
         "types": [
             "String",
-            "<a href=\"#user\">User</a>",
-            "<a href=\"#location\">Location</a>",
+            "User",
+            "Location",
             "String",
             "String"
         ],
@@ -2546,7 +2546,7 @@
             "String",
             "String",
             "String",
-            "<a href=\"#shippingaddress\">ShippingAddress</a>"
+            "ShippingAddress"
         ],
         "fields": [
             "name",
@@ -2566,7 +2566,7 @@
         "types": [
             "String",
             "String",
-            "Array of <a href=\"#labeledprice\">LabeledPrice</a>"
+            "LabeledPrice"
         ],
         "fields": [
             "id",
@@ -2591,7 +2591,7 @@
             "Integer",
             "String",
             "String",
-            "<a href=\"#orderinfo\">OrderInfo</a>",
+            "OrderInfo",
             "String",
             "String"
         ],
@@ -2616,9 +2616,9 @@
         ],
         "types": [
             "String",
-            "<a href=\"#user\">User</a>",
+            "User",
             "String",
-            "<a href=\"#shippingaddress\">ShippingAddress</a>"
+            "ShippingAddress"
         ],
         "fields": [
             "id",
@@ -2641,12 +2641,12 @@
         ],
         "types": [
             "String",
-            "<a href=\"#user\">User</a>",
+            "User",
             "String",
             "Integer",
             "String",
             "String",
-            "<a href=\"#orderinfo\">OrderInfo</a>"
+            "OrderInfo"
         ],
         "fields": [
             "id",
@@ -2666,8 +2666,8 @@
             "Encrypted credentials required to decrypt the data"
         ],
         "types": [
-            "Array of <a href=\"#encryptedpassportelement\">EncryptedPassportElement</a>",
-            "<a href=\"#encryptedcredentials\">EncryptedCredentials</a>"
+            "EncryptedPassportElement",
+            "EncryptedCredentials"
         ],
         "fields": [
             "data",
@@ -2716,11 +2716,11 @@
             "String",
             "String",
             "String",
-            "Array of <a href=\"#passportfile\">PassportFile</a>",
-            "<a href=\"#passportfile\">PassportFile</a>",
-            "<a href=\"#passportfile\">PassportFile</a>",
-            "<a href=\"#passportfile\">PassportFile</a>",
-            "Array of <a href=\"#passportfile\">PassportFile</a>",
+            "PassportFile",
+            "PassportFile",
+            "PassportFile",
+            "PassportFile",
+            "PassportFile",
             "String"
         ],
         "fields": [
@@ -2970,10 +2970,10 @@
         "types": [
             "String",
             "String",
-            "Array of <a href=\"#photosize\">PhotoSize</a>",
+            "PhotoSize",
             "String",
-            "Array of <a href=\"#messageentity\">MessageEntity</a>",
-            "<a href=\"#animation\">Animation</a>"
+            "MessageEntity",
+            "Animation"
         ],
         "fields": [
             "title",
@@ -2994,7 +2994,7 @@
         ],
         "types": [
             "Integer",
-            "<a href=\"#user\">User</a>",
+            "User",
             "Integer"
         ],
         "fields": [

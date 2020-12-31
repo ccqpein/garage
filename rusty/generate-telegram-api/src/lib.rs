@@ -250,15 +250,22 @@ pub fn table_parser<'a>(e: &'a str) -> Vec<Vec<String>> {
         .iter()
         .filter(|a| !a.is_empty())
         .map(|a| {
-            a.iter()
-                .map(|tt| clean_tag(tt, "<td>").to_string())
-                .collect()
+            let mut re = Vec::with_capacity(a.len());
+            for (c, v) in a.iter().map(|tt| clean_tag(tt, "<td>")).enumerate() {
+                if c == 1 {
+                    re.push(clean_tag_with_regex(v));
+                } else {
+                    re.push(v.into());
+                }
+            }
+            re
         })
         .collect()
 }
 
 fn pick_table(e: &ElementRef, mut d: impl Tableable<Item = Vec<String>>) {
     let a = table_parser(&e.inner_html());
+    //dbg!(&a);
     d.fill_from_table(a.into_iter());
 }
 
