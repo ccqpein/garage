@@ -121,6 +121,9 @@
           do (setf (gethash (api-datatype-name d) table) d))
     table))
 
+(defun get-datatype (name)
+  (gethash name *all-data-types-table*))
+
 (defparameter *all-methods*
   (if *has-static-code*
       (progn
@@ -133,6 +136,9 @@
     (loop for d in *all-methods*
           do (setf (gethash (api-method-name d) table) d))
     table))
+
+(defun get-method (name)
+  (gethash name *all-methods-table*))
 
 (defun generate-static-api-doc-code ()
   (let ((filepath *static-api-doc-path*)
@@ -167,8 +173,42 @@
                    (format s "this file is placeholder for ignoring static code generater"))))))
 
 
-(defun get-method (name)
-  (gethash name *all-methods-table*))
+(defun lambda-list-key-maker (field-pair)
+  (ctypecase field-pair
+    (data-fields-pairs
+     (intern (string-upcase (data-fields-pairs-field field-pair))))
+    (method-fields-pairs
+     ;;:= TODO: type checking to create 
+     ;; (if (string= "yes" (method-fields-pairs-required field-pair)) 
+     ;;     (list (make-symbol (method-fields-pairs-parameter field-pair))
+     ;;           ))
+     (intern (string-upcase (method-fields-pairs-parameter field-pair)))
+     )))
 
-(defun get-datatype (name)
-  (gethash name *all-data-types-table*))
+(defun parameters-lambda-list (api)
+  (format t "~a~%" (type-of api))
+  (loop
+    with re = '(&key)
+    for fld in (ctypecase api
+                 (api-datatype api-datatype-fields api)
+                 (api-method (api-method-fields api)))
+    do (push (lambda-list-key-maker fld) re)
+    finally (return (reverse (cons '&allow-other-keys re)))
+    ))
+
+(defmacro api-keywords-destructuring (lmda-ky-ls args &body body)
+  ;;(format t "~a~%" api)
+  `(destructuring-bind
+     ,lmda-ky-ls
+     ',args
+     ,@body
+     ))
+
+(defun test (api &rest args)
+  ;;(format t "~a;~a~%" api args)
+  (let ((kll (parameters-lambda-list api)))
+    (pprint kll)
+    (api-keywords-destructuring
+        kll
+        args
+      (list offset limit allowed_updates))))

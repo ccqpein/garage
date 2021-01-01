@@ -4,7 +4,10 @@
   )
 
 ;;;:= TODO: this function
-;;;(defun make-uri ())
+(defun make-method-uri (mthd &rest args)
+  (destructuring-bind
+      (get )
+    ))
 
 (defun call-method-by-name (name)
   (call-method ))
