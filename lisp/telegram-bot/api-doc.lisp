@@ -172,43 +172,35 @@
                  (with-open-file (s *static-ignore-path* :direction :output)
                    (format s "this file is placeholder for ignoring static code generater"))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun lambda-list-key-maker (field-pair)
-  (ctypecase field-pair
-    (data-fields-pairs
-     (intern (string-upcase (data-fields-pairs-field field-pair))))
-    (method-fields-pairs
-     ;;:= TODO: type checking to create 
-     ;; (if (string= "yes" (method-fields-pairs-required field-pair)) 
-     ;;     (list (make-symbol (method-fields-pairs-parameter field-pair))
-     ;;           ))
-     (intern (string-upcase (method-fields-pairs-parameter field-pair)))
-     )))
+(defun api-keys (api)
+  (ctypecase api
+    (api-datatype (loop for d in (api-datatype-fields api)
+                        collect (list (intern (string-upcase
+                                               (data-fields-pairs-field d))
+                                              "KEYWORD")
+                                      (data-fields-pairs-type d))))
+    (api-method (loop for d in (api-method-fields api)
+                      collect (list (intern (string-upcase
+                                             (method-fields-pairs-parameter d))
+                                            "KEYWORD")
+                                    (method-fields-pairs-type d)
+                                    (method-fields-pairs-required d))))))
 
-(defun parameters-lambda-list (api)
-  (format t "~a~%" (type-of api))
+(defun api-keywords-parser (api &rest args)
+  (assert (evenp (length args)))
   (loop
-    with re = '(&key)
-    for fld in (ctypecase api
-                 (api-datatype api-datatype-fields api)
-                 (api-method (api-method-fields api)))
-    do (push (lambda-list-key-maker fld) re)
-    finally (return (reverse (cons '&allow-other-keys re)))
-    ))
+    with kps = (api-keys api)
+    and result = '()
+    
+    for k in kps
+    for v = (getf args (car k)) ;; if this field is given in args
+    do  (cond ((and (not v) ;; v is nil
+                    (= 3 (length k)) ;; it is method
+                    (string= (third k) "Yes")) ;; and it is required
+               (error "Required argument ~S cannot found" (car k)))
+              (v (push (list k v) result)))
+    finally (return (reverse result))))
 
-(defmacro api-keywords-destructuring (lmda-ky-ls args &body body)
-  ;;(format t "~a~%" api)
-  `(destructuring-bind
-     ,lmda-ky-ls
-     ',args
-     ,@body
-     ))
-
-(defun test (api &rest args)
-  ;;(format t "~a;~a~%" api args)
-  (let ((kll (parameters-lambda-list api)))
-    (pprint kll)
-    (api-keywords-destructuring
-        kll
-        args
-      (list offset limit allowed_updates))))
