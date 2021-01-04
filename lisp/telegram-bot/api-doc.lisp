@@ -4,6 +4,7 @@
 (in-package #:tele-api-doc)
 
 (defstruct data-fields-pairs
+  "data fields pairs"
   field
   type
   description)
@@ -15,6 +16,7 @@
   )
 
 (defstruct method-fields-pairs
+  "method fields pairs"
   parameter
   type
   required
@@ -35,39 +37,46 @@
       (yason:parse data))))
 
 (defun make-api-datatype-from (table)
+  "generate api datatype from hashtable of json"
   (declare (hash-table table))
   (let ((types (gethash "types" table))
         (fields (gethash "fields" table))
-        (descriptions (gethash "descriptions" table)))
-    (make-api-datatype :name (gethash "name" table)
-                       :fields (loop
-                                 for f in fields
-                                 for ty in types ;;:= MAYBE: maybe need to clean types
-                                 for des in descriptions
-                                 collect (make-data-fields-pairs :field f
-                                                                 :type ty
-                                                                 :description des))
-                       :doc (gethash "doc" table))))
+        (descriptions (gethash "descriptions" table))
+        )
+    (make-api-datatype
+     :name
+     (gethash "name" table)
+     :fields (loop
+               for f in fields
+               for ty in types
+               for des in descriptions
+               collect (make-data-fields-pairs :field f
+                                               :type ty
+                                               :description des))
+     :doc (gethash "doc" table))))
 
 (defun make-api-method-from (table)
+  "generate api method from hashtable of json"
   (declare (hash-table table))
   (let ((types (gethash "types" table))
         (parameters (gethash "parameters" table))
         (descriptions (gethash "descriptions" table))
         (requireds (gethash "requireds" table)))
-    (make-api-method :name (gethash "name" table)
-                     :fields (loop
-                               for pa in parameters
-                               for ty in types ;;:= MAYBE: maybe need to clean types
-                               for des in descriptions ;;:= MAYBE: make it clean
-                               for req in requireds 
-                               collect (make-method-fields-pairs :parameter pa
-                                                                 :required req
-                                                                 :type ty
-                                                                 :description des))
-                     :doc (gethash "doc" table))))
+    (make-api-method
+     :name (gethash "name" table)
+     :fields (loop
+               for pa in parameters
+               for ty in types 
+               for des in descriptions
+               for req in requireds 
+               collect (make-method-fields-pairs :parameter pa
+                                                 :required req
+                                                 :type ty
+                                                 :description des))
+     :doc (gethash "doc" table))))
 
 (defun if-exist-or-ask (ff)
+  "help function of file reading"
   (let ((re (probe-file ff)))
     (if re
         re
@@ -75,18 +84,27 @@
                (read-line)))))
 
 (defun refresh-api-datatypes (&key (datatypes "./datatype.json"))
-  (let ((path (if-exist-or-ask datatypes)))
-    (loop for dd in (read-api-doc path)
-          collect (make-api-datatype-from dd))))
+  "return new api datatypes list from json file (default is ./datatype.json)"
+  (the (cons api-datatype)
+       (let ((path (if-exist-or-ask datatypes)))
+         (loop for dd in (read-api-doc path)
+               collect (make-api-datatype-from dd)))))
 
 (defun refresh-api-methods (&key (methods "./methods.json"))
-  (let ((path (if-exist-or-ask methods)))
-    (loop for dd in (read-api-doc path)
-          collect (make-api-method-from dd))))
+  "return new api method list from json file (default is ./methods.json)"
+  (the (cons api-method)
+       (let ((path (if-exist-or-ask methods)))
+         (loop for dd in (read-api-doc path)
+               collect (make-api-method-from dd)))))
 
 (defun refresh-api-docs (&key (datatypes "./datatype.json") (methods "./methods.json"))
+  "call refresh-api-datatypes and refresh-api-methods, return values of them"
   (values (refresh-api-datatypes :datatypes datatypes)
           (refresh-api-methods :methods methods)))
+
+;;;;
+;;;; below are making static code instead of parse json everytime
+;;;;
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter *source-directory*
@@ -106,6 +124,10 @@
 
 ;;; load here
 (if *has-static-code* (load *has-static-code*))
+
+;;;; 
+;;;; global api doc
+;;;;
 
 ;;; define global datatypes and methods
 (defparameter *all-data-types*
@@ -176,20 +198,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun api-keys (api)
+  "return datatypes' or methods' fields pairs detail"
   (ctypecase api
-    (api-datatype (loop for d in (api-datatype-fields api)
-                        collect (list (intern (string-upcase
-                                               (data-fields-pairs-field d))
-                                              "KEYWORD")
-                                      (data-fields-pairs-type d))))
-    (api-method (loop for d in (api-method-fields api)
-                      collect (list (intern (string-upcase
-                                             (method-fields-pairs-parameter d))
-                                            "KEYWORD")
-                                    (method-fields-pairs-type d)
-                                    (method-fields-pairs-required d))))))
+    (api-datatype (loop
+                    for d in (api-datatype-fields api)
+                    collect (list (intern (string-upcase
+                                           (data-fields-pairs-field d))
+                                          "KEYWORD")
+                                  (data-fields-pairs-type d))))
+    (api-method (loop
+                  for d in (api-method-fields api)
+                  collect (list (intern (string-upcase
+                                         (method-fields-pairs-parameter d))
+                                        "KEYWORD")
+                                (method-fields-pairs-type d)
+                                (method-fields-pairs-required d))))))
 
+;;; return like this:
+;;; (((:OFFSET "Integer" "Optional") 2) ((:LIMIT "Integer" "Optional") 1))
 (defun api-keywords-parser (api &rest args)
+  "parse args to this api's keypairs"
   (assert (evenp (length args)))
   (loop
     with kps = (api-keys api)
@@ -197,8 +225,8 @@
     
     for k in kps
     for v = (getf args (car k)) ;; if this field is given in args
-    do  (cond ((and (not v) ;; v is nil
-                    (= 3 (length k)) ;; it is method
+    do  (cond ((and (not v)     ;; v is nil
+                    (= 3 (length k))              ;; it is method
                     (string= (third k) "Yes")) ;; and it is required
                (error "Required argument ~S cannot found" (car k)))
               (v (push (list k v) result)))
