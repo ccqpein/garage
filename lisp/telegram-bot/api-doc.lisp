@@ -50,9 +50,10 @@
                for f in fields
                for ty in types
                for des in descriptions
-               collect (make-data-fields-pairs :field f
-                                               :type ty
-                                               :description des))
+               collect (make-data-fields-pairs
+                        :field f
+                        :type ty
+                        :description des))
      :doc (gethash "doc" table))))
 
 (defun make-api-method-from (table)
@@ -69,10 +70,11 @@
                for ty in types 
                for des in descriptions
                for req in requireds 
-               collect (make-method-fields-pairs :parameter pa
-                                                 :required req
-                                                 :type ty
-                                                 :description des))
+               collect (make-method-fields-pairs
+                        :parameter pa
+                        :required req
+                        :type ty ;;:= TODO: type define
+                        :description des))
      :doc (gethash "doc" table))))
 
 (defun if-exist-or-ask (ff)
@@ -216,7 +218,7 @@
 
 ;;; return like this:
 ;;; (((:OFFSET "Integer" "Optional") 2) ((:LIMIT "Integer" "Optional") 1))
-(defun api-keywords-parser (api &rest args)
+(defun api-keywords-parser (api args)
   "parse args to this api's keypairs"
   (assert (evenp (length args)))
   (loop
