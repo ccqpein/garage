@@ -1,6 +1,6 @@
 (ql:quickload '("woo" "swank"))
 
-(load "./check-if-contribute-today.fasl")
+(load "./check-if-contribute-today.lisp")
 
 (defparameter *router-map* (make-hash-table :test 'equal))
 (defparameter *argvs-map* (make-hash-table :test 'equal))
