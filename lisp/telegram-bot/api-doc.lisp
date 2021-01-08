@@ -73,7 +73,7 @@
                collect (make-method-fields-pairs
                         :parameter pa
                         :required req
-                        :type ty ;;:= TODO: type define
+                        :type ty 
                         :description des))
      :doc (gethash "doc" table))))
 
@@ -84,6 +84,31 @@
         re
         (progn (format t "cannot find file ~s, input the path of ~s:~%" ff ff)
                (read-line)))))
+
+;; (loop
+;;   with re = '()
+;;   for m in *all-methods*
+;;   do (loop
+;;        for field in (api-method-fields m)
+;;        do (pushnew (method-fields-pairs-type field) re :test #'string=))
+;;   finally (return re))
+
+;; (loop
+;;   with re = '()
+;;   for m in *all-data-types*
+;;   do (loop
+;;        for field in (api-datatype-fields m)
+;;        do (pushnew (data-fields-pairs-type field) re :test #'string=))
+;;   finally (return re))
+
+;; ;;;:= TODO: finish this function
+;; (defun type-maker (str)
+;;   (let ((sl (str:split " " str)))
+;;     (ccase (length sl)
+;;       (1 ) ;; like String
+;;       (2 ) ;; like "Float number"
+;;       (3 ) ;; like "Array of String"
+;;       )))
 
 (defun refresh-api-datatypes (&key (datatypes "./datatype.json"))
   "return new api datatypes list from json file (default is ./datatype.json)"
