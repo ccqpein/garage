@@ -34,11 +34,6 @@
          (typep v 'fixnum))
         (t nil)))
 
-(defun call-method (mtnd)
-  (declare (api-method mtnd))
-  ;;(make-uri mtnd)
-  )
-
 ;;;:= this function isn't finished
 (defun method-uri-parameters (key-pairs)
   (apply #'str:concat
@@ -69,7 +64,6 @@
            finally (return (cdr (reverse re)))
            )))
 
-;;;:= TODO: this function
 (defun make-method-uri (mthd &rest args &key (url *telegram-api-url*) token &allow-other-keys)
   "make method url for calling telegram api"
   (str:concat
@@ -77,5 +71,9 @@
    (api-method-name mthd) ;; name of method
    (method-uri-parameters (api-keywords-parser mthd args)))) ;; query string
 
-(defun call-method-by-name (name)
-  (call-method ))
+(defun call-api-method (mtnd &rest args)
+  (declare (api-method mtnd))
+  (let ((endpoint (apply #'make-method-uri mtnd args)))
+    ;;:= TODO: now I can call
+    )
+  )
