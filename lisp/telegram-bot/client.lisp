@@ -1,3 +1,8 @@
+(defpackage telegram-bot
+  (:use #:CL #:tele-api-doc))
+
+(in-package telegram-bot)
+
 (defparameter *telegram-api-url* "https://api.telegram.org/bot~a/")
 
 (defun read-token (filepath)
@@ -34,7 +39,6 @@
          (typep v 'fixnum))
         (t nil)))
 
-;;;:= this function isn't finished
 (defun method-uri-parameters (key-pairs)
   (apply #'str:concat
          "?"
@@ -71,9 +75,10 @@
    (api-method-name mthd) ;; name of method
    (method-uri-parameters (api-keywords-parser mthd args)))) ;; query string
 
-(defun call-api-method (mtnd &rest args)
+(defun call-api-method (mtnd &rest args &key (method 'get) &allow-other-keys)
   (declare (api-method mtnd))
   (let ((endpoint (apply #'make-method-uri mtnd args)))
-    ;;:= TODO: now I can call
+    (ccase method
+      ('get (dex:get endpoint)))
     )
   )

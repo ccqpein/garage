@@ -1,7 +1,28 @@
-(defpackage #:tele-api-doc
-  (:use #:CL))
+(defpackage tele-api-doc
+  (:use #:CL)
+  (:export #:*all-methods*
+           #:*all-methods-table*
+           
+           #:*all-data-types*
+           #:*all-data-types-table*
+           
+           #:*source-directory*
+           #:*static-api-doc-path*
+           #:*static-ignore-path*
 
-(in-package #:tele-api-doc)
+           #:api-datatype
+           ;;#:data-fields-pairs
+
+           #:api-method-name
+           ;;#:method-fields-pairs
+
+           #:get-datatype
+           #:get-method
+
+           #:generate-static-api-doc-code
+           #:api-keywords-parser))
+
+(in-package tele-api-doc)
 
 (defstruct data-fields-pairs
   "data fields pairs"
@@ -84,31 +105,6 @@
         re
         (progn (format t "cannot find file ~s, input the path of ~s:~%" ff ff)
                (read-line)))))
-
-;; (loop
-;;   with re = '()
-;;   for m in *all-methods*
-;;   do (loop
-;;        for field in (api-method-fields m)
-;;        do (pushnew (method-fields-pairs-type field) re :test #'string=))
-;;   finally (return re))
-
-;; (loop
-;;   with re = '()
-;;   for m in *all-data-types*
-;;   do (loop
-;;        for field in (api-datatype-fields m)
-;;        do (pushnew (data-fields-pairs-type field) re :test #'string=))
-;;   finally (return re))
-
-;; ;;;:= TODO: finish this function
-;; (defun type-maker (str)
-;;   (let ((sl (str:split " " str)))
-;;     (ccase (length sl)
-;;       (1 ) ;; like String
-;;       (2 ) ;; like "Float number"
-;;       (3 ) ;; like "Array of String"
-;;       )))
 
 (defun refresh-api-datatypes (&key (datatypes "./datatype.json"))
   "return new api datatypes list from json file (default is ./datatype.json)"

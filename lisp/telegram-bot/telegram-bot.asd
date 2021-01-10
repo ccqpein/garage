@@ -10,6 +10,8 @@
   :author "ccQpein"
   :maintainer "ccQpein"
 
-  :defsystem-depends-on ("yason")
+  :defsystem-depends-on ("yason" "str" "dexador")
 
-  :components ((:file "api-doc")))
+  :components ((:file "api-doc")
+               (:file "client"
+                :depends-on ("api-doc"))))
