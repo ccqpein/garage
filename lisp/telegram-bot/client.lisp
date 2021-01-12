@@ -1,3 +1,4 @@
+;;;; This package including functions those bot server needed
 (defpackage telegram-bot
   (:use #:CL #:tele-api-doc))
 
@@ -79,6 +80,7 @@
   (declare (api-method mtnd))
   (let ((endpoint (apply #'make-method-uri mtnd args)))
     (ccase method
-      ('get (dex:get endpoint)))
+      ('get (dex:get endpoint))
+      ('post (dex:post endpoint)))
     )
   )

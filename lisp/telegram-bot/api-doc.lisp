@@ -13,6 +13,7 @@
            #:api-datatype
            ;;#:data-fields-pairs
 
+           #:api-method
            #:api-method-name
            ;;#:method-fields-pairs
 
@@ -133,8 +134,12 @@
   (defparameter *source-directory*
     (directory-namestring (asdf:system-source-directory (asdf:find-system :telegram-bot)))))
 
-(defvar *static-api-doc-path* (format nil "~a~a" *source-directory* "api-doc-static.lisp"))
-(defvar *static-ignore-path* (format nil "~a~a" *source-directory* "__ignore-api-doc-static.lisp"))
+(defvar *static-api-doc-path*
+  (format nil "~a~a" *source-directory* "api-doc-static.lisp")
+  "File path of static api doc lisp file.")
+(defvar *static-ignore-path*
+  (format nil "~a~a" *source-directory* "__ignore-api-doc-static.lisp")
+  "File path of ignore generating static api doc file.")
 
 (defparameter *has-static-code*
   (when (and (probe-file *static-api-doc-path*)
@@ -158,13 +163,15 @@
       (progn
         (format t "Load static code from ~a~%" *has-static-code*)
         *all-data-types-static*)
-      (refresh-api-datatypes)))
+      (refresh-api-datatypes))
+  "All data types")
 
 (defparameter *all-data-types-table*
   (let ((table (make-hash-table :test 'equal)))
     (loop for d in *all-data-types*
           do (setf (gethash (api-datatype-name d) table) d))
-    table))
+    table)
+  "All data types, but in hashtable")
 
 (defun get-datatype (name)
   (gethash name *all-data-types-table*))
@@ -174,18 +181,24 @@
       (progn
         (format t "Load static code from ~a~%" *has-static-code*)
         *all-methods-static*)
-      (refresh-api-methods)))
+      (refresh-api-methods))
+  "All methods")
 
 (defparameter *all-methods-table*
   (let ((table (make-hash-table :test 'equal)))
     (loop for d in *all-methods*
           do (setf (gethash (api-method-name d) table) d))
-    table))
+    table)
+  "All methods, but in hashtable")
 
 (defun get-method (name)
   (gethash name *all-methods-table*))
 
 (defun generate-static-api-doc-code ()
+  "Try to generate static lisp code of datatypes and methods
+of api doc. These four dynamic vars are using inside: 
+*static-api-doc-path*, *static-ignore-path*, *all-data-types*, and 
+*all-methods-static*."
   (let ((filepath *static-api-doc-path*)
         )
     
