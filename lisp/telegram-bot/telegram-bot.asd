@@ -14,4 +14,6 @@
 
   :components ((:file "api-doc")
                (:file "client"
-                :depends-on ("api-doc"))))
+                :depends-on ("api-doc"))
+               (:file "message-handler")
+               (:file "telegram-bot")))

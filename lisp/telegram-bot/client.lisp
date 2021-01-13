@@ -1,8 +1,11 @@
 ;;;; This package including functions those bot server needed
-(defpackage telegram-bot
-  (:use #:CL #:tele-api-doc))
+(defpackage telegram-client
+  (:use #:CL
+        #:tele-api-doc
+        )
+  (:export #:call-api-method))
 
-(in-package telegram-bot)
+(in-package telegram-client)
 
 (defparameter *telegram-api-url* "https://api.telegram.org/bot~a/")
 
