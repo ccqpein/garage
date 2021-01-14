@@ -3,7 +3,9 @@
   (:use #:CL
         #:tele-api-doc
         )
-  (:export #:call-api-method))
+  (:export #:call-api-method
+           #:*telegram-api-url*
+           #:read-token))
 
 (in-package telegram-client)
 
@@ -72,17 +74,17 @@
            finally (return (cdr (reverse re)))
            )))
 
-(defun make-method-uri (mthd &rest args &key (url *telegram-api-url*) token &allow-other-keys)
+(defun make-method-uri (method &rest args &key (url *telegram-api-url*) token &allow-other-keys)
   "make method url for calling telegram api"
   (str:concat
    (format nil url token) ;; give token
-   (api-method-name mthd) ;; name of method
-   (method-uri-parameters (api-keywords-parser mthd args)))) ;; query string
+   (api-method-name method) ;; name of method
+   (method-uri-parameters (api-keywords-parser method args)))) ;; query string
 
-(defun call-api-method (mtnd &rest args &key (method 'get) &allow-other-keys)
-  (declare (api-method mtnd))
-  (let ((endpoint (apply #'make-method-uri mtnd args)))
-    (ccase method
+(defun call-api-method (method &rest args &key (http-method 'get) &allow-other-keys)
+  (declare (api-method method))
+  (let ((endpoint (apply #'make-method-uri method args)))
+    (ccase http-method
       ('get (dex:get endpoint))
       ('post (dex:post endpoint)))
     )
