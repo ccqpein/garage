@@ -1,3 +1,5 @@
+;; if I wanna import plugin feature, I need to defpackage
+
 ;; when env is a function should define env-var
 (env '((current-workplace . "./")
        (build-number . 123)))

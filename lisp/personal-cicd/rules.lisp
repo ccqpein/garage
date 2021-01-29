@@ -3,14 +3,16 @@
 
 (in-package rules)
 
+(declaim (special *job-env-table*))
+
 ;;;; general part
 (defun show (v &key (output t) (format-s "~a"))
   (format output format-s v))
 
 ;;;; env part
-(defun env (v &key (env-var *env-table*))
+(defun env (v &key (env-var *job-env-table*))
   "env-var is a hashtable
-default value is job scope dynamic *env-table*"
+default value is job scope dynamic *job-env-table*"
   (ctypecase v
     ((cons (cons * (not cons)) *) ;; if x is list
      (loop
@@ -20,8 +22,9 @@ default value is job scope dynamic *env-table*"
      (setf (gethash (car v) env-var) (cdr v)))))
 
 (defun show-env (&rest syms)
+  "sub-command of show of env"
   (destructuring-bind
-      (&key (env-var *env-table* env-var-p)
+      (&key (env-var *job-env-table* env-var-p)
        &allow-other-keys)
       syms
     
@@ -44,6 +47,7 @@ default value is job scope dynamic *env-table*"
           (setf syms (cdr syms))))))
 
 ;;;; commands part
+;;(defmacro defcommand (name ))
 
 
 ;;;; check part
