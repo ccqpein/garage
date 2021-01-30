@@ -15,7 +15,8 @@
 
 ;; should make -command suffix macro
 ;; like def-command in lib
-(shell-command "md" current-workplace "build")
+(shell-command "rm -rf" (str:concat (get-env 'current-workplace) "build"))
+(shell-command "mkdir" (str:concat (get-env 'current-workplace) "build"))
 
 (shell-commands
  '(("echo" build-number "> ./tempfile")
