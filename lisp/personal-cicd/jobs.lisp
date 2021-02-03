@@ -24,11 +24,8 @@
                  ))
 
 (defmethod run ((j job))
-  (let ((*job-env-table* (job-env j)) ;;:= problem here
+  (let ((*job-env-table* (job-env j)) 
         (*job-id* (job-id j)))
-    ;; (env '((current-workplace . "./")
-    ;;        (build-number . 123)))
-    ;; (show-env 'current-workplace)
     (declare (special *job-env-table* *job-id*))
     (with-open-file (s "demo-rules.lisp")
       (loop
