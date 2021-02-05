@@ -4,7 +4,14 @@
 
 (in-package cicd-sys)
 
-(defsystem ccq-cicd
+(defsystem cicd
   :name "ccq-cicd"
-  :components ((:file "event"))
+  :defsystem-depends-on ("str"
+                         "alexandria"
+                         "cl-threadpool"
+                         )
+  :components ((:file "event")
+               (:file "rules")
+               (:file "jobs"
+                :depends-on ("rules")))
   )

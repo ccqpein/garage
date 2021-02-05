@@ -10,15 +10,17 @@
            #:check
            #:file-exist
            
-           #:*job-env-table*)
+           #:*job-env-table*
+           #:*job-show-log*)
   )
 
 (in-package rules)
 
-(defvar *job-env-table* nil)
+(defparameter *job-env-table* nil)
+(defparameter *job-show-log* t)
 
 ;;;; general part
-(defun show (v &key (output t) (format-s "~a"))
+(defun show (v &key (output *job-show-log*) (format-s "~a~%"))
   (format output format-s v))
 
 ;;;; env part
@@ -51,11 +53,12 @@ default value is job scope dynamic *job-env-table*"
           (progn (push (car rest) syms)
                  (setf rest (cdr rest))
                  )))
-
+    
     (destructuring-bind
         (&key (env-var *job-env-table*)
          &allow-other-keys)
         keyws
+
       (if (not syms)
           (loop
             for k being the hash-keys
@@ -65,10 +68,8 @@ default value is job scope dynamic *job-env-table*"
           ;; else 
           (do ((x (car syms) (car syms)))
               ((not syms))
-            (if (equal x :env-var)
-                (setf syms (cdr syms))
-                (show (list x (gethash x env-var))
-                      :format-s "Env value ~{~a~^ is ~}~%"))
+            (show (list x (gethash x env-var))
+                  :format-s "Env value ~{~a~^ is ~}~%")
             (setf syms (cdr syms))))
       )))
 
