@@ -7,10 +7,9 @@
 
 ;;;; Runtime receive event, then generate a job.
 
-;;(defparameter *job-env-table* env::make-jobenv)
 (defparameter *init-env-table* (make-hash-table :test 'equal))
 
-(defparameter *jobs-pool* (cl-threadpool:make-threadpool 10 :name "jobs threads pool"))
+(defparameter *jobs-pool* (cl-threadpool:make-threadpool 5 :name "jobs threads pool"))
 
 (defparameter *job-id-set* (list))
 
