@@ -2,11 +2,14 @@
   (:use #:CL)
   (:import-from uiop #:run-program)
   (:export #:show
-           #:env
+           
+           #:set-env
            #:show-env
            #:get-env
+           
            #:shell-command
            #:shell-commands
+           
            #:check
            #:file-exist
            
@@ -24,7 +27,7 @@
   (format output format-s v))
 
 ;;;; env part
-(defun env (v &key (env-var *job-env-table*))
+(defun set-env (v &key (env-var *job-env-table*))
   "env-var is a hashtable
 default value is job scope dynamic *job-env-table*"
   (ctypecase v
