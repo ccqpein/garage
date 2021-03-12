@@ -17,6 +17,7 @@ async fn main() -> std::io::Result<()> {
     println!("{:?}", rows[0]);
     rows.iter().for_each(|r| println!("{:?}", r));
 
+    /* // testing query_one
     let rows = client
         .query_one(
             "select (user_id, username) from users where username = $1",
@@ -25,7 +26,12 @@ async fn main() -> std::io::Result<()> {
         .await
         .unwrap(); //panic here
     println!("{:?}", rows); // panic here
-                            //rows.iter().for_each(|r| println!("{:?}", r));
+     */
+
+    let rows = client.query("select * from users", &[]).await.unwrap(); //panic here
+    println!("{:?}", rows); // panic here
+
+    //rows.iter().for_each(|r| println!("{:?}", r));
 
     Ok(())
 }
