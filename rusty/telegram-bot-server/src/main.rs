@@ -1,10 +1,8 @@
 use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
 use futures::StreamExt;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
-use telegram_bot::{
-    types::{requests::SendMessage, MessageKind, Update, UpdateKind},
-    Api,
-};
+use telegram_bot::{types::Update, Api};
+use telegram_bot_server::app::*;
 
 async fn handler(mut payload: web::Payload, api: web::Data<Api>) -> Result<HttpResponse, Error> {
     // parse json now
@@ -21,25 +19,10 @@ async fn handler(mut payload: web::Payload, api: web::Data<Api>) -> Result<HttpR
 
     let update = serde_json::from_slice::<Update>(&body)?;
 
-    if let UpdateKind::Message(message) = update.kind {
-        if let MessageKind::Text { ref data, .. } = message.kind {
-            // Print received text message to stdout.
-            println!("<{}>: {}", &message.from.first_name, data);
-
-            // Answer message with "Hi".
-            api.send(SendMessage::new(
-                message.chat,
-                format!(
-                    "Hi, {}! You just wrote '{}'",
-                    &message.from.first_name, data
-                ),
-            ))
-            .await
-            .map_err(|_| Error::from(HttpResponse::BadRequest()))?;
-        }
+    match update_router(update, &api).await {
+        Ok(_) => Ok(HttpResponse::Ok().body("")),
+        Err(_) => Ok(HttpResponse::Ok().body("inner problem")),
     }
-
-    Ok(HttpResponse::Ok().body(""))
 }
 
 #[actix_web::main]
@@ -59,10 +42,8 @@ async fn main() -> std::io::Result<()> {
     let endpoint = include_str!("../vault/endpoint");
 
     // read token
-    let token = include_str!("../vault/telebottoken")
-        .lines()
-        .next()
-        .unwrap();
+    let lines = include_str!("../vault/telebottoken").lines();
+    let token = lines.next().unwrap();
 
     // tracing
     tracing::subscriber::set_global_default(
