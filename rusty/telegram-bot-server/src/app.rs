@@ -4,6 +4,10 @@ use telegram_bot::{
 };
 use tracing::info;
 
+mod github_api;
+
+pub use github_api::*;
+
 pub async fn update_router(update: Update, api: &Api) -> Result<(), ()> {
     match update.kind {
         UpdateKind::Message(message) => match message.kind {

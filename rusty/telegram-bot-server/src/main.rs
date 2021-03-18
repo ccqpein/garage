@@ -42,7 +42,7 @@ async fn main() -> std::io::Result<()> {
     let endpoint = include_str!("../vault/endpoint");
 
     // read token
-    let lines = include_str!("../vault/telebottoken").lines();
+    let mut lines = include_str!("../vault/telebottoken").lines();
     let token = lines.next().unwrap();
 
     // tracing

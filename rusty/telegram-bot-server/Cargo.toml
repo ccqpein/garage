@@ -9,11 +9,13 @@ edition = "2018"
 [dependencies]
 openssl = { version = "0.10", features = ["v110"] }
 async-std = "1.9.0"
-#tokio = { version = "1", features = ["full"] }
-actix-web = { version = "4.0.0-beta.3", features = ["openssl"] }
+tokio = { version = "1", features = ["full"] }
+actix-web = { version = "4.0.0-beta.4", features = ["openssl"] }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-telegram-bot = {git = "https://github.com/telegram-rs/telegram-bot"}
+telegram-bot = { git = "https://github.com/telegram-rs/telegram-bot" }
 tracing = "0.1"
 tracing-subscriber = "0.2"
+octocrab = { version = "0.8", features = ["rustls"] }
+chrono = "0.4.19"
