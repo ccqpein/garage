@@ -7,7 +7,7 @@ use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::Path;
 
-async fn get_users_all_repos(
+async fn get_users_recently_repos(
     client: &Octocrab,
     username: &str,
 ) -> Result<Vec<octocrab::models::Repository>> {
@@ -29,7 +29,7 @@ async fn if_repo_has_commit_since(
     username: &str,
     since: DateTime<Utc>,
 ) -> Result<bool, String> {
-    let repos = get_users_all_repos(client, username)
+    let repos = get_users_recently_repos(client, username)
         .await
         .map_err(|e| e.to_string())?;
     for repo in repos {
@@ -52,13 +52,13 @@ async fn the_start_of_today_in_utc() -> Result<DateTime<Utc>, String> {
     Ok(date_time.with_timezone(&Utc))
 }
 
-async fn does_this_user_have_commit_today(
+pub(super) async fn does_this_user_have_commit_today(
     username: &str,
     token: Option<impl AsRef<Path>>,
 ) -> Result<bool, String> {
     let client = match token {
         Some(p) => {
-            let mut f = BufReader::new(File::open(p).map_err(|e| e.to_string())?);
+            let f = BufReader::new(File::open(p).map_err(|e| e.to_string())?);
             let l = f
                 .lines()
                 .next()
@@ -69,9 +69,7 @@ async fn does_this_user_have_commit_today(
         None => instance(),
     };
 
-    //:= TODO:
-
-    Ok(true)
+    if_repo_has_commit_since(&client, username, the_start_of_today_in_utc().await?).await
 }
 
 #[cfg(test)]
@@ -86,7 +84,7 @@ mod tests {
         let client = instance();
 
         let re = rt
-            .block_on(get_users_all_repos(&client, "ccqpein"))
+            .block_on(get_users_recently_repos(&client, "ccqpein"))
             .unwrap();
         //dbg!(&re[0]);
         assert_eq!(re.len(), 5)
