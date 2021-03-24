@@ -1,7 +1,5 @@
-use chrono::{
-    DateTime, Datelike, Duration, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc,
-};
-use chrono_tz::{America::New_York, EST, EST5EDT};
+use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
+use chrono_tz::America::New_York;
 use octocrab::{initialise, instance, Octocrab, OctocrabBuilder, Result};
 use std::fs::File;
 use std::io::prelude::*;

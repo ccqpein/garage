@@ -20,3 +20,4 @@ tracing-subscriber = "0.2"
 octocrab = { version = "0.8", features = ["rustls"] }
 chrono = "0.4.19"
 chrono-tz = "0.4"
+clap = "3.0.0-beta.2"
