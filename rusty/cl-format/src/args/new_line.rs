@@ -1,6 +1,17 @@
 use std::iter;
+use std::str::FromStr;
 
 struct NewLine(usize);
+
+// impl FromStr for NewLine {
+//     type Err = String;
+//     fn from_str(s: &str) -> Result<Self, Self::Err> {
+//         match s {
+//             "~%" => Ok(Self(1)),
+//             _ =>
+//         }
+//     }
+// }
 
 impl NewLine {
     fn to_string(&self) -> String {
