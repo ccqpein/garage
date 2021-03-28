@@ -1,15 +1,23 @@
 mod args;
 
-use core::fmt::Debug;
+use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
-trait Tilde {}
+trait Tilde: Debug {
+    fn from_buf(c: &[u8]) -> Result<Self, String>
+    where
+        Self: Sized;
 
-impl Debug for dyn Tilde {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        Ok(())
-    }
+    // fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    //     self.fmt(f)
+    // }
 }
+
+// impl Debug for dyn Tilde {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         self.fmt(f)
+//     }
+// }
 
 #[derive(Debug)]
 enum ParseData {
