@@ -16,8 +16,21 @@ impl SomeT for A {
     }
 }
 
+//////////////////////////////////////////
+trait SomeTB {
+    fn bb(_: usize) -> usize;
+}
+
+impl SomeTB for A {
+    fn bb(a: usize) -> usize {
+        a
+    }
+}
+
 fn main() {
     let a = A {};
     println!("{}", a.aa());
     println!("{}", SomeT::aa(&a));
+
+    println!("{}", A::bb(1));
 }
