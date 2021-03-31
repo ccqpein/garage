@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use telegram_bot::{
-    types::{requests::SendMessage, MessageKind, Update, UpdateKind},
+    types::{requests::SendMessage, MessageChat, MessageKind, Update, UpdateKind},
     Api,
 };
 use tracing::info;
@@ -18,8 +18,9 @@ pub struct Opts {
 
 pub async fn update_router(update: Update, api: &Api, opts: &Opts) -> Result<(), String> {
     match update.kind {
-        UpdateKind::Message(message) => match message.kind {
-            MessageKind::Text { ref data, .. } => {
+        UpdateKind::Message(message) => match (message.kind, message.chat) {
+            // message from private
+            (MessageKind::Text { ref data, .. }, ch @ MessageChat::Private(_)) => {
                 info!("Receive message data: {:?}", data);
                 let mes = if data.to_lowercase() == "commit" {
                     my_github_commits(message.from.username.unwrap_or(String::new()), &opts.vault)
@@ -31,7 +32,7 @@ pub async fn update_router(update: Update, api: &Api, opts: &Opts) -> Result<(),
                         &message.from.first_name, data
                     )
                 };
-                api.send(SendMessage::new(message.chat, mes))
+                api.send(SendMessage::new(ch, mes))
                     .await
                     .map_err(|e| e.to_string())?;
             }

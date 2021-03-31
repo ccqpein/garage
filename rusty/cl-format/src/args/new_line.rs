@@ -4,10 +4,14 @@ use std::iter;
 use std::str;
 use std::str::FromStr;
 
-#[derive(Debug)]
-struct NewLine(usize);
+#[derive(Debug, Default)]
+pub struct NewLine(usize);
 
 impl NewLine {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     fn to_string(&self) -> String {
         iter::repeat("\n".to_string())
             .take(self.0)
@@ -19,7 +23,7 @@ impl NewLine {
 }
 
 impl Tilde for NewLine {
-    fn from_buf(c: &[u8]) -> Result<Self, String> {
+    fn from_buf(&self, c: &[u8]) -> Result<Self, String> {
         Ok(Self(
             str::from_utf8(&c[1..c.len() - 1])
                 .map_err(|e| e.to_string())?

@@ -1,22 +1,24 @@
 mod args;
 
+use args::*;
+//use lazy_static::lazy_static;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
-trait Tilde: Debug {
-    fn from_buf(c: &[u8]) -> Result<Self, String>
+pub trait Tilde: Debug {
+    fn from_buf(&self, c: &[u8]) -> Result<Self, String>
     where
         Self: Sized;
-
-    // fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    //     self.fmt(f)
-    // }
 }
 
-// impl Debug for dyn Tilde {
-//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-//         self.fmt(f)
-//     }
+// lazy_static! {
+//     //static ref newl: Box<(dyn Tilde + Sync)> = Box::new(NewLine::new());
+//     pub static ref tilde_table: HashMap<u8, NewLine> = {
+//         let mut t = HashMap::new();
+//         t.insert(b'%', NewLine::new());
+//         t
+//     };
 // }
 
 #[derive(Debug)]
