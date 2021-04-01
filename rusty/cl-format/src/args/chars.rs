@@ -1,23 +1,25 @@
 /// Character impl
 /// http://www.lispworks.com/documentation/HyperSpec/Body/22_caa.htm
-use std::str::FromStr;
+use super::*;
 
+#[derive(Debug)]
 enum Character {
     C,
-}
-
-impl FromStr for Character {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "~C" => Ok(Self::C),
-            _ => Err("not support".to_string()),
-        }
-    }
+    //:= left some else
 }
 
 impl Character {
+    fn new() -> Self {
+        Self::C
+    }
+
     fn to_string(v: impl ToString) -> String {
         v.to_string()
+    }
+}
+
+impl Tilde for Character {
+    fn from_buf(c: &[u8]) -> Result<Self, String> {
+        Ok(Self::C)
     }
 }

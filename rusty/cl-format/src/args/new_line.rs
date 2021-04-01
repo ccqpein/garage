@@ -1,8 +1,6 @@
-use crate::Tilde;
-use std::io::Cursor;
+use super::*;
 use std::iter;
 use std::str;
-use std::str::FromStr;
 
 #[derive(Debug, Default)]
 pub struct NewLine(usize);
@@ -23,7 +21,7 @@ impl NewLine {
 }
 
 impl Tilde for NewLine {
-    fn from_buf(&self, c: &[u8]) -> Result<Self, String> {
+    fn from_buf(c: &[u8]) -> Result<Self, String> {
         Ok(Self(
             str::from_utf8(&c[1..c.len() - 1])
                 .map_err(|e| e.to_string())?
@@ -51,7 +49,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_buf() {
+    fn test_new_line_from_buf() {
         let testcase0 = "~2%".as_bytes();
         assert_eq!(
             NewLine::from_buf(testcase0).unwrap().to_string(),
