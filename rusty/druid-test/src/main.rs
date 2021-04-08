@@ -4,19 +4,31 @@ use druid::{
     Point, RenderContext, UpdateCtx,
 };
 use druid::{AppLauncher, Data, PlatformError, Rect, Size, Widget, WindowDesc};
+use std::time::{Duration, Instant};
 
 #[derive(Clone, Data)]
-struct AppData {}
+struct AppData {
+    timestamp: Instant,
+}
 
 struct Square {
     cell_num_row: usize,
     cell_num_col: usize,
     cell_size: f64,
+    color: u8,
 }
 
 /// have to impl widget for druid
 impl Widget<AppData> for Square {
-    fn event(&mut self, ctx: &mut EventCtx<'_, '_>, event: &Event, data: &mut AppData, env: &Env) {}
+    fn event(&mut self, ctx: &mut EventCtx<'_, '_>, event: &Event, data: &mut AppData, env: &Env) {
+        match event {
+            Event::WindowConnected => {
+                ctx.request_paint();
+                data.timestamp = Instant::now();
+            }
+            _ => {}
+        }
+    }
 
     fn lifecycle(
         &mut self,
@@ -34,6 +46,10 @@ impl Widget<AppData> for Square {
         data: &AppData,
         env: &Env,
     ) {
+        if data.timestamp - old_data.timestamp >= Duration::new(1, 0) {
+            self.color = 252;
+            ctx.request_paint();
+        }
     }
 
     fn layout(
@@ -60,7 +76,7 @@ impl Widget<AppData> for Square {
                     y: self.cell_size * col as f64,
                 };
                 let rect = Rect::from_origin_size(point, cell_size);
-                ctx.fill(rect, &Color::rgb8(0x0, row as u8, col as u8))
+                ctx.fill(rect, &Color::rgb8(self.color, row as u8, col as u8))
             }
         }
     }
@@ -69,14 +85,12 @@ impl Widget<AppData> for Square {
 fn make_canvas() -> impl Widget<AppData> {
     Flex::column().with_flex_child(
         Flex::row().with_flex_child(
-            Flex::column().with_flex_child(
-                Square {
-                    cell_num_col: 100,
-                    cell_num_row: 10,
-                    cell_size: 10.,
-                },
-                1.0,
-            ),
+            Square {
+                cell_num_col: 100,
+                cell_num_row: 10,
+                cell_size: 10.,
+                color: 0,
+            },
             1.0,
         ),
         1.0,
@@ -84,6 +98,8 @@ fn make_canvas() -> impl Widget<AppData> {
 }
 
 fn main() -> Result<(), PlatformError> {
-    AppLauncher::with_window(WindowDesc::new(make_canvas())).launch(AppData {})?;
+    AppLauncher::with_window(WindowDesc::new(make_canvas())).launch(AppData {
+        timestamp: Instant::now(),
+    })?;
     Ok(())
 }
