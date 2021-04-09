@@ -3,12 +3,12 @@ use druid::{
     BoxConstraints, Color, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, RenderContext, UpdateCtx,
 };
-use druid::{AppLauncher, Data, PlatformError, Rect, Size, Widget, WindowDesc};
+use druid::{AppLauncher, Data, PlatformError, Rect, Size, TimerToken, Widget, WindowDesc};
 use std::time::{Duration, Instant};
 
 #[derive(Clone, Data)]
 struct AppData {
-    timestamp: Instant,
+    color: u8,
 }
 
 struct Square {
@@ -16,6 +16,7 @@ struct Square {
     cell_num_col: usize,
     cell_size: f64,
     color: u8,
+    timestamp: TimerToken,
 }
 
 /// have to impl widget for druid
@@ -24,7 +25,19 @@ impl Widget<AppData> for Square {
         match event {
             Event::WindowConnected => {
                 ctx.request_paint();
-                data.timestamp = Instant::now();
+                self.timestamp = ctx.request_timer(Duration::from_secs(2));
+            }
+            Event::Timer(id) => {
+                if *id == self.timestamp {
+                    self.timestamp = ctx.request_timer(Duration::from_secs(2));
+                    if data.color == 255 {
+                        data.color = 0;
+                    } else {
+                        data.color = 255
+                    }
+                    //println!("in timer");
+                    //ctx.request_paint()
+                }
             }
             _ => {}
         }
@@ -32,10 +45,10 @@ impl Widget<AppData> for Square {
 
     fn lifecycle(
         &mut self,
-        ctx: &mut LifeCycleCtx<'_, '_>,
-        event: &LifeCycle,
-        data: &AppData,
-        env: &Env,
+        _ctx: &mut LifeCycleCtx<'_, '_>,
+        _event: &LifeCycle,
+        _data: &AppData,
+        _env: &Env,
     ) {
     }
 
@@ -46,10 +59,12 @@ impl Widget<AppData> for Square {
         data: &AppData,
         env: &Env,
     ) {
-        if data.timestamp - old_data.timestamp >= Duration::new(1, 0) {
-            self.color = 252;
-            ctx.request_paint();
-        }
+        println!("update");
+        ctx.request_paint()
+        // if data.timestamp - old_data.timestamp >= Duration::new(1, 0) {
+        //     self.color = 252;
+        //     ctx.request_paint();
+        // }
     }
 
     fn layout(
@@ -76,7 +91,7 @@ impl Widget<AppData> for Square {
                     y: self.cell_size * col as f64,
                 };
                 let rect = Rect::from_origin_size(point, cell_size);
-                ctx.fill(rect, &Color::rgb8(self.color, row as u8, col as u8))
+                ctx.fill(rect, &Color::rgb8(data.color, row as u8, col as u8))
             }
         }
     }
@@ -90,6 +105,7 @@ fn make_canvas() -> impl Widget<AppData> {
                 cell_num_row: 10,
                 cell_size: 10.,
                 color: 0,
+                timestamp: TimerToken::INVALID,
             },
             1.0,
         ),
@@ -98,8 +114,6 @@ fn make_canvas() -> impl Widget<AppData> {
 }
 
 fn main() -> Result<(), PlatformError> {
-    AppLauncher::with_window(WindowDesc::new(make_canvas())).launch(AppData {
-        timestamp: Instant::now(),
-    })?;
+    AppLauncher::with_window(WindowDesc::new(make_canvas())).launch(AppData { color: 0 })?;
     Ok(())
 }
