@@ -1,3 +1,6 @@
+use dependent_type::*;
+
 fn main() {
-    println!("Hello, world!");
+    let n = NatureNum::<3> {};
+    assert_eq!(3, b(n));
 }

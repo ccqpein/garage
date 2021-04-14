@@ -1,4 +1,4 @@
-trait Succ {
+/*trait Succ {
     //type T: Succ;
     type N: Succ;
     type L: Succ;
@@ -121,3 +121,28 @@ mod tests {
         print_type_of(&o2);
     }
 }
+ */
+
+pub struct NatureNum<const N: usize> {
+    v: usize,
+}
+
+impl<const N: usize> NatureNum<N> {
+    fn new(n: usize) -> Self {
+        Self::<n> { v: n }
+    }
+
+    fn value() -> usize {
+        Self
+    }
+}
+
+// impl<const N:usize> NatureNum<N> {
+//     fn new (m:usize) -> Self{
+//         Self<m>{}
+//     }
+// }
+
+// pub(crate) const fn b(d: NatureNum) -> usize {
+//     n
+// }

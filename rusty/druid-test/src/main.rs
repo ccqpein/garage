@@ -1,4 +1,5 @@
 use druid::{
+    text::{Attribute, RichText},
     widget::{Align, Flex, Label, Padding},
     BoxConstraints, Color, Env, Event, EventCtx, LayoutCtx, LifeCycle, LifeCycleCtx, PaintCtx,
     Point, RenderContext, UpdateCtx,
@@ -94,6 +95,9 @@ impl Widget<AppData> for Square {
                 ctx.fill(rect, &Color::rgb8(data.color, row as u8, col as u8))
             }
         }
+
+        //let label: Label<()> = Label::new("Center me");
+        //let centered = Align::centered(label);
     }
 }
 
