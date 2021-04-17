@@ -10,6 +10,10 @@ pub(crate) trait DeriveTestYo {
     fn hello_macros() -> String; // return this struct name
 }
 
+pub(crate) trait GiveMeFields {
+    fn give_me_fields() -> Vec<String>;
+}
+
 #[proc_macro_derive(DeriveTestYo)]
 pub fn derive_test_yo(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -27,3 +31,5 @@ pub fn derive_test_yo(input: TokenStream) -> TokenStream {
 
     proc_macro::TokenStream::from(expanded)
 }
+
+//#[proc_macro_derive(GiveMeFields)]
