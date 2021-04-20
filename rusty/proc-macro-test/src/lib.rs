@@ -3,7 +3,8 @@ extern crate proc_macro;
 use proc_macro::*;
 use quote::quote;
 use syn::{
-    parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
+    parse_macro_input, parse_quote, Data, DataStruct, DeriveInput, Fields, GenericParam, Generics,
+    Index,
 };
 
 pub(crate) trait DeriveTestYo {
@@ -17,7 +18,8 @@ pub(crate) trait GiveMeFields {
 #[proc_macro_derive(DeriveTestYo)]
 pub fn derive_test_yo(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    //println!("{:?}", input);
+
+    println!("{:?}", input);
 
     let name = input.ident;
     let namename = format!("{}", name);
@@ -32,4 +34,33 @@ pub fn derive_test_yo(input: TokenStream) -> TokenStream {
     proc_macro::TokenStream::from(expanded)
 }
 
-//#[proc_macro_derive(GiveMeFields)]
+#[proc_macro_derive(GiveMeFields, attributes(this))]
+pub fn derive_test_fields(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    //println!("{:?}", input.data);
+
+    match input.data {
+        Data::Struct(DataStruct {
+            fields: Fields::Named(ref fields),
+            ..
+        }) => {
+            println!("{:?}", fields);
+        }
+        Data::Enum(_) => {}
+        Data::Union(_) => {}
+        _ => {}
+    }
+
+    let name = input.ident;
+    let namename = format!("{}", name);
+    let expanded = quote! {
+        impl #name {
+            fn give_me_fields() -> Vec<String> {
+                vec![#namename.into()]
+            }
+        }
+    };
+
+    proc_macro::TokenStream::from(expanded)
+}
