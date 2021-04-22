@@ -39,7 +39,7 @@ pub fn derive_test_fields(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     //println!("{:?}", input.data);
-    let mut all_fields: Vec<Ident> = vec![];
+    let mut all_fields: Vec<String> = vec![];
     match input.data {
         Data::Struct(DataStruct {
             fields: Fields::Named(ref fields),
@@ -61,7 +61,7 @@ pub fn derive_test_fields(input: TokenStream) -> TokenStream {
                     .next()
                     .is_some()
                 {
-                    all_fields.push(nn.ident.unwrap());
+                    all_fields.push(nn.ident.clone().unwrap().to_string());
                 }
             }
         }
@@ -70,14 +70,21 @@ pub fn derive_test_fields(input: TokenStream) -> TokenStream {
         _ => {}
     }
 
+    let fields_tokens = quote! {
+        vec![#(#all_fields),*].iter().map(|s| s.to_string()).collect::<Vec<String>>()
+    };
+
+    dbg!(&fields_tokens.to_string());
+
     let name = input.ident;
-    //let namename = format!("{}", name);
+    let namename = format!("{}", name);
     let expanded = quote! {
         impl #name {
             fn give_me_fields() -> Vec<String> {
-                let mut result = vec![#name.into()];
-                //result.append(#all_fields)
-
+                let mut result = vec![#namename.into()];
+                let mut ff = #fields_tokens;
+                result.append(&mut ff);
+                result
             }
         }
     };

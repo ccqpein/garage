@@ -3,7 +3,7 @@ use proc_macro_test::*;
 #[derive(DeriveTestYo)]
 struct A;
 
-#[derive(GiveMeFields)]
+#[derive(GiveMeFields, Debug)]
 struct B {
     #[this]
     a: String,
