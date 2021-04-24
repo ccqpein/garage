@@ -76,7 +76,7 @@ pub(super) async fn does_this_user_have_commit_today(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::SecondsFormat;
+    use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, SecondsFormat};
     use std::time::SystemTime;
     use tokio::runtime::Runtime;
 

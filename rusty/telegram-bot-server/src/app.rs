@@ -22,24 +22,39 @@ pub async fn update_router(update: Update, api: &Api, opts: &Opts) -> Result<(),
             // message from private
             (MessageKind::Text { ref data, .. }, ch @ MessageChat::Private(_)) => {
                 info!("Receive message data: {:?}", data);
-                let mes = if data.to_lowercase() == "commit" {
-                    my_github_commits(message.from.username.unwrap_or(String::new()), &opts.vault)
+                match data.to_lowercase().as_str() {
+                    // commit
+                    "commit" => {
+                        let msg = my_github_commits(
+                            message.from.username.unwrap_or(String::new()),
+                            &opts.vault,
+                        )
                         .await
-                        .unwrap_or("Inner error".to_string())
-                } else {
-                    format!(
-                        "Hi, {}! You just wrote '{}'",
-                        &message.from.first_name, data
-                    )
-                };
-                api.send(SendMessage::new(ch, mes))
-                    .await
-                    .map_err(|e| e.to_string())?;
+                        .unwrap_or("Inner error".to_string());
+
+                        let _ = api
+                            .send(SendMessage::new(ch, msg))
+                            .await
+                            .map_err(|e| e.to_string())?;
+                    }
+                    // remind
+                    "remind" => {}
+                    _ => {
+                        //Ok(())
+                        // format!(
+                        //     "Hi, {}! You just wrote '{}'",
+                        //     &message.from.first_name, data
+                        // )
+                    }
+                }
+                // api.send(SendMessage::new(ch, mes))
+                //     .await
+                //     .map_err(|e| e.to_string())?;
             }
             _ => {}
         },
         _ => {}
-    };
+    }
 
     Ok(())
 }
