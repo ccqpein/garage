@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
+use async_std::sync::Mutex;
 use clap::Clap;
 use futures::StreamExt;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
@@ -9,6 +12,7 @@ async fn handler(
     mut payload: web::Payload,
     api: web::Data<Api>,
     opts: web::Data<Opts>,
+    status: web::Data<Mutex<Status>>,
 ) -> Result<HttpResponse, Error> {
     // parse json now
     let mut body = web::BytesMut::new();
@@ -24,49 +28,58 @@ async fn handler(
 
     let update = serde_json::from_slice::<Update>(&body)?;
 
-    match update_router(update, &api, &opts).await {
+    match update_router(update, &api, &opts, &status).await {
         Ok(_) => Ok(HttpResponse::Ok().body("")),
         Err(_) => Ok(HttpResponse::Ok().body("inner problem")),
     }
 }
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    let opts: Opts = Opts::parse();
-    // SSL builder
-    let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    // read private key
-    builder
-        .set_private_key_file(opts.vault.clone() + "/key.pem", SslFiletype::PEM)
+fn main() -> std::io::Result<()> {
+    {
+        //:= watcher should run here
+        let rt = actix_web::rt::Runtime::new().unwrap();
+        let _ = rt.spawn(async move {});
+    }
+
+    actix_web::rt::System::new().block_on(async move {
+        let opts: Opts = Opts::parse();
+        // SSL builder
+        let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
+        // read private key
+        builder
+            .set_private_key_file(opts.vault.clone() + "/key.pem", SslFiletype::PEM)
+            .unwrap();
+        // read certificate
+        builder
+            .set_certificate_chain_file(opts.vault.clone() + "/certs.pem")
+            .unwrap();
+
+        // declare endpoint
+        let endpoint = include_str!("../vault/endpoint");
+
+        // read token
+        let mut lines = include_str!("../vault/telebottoken").lines();
+        let token = lines.next().unwrap();
+
+        // tracing
+        tracing::subscriber::set_global_default(
+            tracing_subscriber::FmtSubscriber::builder()
+                .with_env_filter("telegram_bot=trace")
+                .finish(),
+        )
         .unwrap();
-    // read certificate
-    builder
-        .set_certificate_chain_file(opts.vault.clone() + "/certs.pem")
-        .unwrap();
 
-    // declare endpoint
-    let endpoint = include_str!("../vault/endpoint");
-
-    // read token
-    let mut lines = include_str!("../vault/telebottoken").lines();
-    let token = lines.next().unwrap();
-
-    // tracing
-    tracing::subscriber::set_global_default(
-        tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter("telegram_bot=trace")
-            .finish(),
-    )
-    .unwrap();
-
-    // start http server
-    HttpServer::new(move || {
-        App::new()
-            .data(Api::new(token))
-            .data(opts.clone())
-            .route(endpoint, web::post().to(handler))
+        // start http server
+        HttpServer::new(move || {
+            App::new()
+                .data(Api::new(token))
+                .data(opts.clone())
+                //:= status add here
+                .route(endpoint, web::post().to(handler))
+        })
+        //.workers(1)
+        .bind_openssl("0.0.0.0:8443", builder)?
+        .run()
+        .await
     })
-    .bind_openssl("0.0.0.0:8443", builder)?
-    .run()
-    .await
 }

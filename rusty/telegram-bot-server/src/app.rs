@@ -1,7 +1,8 @@
+use async_std::sync::Mutex;
 use clap::Clap;
-use std::fs::File;
-use std::io::prelude::*;
 use std::io::BufReader;
+use std::{fs::File, sync::Arc};
+use std::{io::prelude::*, ops::Deref};
 use telegram_bot::{
     types::{requests::SendMessage, MessageChat, MessageKind, Update, UpdateKind},
     Api,
@@ -16,7 +17,19 @@ pub struct Opts {
     pub vault: String,
 }
 
-pub async fn update_router(update: Update, api: &Api, opts: &Opts) -> Result<(), String> {
+/// Keep some status
+pub struct Status {}
+
+impl Status {
+    fn pending_add_remind() {}
+}
+
+pub async fn update_router(
+    update: Update,
+    api: &Api,
+    opts: &Opts,
+    status: &Arc<Mutex<Status>>,
+) -> Result<(), String> {
     match update.kind {
         UpdateKind::Message(message) => match (message.kind, message.chat) {
             // message from private

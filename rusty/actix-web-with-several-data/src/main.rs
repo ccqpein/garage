@@ -21,6 +21,8 @@ async fn index(data: web::Data<Mutex<AppState>>, data2: web::Data<Mutex<AppState
     //     Err(_) => "haha".to_string(),
     // };
 
+    // if func change lock, whole thread will dead lock
+    // if I use lock() instead of try_lock()
     let num = match data2.try_lock() {
         Ok(ref l) => l.num.clone(),
         Err(_) => 0,
