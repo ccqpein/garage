@@ -51,14 +51,8 @@ pub async fn update_router(
                             .map_err(|e| e.to_string())?;
                     }
                     // remind
-                    "remind" => {}
-                    _ => {
-                        //Ok(())
-                        // format!(
-                        //     "Hi, {}! You just wrote '{}'",
-                        //     &message.from.first_name, data
-                        // )
-                    }
+                    //"remind" => {}
+                    _ => {}
                 }
                 // api.send(SendMessage::new(ch, mes))
                 //     .await
