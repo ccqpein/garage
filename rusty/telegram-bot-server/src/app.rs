@@ -5,8 +5,9 @@ use std::{fs::File, sync::Arc};
 use std::{io::prelude::*, ops::Deref};
 use telegram_bot::{
     types::{requests::SendMessage, MessageChat, MessageKind, Update, UpdateKind},
-    Api,
+    Api, Message,
 };
+use tokio::sync::mpsc::Sender;
 use tracing::info;
 
 mod github_api;
@@ -28,10 +29,10 @@ pub async fn update_router(
     update: Update,
     api: &Api,
     opts: &Opts,
-    status: &Arc<Mutex<Status>>,
+    channel: &Sender<Message>,
 ) -> Result<(), String> {
     match update.kind {
-        UpdateKind::Message(message) => match (message.kind, message.chat) {
+        UpdateKind::Message(message) => match (&message.kind, &message.chat) {
             // message from private
             (MessageKind::Text { ref data, .. }, ch @ MessageChat::Private(_)) => {
                 info!("Receive message data: {:?}", data);
@@ -52,7 +53,9 @@ pub async fn update_router(
                     }
                     // remind
                     //"remind" => {}
-                    _ => {}
+                    _ => {
+                        channel.send(message.clone()).await;
+                    }
                 }
                 // api.send(SendMessage::new(ch, mes))
                 //     .await

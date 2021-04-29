@@ -7,10 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-openssl = { version = "0.10", features = ["v110"] }
+rustls = "0.19"
 async-std = "1.9.0"
 tokio = { version = "1", features = ["full"] }
-actix-web = { version = "4.0.0-beta.4", features = ["openssl"] }
+actix-web = { version = "4.0.0-beta.6", features = ["rustls"] }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -21,3 +21,4 @@ octocrab = { version = "0.8", features = ["rustls"] }
 chrono = "0.4.19"
 chrono-tz = "0.4"
 clap = "3.0.0-beta.2"
+lazy_static = "1"

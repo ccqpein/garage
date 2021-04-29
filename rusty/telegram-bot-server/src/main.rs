@@ -1,18 +1,20 @@
-use std::sync::Arc;
-
 use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
 use async_std::sync::Mutex;
 use clap::Clap;
 use futures::StreamExt;
-use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
-use telegram_bot::{types::Update, Api};
-use telegram_bot_server::app::*;
+use rustls::internal::pemfile::{certs, pkcs8_private_keys};
+use rustls::{NoClientAuth, ServerConfig};
+use std::{fs::File, io::BufReader, sync::Arc};
+use telegram_bot::{types::Update, Api, Message};
+use telegram_bot_server::{app::*, watcher::Watcher};
+use tokio::sync::mpsc::{self, Sender};
 
 async fn handler(
     mut payload: web::Payload,
     api: web::Data<Api>,
     opts: web::Data<Opts>,
-    status: web::Data<Mutex<Status>>,
+    //status: web::Data<Mutex<Status>>,
+    ch_sender: web::Data<Sender<Message>>,
 ) -> Result<HttpResponse, Error> {
     // parse json now
     let mut body = web::BytesMut::new();
@@ -26,33 +28,38 @@ async fn handler(
         body.extend_from_slice(&chunk);
     }
 
-    let update = serde_json::from_slice::<Update>(&body)?;
+    let update = match serde_json::from_slice::<Update>(&body) {
+        Ok(u) => u,
+        Err(e) => {
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()).into())
+        }
+    };
 
-    match update_router(update, &api, &opts, &status).await {
+    match update_router(update, &api, &opts, &ch_sender).await {
         Ok(_) => Ok(HttpResponse::Ok().body("")),
         Err(_) => Ok(HttpResponse::Ok().body("inner problem")),
     }
 }
 
 fn main() -> std::io::Result<()> {
+    let (tx, rx) = mpsc::channel::<Message>(32);
     {
+        let w = Watcher::new(rx);
         //:= watcher should run here
         let rt = actix_web::rt::Runtime::new().unwrap();
-        let _ = rt.spawn(async move {});
+        let _ = rt.spawn(async move { w });
     }
 
     actix_web::rt::System::new().block_on(async move {
         let opts: Opts = Opts::parse();
+
         // SSL builder
-        let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-        // read private key
-        builder
-            .set_private_key_file(opts.vault.clone() + "/key.pem", SslFiletype::PEM)
-            .unwrap();
-        // read certificate
-        builder
-            .set_certificate_chain_file(opts.vault.clone() + "/certs.pem")
-            .unwrap();
+        let mut config = ServerConfig::new(NoClientAuth::new());
+        let cert_file = &mut BufReader::new(File::open(opts.vault.clone() + "/certs.pem").unwrap());
+        let key_file = &mut BufReader::new(File::open(opts.vault.clone() + "/key.pem").unwrap());
+        let cert_chain = certs(cert_file).unwrap();
+        let mut keys = pkcs8_private_keys(key_file).unwrap();
+        config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
 
         // declare endpoint
         let endpoint = include_str!("../vault/endpoint");
@@ -74,11 +81,13 @@ fn main() -> std::io::Result<()> {
             App::new()
                 .data(Api::new(token))
                 .data(opts.clone())
+                .data(tx.clone())
                 //:= status add here
                 .route(endpoint, web::post().to(handler))
         })
         //.workers(1)
-        .bind_openssl("0.0.0.0:8443", builder)?
+        //.bind_openssl("0.0.0.0:8443", builder)?
+        .bind_rustls("0.0.0.0:8443", config)?
         .run()
         .await
     })
