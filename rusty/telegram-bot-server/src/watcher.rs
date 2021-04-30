@@ -1,27 +1,28 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-//use async_std::sync::Mutex;
 use lazy_static::*;
-use std::sync::{Arc, Mutex};
-use telegram_bot::{
-    Api, ChatId, Message, MessageChat, MessageId, MessageKind, SendMessage, ToMessageId,
-};
+use std::sync::Mutex;
+use telegram_bot::{Api, ChatId, Message, MessageKind, ToMessageId};
 use tokio::{
-    sync::mpsc::{Receiver, Sender},
+    sync::{
+        mpsc::{Receiver, Sender},
+        oneshot,
+    },
     time::sleep,
     time::Duration,
 };
+
 use tracing::info;
 
+use crate::{
+    deliver::Msg2Deliver,
+    reminder::{Msg2Reminder, ReminderComm},
+};
+
 lazy_static! {
-    static ref REMIND_PENDING_TABLE: Mutex<HashMap<ChatId, bool>> = {
+    static ref REMIND_PENDING_TABLE: Mutex<HashMap<ChatId, oneshot::Sender<bool>>> = {
         let m = HashMap::new();
         Mutex::new(m)
-    };
-    //static ref API: Arc<Mutex<Api>> = { Arc::new(Mutex::new(Api::new(""))) };
-
-    static ref REMIND_TABLE: Mutex<HashMap<(ChatId,MessageId), bool>> = {
-        Mutex::new(HashMap::new())
     };
 }
 
@@ -30,24 +31,29 @@ enum Status {
     Nil,
 }
 
-pub struct Msg2Deliver {
-    command: String,
-    chatid: ChatId,
-    msg: String,
-}
-
 pub struct Watcher {
     api: Api,
 
     ch: Receiver<Message>,
 
     send: Sender<Msg2Deliver>,
+
+    reminder: Sender<Msg2Reminder>,
 }
 
 impl Watcher {
-    pub fn new(api: Api, ch: Receiver<Message>, send: Sender<Msg2Deliver>) -> Self {
-        //*API = Arc::new(Mutex::new(api.clone()));
-        Self { api, ch, send }
+    pub fn new(
+        api: Api,
+        ch: Receiver<Message>,
+        send: Sender<Msg2Deliver>,
+        reminder: Sender<Msg2Reminder>,
+    ) -> Self {
+        Self {
+            api,
+            ch,
+            send,
+            reminder,
+        }
     }
 
     async fn run(&mut self) {
@@ -60,34 +66,69 @@ impl Watcher {
                             //:= guard private chat
 
                             let id = msg.chat.id().clone();
-                            REMIND_PENDING_TABLE.lock().unwrap().insert(id, true);
+                            let (snd, mut rec) = oneshot::channel();
 
-                            let sendchannel = self.send.clone();
+                            // register sender to deamon
+                            REMIND_PENDING_TABLE.lock().unwrap().insert(id, snd);
+
+                            // send to deliver channel
+                            let deliver_send = self.send.clone();
+
+                            // bye bye async
                             tokio::spawn(async move {
                                 sleep(Duration::from_secs(3)).await;
-                                sendchannel.send(Msg2Deliver {
-                                    command: "send".into(),
-                                    chatid: id,
-                                    msg: "Go ahead, I am listenning".into(),
-                                });
+                                if rec.try_recv().is_ok() {
+                                    REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
+                                    return;
+                                }
+
+                                deliver_send
+                                    .send(Msg2Deliver::new(
+                                        "send".into(),
+                                        id,
+                                        "Go ahead, I am listenning".into(),
+                                    ))
+                                    .await;
 
                                 sleep(Duration::from_secs(5)).await;
-                                sendchannel.send(Msg2Deliver {
-                                    command: "send".into(),
-                                    chatid: id,
-                                    msg: "Run out remind waiting time".into(),
-                                });
+
+                                if rec.try_recv().is_ok() {
+                                    REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
+                                    return;
+                                }
+
+                                deliver_send
+                                    .send(Msg2Deliver::new(
+                                        "send".into(),
+                                        id,
+                                        "Run out remind waiting time".into(),
+                                    ))
+                                    .await;
 
                                 REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                             });
                         }
+                        // "cancelremind" => {
+                        //     self.reminder.send(Msg2Reminder::new(
+                        //         ReminderComm::Cancel,
+                        //         (msg.chat.id(), msg.to_message_id()), //:= this should change
+                        //         String::from(data),
+                        //     ));
+                        // }
                         _ => {}
                     }
                 }
                 (MessageKind::Text { ref data, .. }, Status::RemindPending) => {
-                    //REMIND_TABLE.lock().insert
-                    tokio::spawn(async move {});
-                    REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id());
+                    if let Some(snd) = REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id()) {
+                        let _ = snd.send(true);
+                        self.reminder.send(Msg2Reminder::new(
+                            ReminderComm::New,
+                            (msg.chat.id(), msg.to_message_id()),
+                            String::from(data),
+                        ));
+                    } else {
+                        //:= failed
+                    };
                 }
                 _ => {}
             }
@@ -105,34 +146,5 @@ fn status_checker(msg: &Message) -> Status {
         Status::RemindPending
     } else {
         Status::Nil
-    }
-}
-
-struct Deliver {
-    api: Api,
-    ch: Receiver<Msg2Deliver>,
-}
-
-impl Deliver {
-    async fn run(&mut self) {
-        while let Some(ref d) = self.ch.recv().await {
-            match d.command.as_ref() {
-                "send" => {
-                    if let Err(s) = self.send_message(&d.chatid, &d.msg).await {
-                        info!("{}", s);
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    async fn send_message(&self, id: &ChatId, msg: &str) -> Result<(), String> {
-        self.api
-            .send(SendMessage::new(id, msg))
-            .await
-            .map_err(|e| e.to_string())?;
-
-        Ok(())
     }
 }

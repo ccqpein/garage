@@ -13,7 +13,6 @@ async fn handler(
     mut payload: web::Payload,
     api: web::Data<Api>,
     opts: web::Data<Opts>,
-    //status: web::Data<Mutex<Status>>,
     ch_sender: web::Data<Sender<Message>>,
 ) -> Result<HttpResponse, Error> {
     // parse json now
