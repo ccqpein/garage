@@ -32,7 +32,7 @@ impl Msg2Reminder {
 
 struct Msg2Timer;
 
-struct Reminder {
+pub struct Reminder {
     rec: Receiver<Msg2Reminder>,
 
     to_deliver: Sender<Msg2Deliver>,
@@ -41,7 +41,7 @@ struct Reminder {
 }
 
 impl Reminder {
-    fn new(rec: Receiver<Msg2Reminder>, to_deliver: Sender<Msg2Deliver>) -> Self {
+    pub fn new(rec: Receiver<Msg2Reminder>, to_deliver: Sender<Msg2Deliver>) -> Self {
         Self {
             rec,
             to_deliver,

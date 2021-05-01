@@ -45,6 +45,7 @@ fn main() {
     let (tx, mut rx) = mpsc::channel(100);
 
     rt.spawn(async move {
+        //sleep(Duration::from_secs(5)).await; // will block rx.recv()
         tx.send("message").await.unwrap();
     });
 

@@ -19,7 +19,7 @@ impl Msg2Deliver {
     }
 }
 
-struct Deliver {
+pub struct Deliver {
     api: Api,
     ch: Receiver<Msg2Deliver>,
 }

@@ -1,12 +1,11 @@
 use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
-use async_std::sync::Mutex;
 use clap::Clap;
 use futures::StreamExt;
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{NoClientAuth, ServerConfig};
-use std::{fs::File, io::BufReader, sync::Arc};
+use std::{fs::File, io::BufReader};
 use telegram_bot::{types::Update, Api, Message};
-use telegram_bot_server::{app::*, watcher::Watcher};
+use telegram_bot_server::{app::*, deliver::Deliver, reminder::Reminder, watcher::Watcher};
 use tokio::sync::mpsc::{self, Sender};
 
 async fn handler(
@@ -38,6 +37,10 @@ async fn handler(
         Ok(_) => Ok(HttpResponse::Ok().body("")),
         Err(_) => Ok(HttpResponse::Ok().body("inner problem")),
     }
+}
+
+fn init() -> (Watcher, Deliver, Reminder) {
+    todo!()
 }
 
 fn main() -> std::io::Result<()> {
