@@ -51,15 +51,10 @@ pub async fn update_router(
                             .await
                             .map_err(|e| e.to_string())?;
                     }
-                    // remind
-                    //"remind" => {}
                     _ => {
                         channel.send(message.clone()).await;
                     }
                 }
-                // api.send(SendMessage::new(ch, mes))
-                //     .await
-                //     .map_err(|e| e.to_string())?;
             }
             _ => {}
         },

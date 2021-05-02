@@ -1,7 +1,7 @@
 use telegram_bot::{Api, ChatId, SendMessage};
 use tokio::sync::mpsc::Receiver;
 
-use tracing::info;
+use tracing::{debug, info};
 
 pub struct Msg2Deliver {
     command: String,
@@ -25,11 +25,11 @@ pub struct Deliver {
 }
 
 impl Deliver {
-    fn new(api: Api, ch: Receiver<Msg2Deliver>) -> Self {
+    pub fn new(api: Api, ch: Receiver<Msg2Deliver>) -> Self {
         Self { api, ch }
     }
 
-    async fn run(&mut self) {
+    pub async fn run(&mut self) {
         while let Some(ref d) = self.ch.recv().await {
             match d.command.as_ref() {
                 "send" => {
@@ -37,7 +37,9 @@ impl Deliver {
                         info!("{}", s);
                     }
                 }
-                _ => {}
+                other @ _ => {
+                    debug!("Deliver doesn't support {} command yer", other)
+                }
             }
         }
     }

@@ -12,7 +12,7 @@ use tokio::{
     time::Duration,
 };
 
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::{
     deliver::Msg2Deliver,
@@ -20,14 +20,16 @@ use crate::{
 };
 
 lazy_static! {
-    static ref REMIND_PENDING_TABLE: Mutex<HashMap<ChatId, oneshot::Sender<bool>>> = {
+    static ref REMIND_PENDING_TABLE: Mutex<HashMap<ChatId, (Status, oneshot::Sender<bool>)>> = {
         let m = HashMap::new();
         Mutex::new(m)
     };
 }
 
+#[derive(Clone)]
 enum Status {
     RemindPending,
+    RemindCancelPending,
     Nil,
 }
 
@@ -56,7 +58,7 @@ impl Watcher {
         }
     }
 
-    async fn run(&mut self) {
+    pub async fn run(&mut self) {
         while let Some(msg) = self.ch.recv().await {
             let status = status_checker(&msg);
             match (&msg.kind, status) {
@@ -68,8 +70,11 @@ impl Watcher {
                             let id = msg.chat.id().clone();
                             let (snd, mut rec) = oneshot::channel();
 
-                            // register sender to deamon
-                            REMIND_PENDING_TABLE.lock().unwrap().insert(id, snd);
+                            // register sender to global status
+                            REMIND_PENDING_TABLE
+                                .lock()
+                                .unwrap()
+                                .insert(id, (Status::RemindPending, snd));
 
                             // send to deliver channel
                             let deliver_send = self.send.clone();
@@ -78,7 +83,6 @@ impl Watcher {
                             tokio::spawn(async move {
                                 sleep(Duration::from_secs(3)).await;
                                 if rec.try_recv().is_ok() {
-                                    REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                                     return;
                                 }
 
@@ -93,7 +97,6 @@ impl Watcher {
                                 sleep(Duration::from_secs(5)).await;
 
                                 if rec.try_recv().is_ok() {
-                                    REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                                     return;
                                 }
 
@@ -108,26 +111,91 @@ impl Watcher {
                                 REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                             });
                         }
-                        // "cancelremind" => {
-                        //     self.reminder.send(Msg2Reminder::new(
-                        //         ReminderComm::Cancel,
-                        //         (msg.chat.id(), msg.to_message_id()), //:= this should change
-                        //         String::from(data),
-                        //     ));
-                        // }
+                        "cancelremind" => {
+                            let id = msg.chat.id().clone();
+                            let (snd, mut rec) = oneshot::channel();
+
+                            // register sender to global status
+                            REMIND_PENDING_TABLE
+                                .lock()
+                                .unwrap()
+                                .insert(id, (Status::RemindCancelPending, snd));
+
+                            // send to deliver channel
+                            let deliver_send = self.send.clone();
+
+                            // bye bye async
+                            tokio::spawn(async move {
+                                sleep(Duration::from_secs(3)).await;
+                                if rec.try_recv().is_ok() {
+                                    return;
+                                }
+
+                                deliver_send
+                                    .send(Msg2Deliver::new(
+                                        "send".into(),
+                                        id,
+                                        "Go ahead, I am listenning".into(),
+                                    ))
+                                    .await;
+
+                                sleep(Duration::from_secs(5)).await;
+
+                                if rec.try_recv().is_ok() {
+                                    return;
+                                }
+
+                                deliver_send
+                                    .send(Msg2Deliver::new(
+                                        "send".into(),
+                                        id,
+                                        "Run out remind cancel waiting time".into(),
+                                    ))
+                                    .await;
+
+                                REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
+                            });
+                        }
                         _ => {}
                     }
                 }
+                //:= need give timer config
                 (MessageKind::Text { ref data, .. }, Status::RemindPending) => {
-                    if let Some(snd) = REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id()) {
+                    if let Some((_, snd)) =
+                        REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id())
+                    {
                         let _ = snd.send(true);
+
                         self.reminder.send(Msg2Reminder::new(
                             ReminderComm::New,
-                            (msg.chat.id(), msg.to_message_id()),
+                            (msg.chat.id(), msg.to_message_id().to_string()),
                             String::from(data),
                         ));
                     } else {
-                        //:= failed
+                        debug!(
+                            "Cannot find this chat_id {} in pending table with data {}",
+                            msg.chat.id(),
+                            data
+                        )
+                    };
+                }
+                (MessageKind::Text { ref data, .. }, Status::RemindCancelPending) => {
+                    if let Some((_, snd)) =
+                        REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id())
+                    {
+                        let _ = snd.send(true); // tell timer stop
+
+                        self.reminder.send(Msg2Reminder::new(
+                            ReminderComm::Cancel,
+                            (msg.chat.id(), data.clone()),
+                            String::new(),
+                        ));
+                    } else {
+                        debug!(
+                            "Cannot find this chat_id {} in pending table with data {}",
+                            msg.chat.id(),
+                            data
+                        )
                     };
                 }
                 _ => {}
@@ -137,13 +205,8 @@ impl Watcher {
 }
 
 fn status_checker(msg: &Message) -> Status {
-    if REMIND_PENDING_TABLE
-        .lock()
-        .unwrap()
-        .get(&msg.chat.id())
-        .is_some()
-    {
-        Status::RemindPending
+    if let Some((status, _)) = REMIND_PENDING_TABLE.lock().unwrap().get(&msg.chat.id()) {
+        status.clone()
     } else {
         Status::Nil
     }
