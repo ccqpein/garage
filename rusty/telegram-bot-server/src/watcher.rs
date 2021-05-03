@@ -170,6 +170,7 @@ impl Watcher {
                             ReminderComm::New,
                             (msg.chat.id(), msg.to_message_id().to_string()),
                             String::from(data),
+                            Duration::from_secs(1800), //:= half hours, maybe change in futrue
                         ));
                     } else {
                         debug!(
@@ -189,6 +190,7 @@ impl Watcher {
                             ReminderComm::Cancel,
                             (msg.chat.id(), data.clone()),
                             String::new(),
+                            Duration::from_secs(1800), //:= half hours, maybe change in futrue
                         ));
                     } else {
                         debug!(

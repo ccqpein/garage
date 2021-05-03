@@ -4,6 +4,7 @@ use telegram_bot::ChatId;
 
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::oneshot;
+use tokio::time::{sleep, Duration};
 use tracing::{debug, info};
 
 use crate::deliver::Msg2Deliver;
@@ -19,14 +20,22 @@ pub struct Msg2Reminder {
     reminder_id_pair: (ChatId, String),
 
     content: String,
+
+    time_duration: Duration,
 }
 
 impl Msg2Reminder {
-    pub fn new(comm: ReminderComm, reminder_id_pair: (ChatId, String), content: String) -> Self {
+    pub fn new(
+        comm: ReminderComm,
+        reminder_id_pair: (ChatId, String),
+        content: String,
+        duration: Duration,
+    ) -> Self {
         Self {
             comm,
             reminder_id_pair,
             content,
+            time_duration: duration,
         }
     }
 }
@@ -52,9 +61,14 @@ impl Reminder {
 
     pub async fn run(&mut self) {
         while let Some(msg) = self.rec.recv().await {
-            match (msg.comm, msg.reminder_id_pair, msg.content) {
-                (ReminderComm::New, id_pair, content) => {
-                    tokio::spawn(self.make_new_timer(id_pair, content));
+            match (
+                msg.comm,
+                msg.reminder_id_pair,
+                msg.content,
+                msg.time_duration,
+            ) {
+                (ReminderComm::New, id_pair, content, dur) => {
+                    tokio::spawn(self.make_new_timer(id_pair, content, dur));
                 }
                 (ReminderComm::Cancel, id_pair, ..) => {
                     if let Some(ch) = self.to_timer.remove(&id_pair) {
@@ -69,6 +83,7 @@ impl Reminder {
         &mut self,
         id_pair: (ChatId, String),
         content: String,
+        duration: Duration,
     ) -> impl Future<Output = Result<(), String>> {
         // make channel
         let (snd, mut rec) = oneshot::channel();
@@ -83,7 +98,7 @@ impl Reminder {
                     Ok(_) => break,
                     _ => (),
                 }
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await; //:= test here
+                sleep(duration).await;
                 match to_deliver
                     .send(Msg2Deliver::new(
                         String::from("send"),
