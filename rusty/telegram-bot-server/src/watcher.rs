@@ -12,7 +12,7 @@ use tokio::{
     time::Duration,
 };
 
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::{
     deliver::Msg2Deliver,
@@ -97,8 +97,12 @@ impl Watcher {
     }
 
     pub async fn run(&mut self) {
+        info!("Watcher is running");
         while let Some(msg) = self.ch.recv().await {
+            info!("Watcher receive message: {:?}", msg);
+            // check this chat window status
             let status = status_checker(&msg);
+
             match (&msg.kind, status) {
                 (MessageKind::Text { ref data, .. }, Status::Nil) => {
                     match SpecialMsg::from(data) {

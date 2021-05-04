@@ -31,6 +31,7 @@ impl Deliver {
     }
 
     pub async fn run(&mut self) {
+        info!("Deliver is running");
         while let Some(ref d) = self.ch.recv().await {
             match d.command.as_ref() {
                 "send" => {

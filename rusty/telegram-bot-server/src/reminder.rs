@@ -60,6 +60,7 @@ impl Reminder {
     }
 
     pub async fn run(&mut self) {
+        info!("Reminder is running");
         while let Some(msg) = self.rec.recv().await {
             match (
                 msg.comm,

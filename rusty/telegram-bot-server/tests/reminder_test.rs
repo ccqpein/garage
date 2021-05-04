@@ -71,7 +71,7 @@ fn new_reminder_test() {
 
     rt.block_on(async move {
         let re = handler.await.unwrap();
-        assert_eq!(re.len(), 2);
+        assert_eq!(re.len(), 2 + 1); // one confirm msg and two reminder
         println!("{:?}", re);
     });
 }

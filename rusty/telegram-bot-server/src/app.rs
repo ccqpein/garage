@@ -18,13 +18,6 @@ pub struct Opts {
     pub vault: String,
 }
 
-/// Keep some status
-pub struct Status {}
-
-impl Status {
-    fn pending_add_remind() {}
-}
-
 pub async fn update_router(
     update: Update,
     api: &Api,
@@ -52,7 +45,11 @@ pub async fn update_router(
                             .map_err(|e| e.to_string())?;
                     }
                     _ => {
-                        channel.send(message.clone()).await;
+                        info!("Send message to Watcher: {:?}", message);
+                        channel
+                            .send(message.clone())
+                            .await
+                            .map_err(|e| e.to_string())?;
                     }
                 }
             }

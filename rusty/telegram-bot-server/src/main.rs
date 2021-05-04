@@ -69,19 +69,18 @@ fn main() -> std::io::Result<()> {
 
     let (mut watcher, mut deliver, mut reminder, tx) = init(Api::new(token));
 
+    //let rt = actix_web::rt::Runtime::new().unwrap();
+
     {
-        let rt = actix_web::rt::Runtime::new().unwrap();
-        let _ = rt.spawn(async move { watcher.run().await });
+        let _ = actix_web::rt::spawn(async move { watcher.run().await });
     }
 
     {
-        let rt = actix_web::rt::Runtime::new().unwrap();
-        let _ = rt.spawn(async move { deliver.run().await });
+        let _ = actix_web::rt::spawn(async move { deliver.run().await });
     }
 
     {
-        let rt = actix_web::rt::Runtime::new().unwrap();
-        let _ = rt.spawn(async move { reminder.run().await });
+        let _ = actix_web::rt::spawn(async move { reminder.run().await });
     }
 
     actix_web::rt::System::new().block_on(async move {
@@ -112,7 +111,6 @@ fn main() -> std::io::Result<()> {
                 .data(Api::new(token))
                 .data(opts.clone())
                 .data(tx.clone())
-                //:= status add here
                 .route(endpoint, web::post().to(handler))
         })
         //.workers(1)
