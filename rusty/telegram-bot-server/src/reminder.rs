@@ -93,6 +93,13 @@ impl Reminder {
         let to_deliver = self.to_deliver.clone();
 
         async move {
+            to_deliver
+                .send(Msg2Deliver::new(
+                    String::from("send"),
+                    id_pair.0,
+                    String::from(format!("New reminder {} made", id_pair.1)),
+                ))
+                .await;
             loop {
                 match rec.try_recv() {
                     Ok(_) => break,

@@ -12,7 +12,7 @@ use tokio::{
     time::Duration,
 };
 
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::{
     deliver::Msg2Deliver,
@@ -28,9 +28,47 @@ lazy_static! {
 
 #[derive(Clone)]
 enum Status {
-    RemindPending,
+    RemindPending(u64),
     RemindCancelPending,
     Nil,
+}
+
+enum SpecialMsg {
+    Reminder(u64), // time of reminder
+    CancelReminder(String),
+    CancelReminderPending,
+    UnSpport,
+}
+
+impl From<&String> for SpecialMsg {
+    fn from(command: &String) -> Self {
+        let mut a = command.split_whitespace();
+        let pre_comm = if let Some(comm) = a.next() {
+            match comm.to_lowercase().as_str() {
+                "remind" => {
+                    Self::Reminder(30) // default is 30 mins
+                }
+                "cancelremind" => Self::CancelReminder(String::new()),
+                _ => Self::UnSpport,
+            }
+        } else {
+            Self::UnSpport
+        };
+
+        match (pre_comm, a.next()) {
+            (Self::Reminder(i), Some(n)) => Self::Reminder(n.parse::<u64>().unwrap_or(i)),
+
+            (re @ Self::Reminder(_), None) => re,
+
+            (Self::CancelReminder(_), Some(msgid)) => Self::CancelReminder(msgid.into()),
+
+            (Self::CancelReminder(_), None) => Self::CancelReminderPending,
+
+            (re @ Self::UnSpport, _) => re,
+
+            _ => Self::UnSpport,
+        }
+    }
 }
 
 pub struct Watcher {
@@ -63,8 +101,8 @@ impl Watcher {
             let status = status_checker(&msg);
             match (&msg.kind, status) {
                 (MessageKind::Text { ref data, .. }, Status::Nil) => {
-                    match data.to_lowercase().as_str() {
-                        "remind" => {
+                    match SpecialMsg::from(data) {
+                        SpecialMsg::Reminder(time) => {
                             //:= guard private chat
 
                             let id = msg.chat.id().clone();
@@ -74,7 +112,7 @@ impl Watcher {
                             REMIND_PENDING_TABLE
                                 .lock()
                                 .unwrap()
-                                .insert(id, (Status::RemindPending, snd));
+                                .insert(id, (Status::RemindPending(time), snd));
 
                             // send to deliver channel
                             let deliver_send = self.send.clone();
@@ -111,7 +149,19 @@ impl Watcher {
                                 REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                             });
                         }
-                        "cancelremind" => {
+
+                        SpecialMsg::CancelReminder(msgid) => {
+                            self.reminder
+                                .send(Msg2Reminder::new(
+                                    ReminderComm::Cancel,
+                                    (msg.chat.id(), msgid),
+                                    String::new(),
+                                    Duration::from_secs(0),
+                                ))
+                                .await;
+                        }
+
+                        SpecialMsg::CancelReminderPending => {
                             let id = msg.chat.id().clone();
                             let (snd, mut rec) = oneshot::channel();
 
@@ -156,22 +206,26 @@ impl Watcher {
                                 REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                             });
                         }
-                        _ => {}
+                        SpecialMsg::UnSpport => {
+                            debug!("unsupport {}", data)
+                        }
                     }
                 }
-                //:= need give timer config
-                (MessageKind::Text { ref data, .. }, Status::RemindPending) => {
+
+                (MessageKind::Text { ref data, .. }, Status::RemindPending(time)) => {
                     if let Some((_, snd)) =
                         REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id())
                     {
                         let _ = snd.send(true);
 
-                        self.reminder.send(Msg2Reminder::new(
-                            ReminderComm::New,
-                            (msg.chat.id(), msg.to_message_id().to_string()),
-                            String::from(data),
-                            Duration::from_secs(1800), //:= half hours, maybe change in futrue
-                        ));
+                        self.reminder
+                            .send(Msg2Reminder::new(
+                                ReminderComm::New,
+                                (msg.chat.id(), msg.to_message_id().to_string()),
+                                String::from(data),
+                                Duration::from_secs(60 * time),
+                            ))
+                            .await;
                     } else {
                         debug!(
                             "Cannot find this chat_id {} in pending table with data {}",
@@ -180,18 +234,21 @@ impl Watcher {
                         )
                     };
                 }
+
                 (MessageKind::Text { ref data, .. }, Status::RemindCancelPending) => {
                     if let Some((_, snd)) =
                         REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id())
                     {
                         let _ = snd.send(true); // tell timer stop
 
-                        self.reminder.send(Msg2Reminder::new(
-                            ReminderComm::Cancel,
-                            (msg.chat.id(), data.clone()),
-                            String::new(),
-                            Duration::from_secs(1800), //:= half hours, maybe change in futrue
-                        ));
+                        self.reminder
+                            .send(Msg2Reminder::new(
+                                ReminderComm::Cancel,
+                                (msg.chat.id(), data.clone()),
+                                String::new(),
+                                Duration::from_secs(0),
+                            ))
+                            .await;
                     } else {
                         debug!(
                             "Cannot find this chat_id {} in pending table with data {}",
