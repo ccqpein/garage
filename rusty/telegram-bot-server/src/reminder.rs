@@ -74,6 +74,14 @@ impl Reminder {
                 (ReminderComm::Cancel, id_pair, ..) => {
                     if let Some(ch) = self.to_timer.remove(&id_pair) {
                         let _ = ch.send(Msg2Timer);
+                    } else {
+                        self.to_deliver
+                            .send(Msg2Deliver::new(
+                                "send".to_string(),
+                                id_pair.0,
+                                format!("Cannot found {} reminder", id_pair.1),
+                            ))
+                            .await;
                     }
                 }
             }
@@ -98,9 +106,14 @@ impl Reminder {
                 .send(Msg2Deliver::new(
                     String::from("send"),
                     id_pair.0,
-                    String::from(format!("New reminder {} made", id_pair.1)),
+                    String::from(format!(
+                        "New reminder {} made, remind you every {} minutes",
+                        id_pair.1,
+                        duration.as_secs() / 60
+                    )),
                 ))
                 .await;
+
             loop {
                 match rec.try_recv() {
                     Ok(_) => break,
@@ -121,6 +134,14 @@ impl Reminder {
                     }
                 }
             }
+
+            to_deliver
+                .send(Msg2Deliver::new(
+                    String::from("send"),
+                    id_pair.0,
+                    String::from(format!("Reminder {} cancelled", id_pair.1)),
+                ))
+                .await;
             info!("Remind {:?} cancelled", id_pair);
             Ok(())
         }

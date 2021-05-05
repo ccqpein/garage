@@ -123,7 +123,7 @@ impl Watcher {
 
                             // bye bye async
                             tokio::spawn(async move {
-                                sleep(Duration::from_secs(3)).await;
+                                sleep(Duration::from_secs(5)).await;
                                 if rec.try_recv().is_ok() {
                                     return;
                                 }
@@ -136,7 +136,7 @@ impl Watcher {
                                     ))
                                     .await;
 
-                                sleep(Duration::from_secs(5)).await;
+                                sleep(Duration::from_secs(10)).await;
 
                                 if rec.try_recv().is_ok() {
                                     return;
@@ -180,7 +180,7 @@ impl Watcher {
 
                             // bye bye async
                             tokio::spawn(async move {
-                                sleep(Duration::from_secs(3)).await;
+                                sleep(Duration::from_secs(5)).await;
                                 if rec.try_recv().is_ok() {
                                     return;
                                 }
@@ -193,7 +193,7 @@ impl Watcher {
                                     ))
                                     .await;
 
-                                sleep(Duration::from_secs(5)).await;
+                                sleep(Duration::from_secs(10)).await;
 
                                 if rec.try_recv().is_ok() {
                                     return;
