@@ -72,8 +72,6 @@ impl From<&String> for SpecialMsg {
 }
 
 pub struct Watcher {
-    api: Api,
-
     ch: Receiver<Message>,
 
     send: Sender<Msg2Deliver>,
@@ -83,17 +81,12 @@ pub struct Watcher {
 
 impl Watcher {
     pub fn new(
-        api: Api,
+        _api: Api,
         ch: Receiver<Message>,
         send: Sender<Msg2Deliver>,
         reminder: Sender<Msg2Reminder>,
     ) -> Self {
-        Self {
-            api,
-            ch,
-            send,
-            reminder,
-        }
+        Self { ch, send, reminder }
     }
 
     pub async fn run(&mut self) {
@@ -128,13 +121,23 @@ impl Watcher {
                                     return;
                                 }
 
-                                deliver_send
+                                match deliver_send
                                     .send(Msg2Deliver::new(
                                         "send".into(),
                                         id,
                                         "Go ahead, I am listenning".into(),
                                     ))
-                                    .await;
+                                    .await
+                                {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        debug!(
+                                            "Error {} happens in pending watcher",
+                                            e.to_string()
+                                        );
+                                        return;
+                                    }
+                                }
 
                                 sleep(Duration::from_secs(10)).await;
 
@@ -142,27 +145,45 @@ impl Watcher {
                                     return;
                                 }
 
-                                deliver_send
+                                match deliver_send
                                     .send(Msg2Deliver::new(
                                         "send".into(),
                                         id,
                                         "Run out remind waiting time".into(),
                                     ))
-                                    .await;
+                                    .await
+                                {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        debug!(
+                                            "Error {} happens in pending watcher",
+                                            e.to_string()
+                                        );
+                                        return;
+                                    }
+                                }
 
                                 REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                             });
                         }
 
                         SpecialMsg::CancelReminder(msgid) => {
-                            self.reminder
+                            match self
+                                .reminder
                                 .send(Msg2Reminder::new(
                                     ReminderComm::Cancel,
                                     (msg.chat.id(), msgid),
                                     String::new(),
                                     Duration::from_secs(0),
                                 ))
-                                .await;
+                                .await
+                            {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    debug!("Error {} happens in CancelReminder", e.to_string());
+                                    return;
+                                }
+                            }
                         }
 
                         SpecialMsg::CancelReminderPending => {
@@ -185,13 +206,23 @@ impl Watcher {
                                     return;
                                 }
 
-                                deliver_send
+                                match deliver_send
                                     .send(Msg2Deliver::new(
                                         "send".into(),
                                         id,
                                         "Go ahead, I am listenning".into(),
                                     ))
-                                    .await;
+                                    .await
+                                {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        debug!(
+                                            "Error {} happens in cancel pending watcher",
+                                            e.to_string()
+                                        );
+                                        return;
+                                    }
+                                }
 
                                 sleep(Duration::from_secs(10)).await;
 
@@ -199,13 +230,23 @@ impl Watcher {
                                     return;
                                 }
 
-                                deliver_send
+                                match deliver_send
                                     .send(Msg2Deliver::new(
                                         "send".into(),
                                         id,
                                         "Run out remind cancel waiting time".into(),
                                     ))
-                                    .await;
+                                    .await
+                                {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        debug!(
+                                            "Error {} happens in pending watcher",
+                                            e.to_string()
+                                        );
+                                        return;
+                                    }
+                                }
 
                                 REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                             });
@@ -222,14 +263,22 @@ impl Watcher {
                     {
                         let _ = snd.send(true);
 
-                        self.reminder
+                        match self
+                            .reminder
                             .send(Msg2Reminder::new(
                                 ReminderComm::New,
                                 (msg.chat.id(), msg.to_message_id().to_string()),
                                 String::from(data),
                                 Duration::from_secs(60 * time),
                             ))
-                            .await;
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(e) => {
+                                debug!("Error {} happens in remind pending watcher", e.to_string());
+                                return;
+                            }
+                        }
                     } else {
                         debug!(
                             "Cannot find this chat_id {} in pending table with data {}",
@@ -245,14 +294,25 @@ impl Watcher {
                     {
                         let _ = snd.send(true); // tell timer stop
 
-                        self.reminder
+                        match self
+                            .reminder
                             .send(Msg2Reminder::new(
                                 ReminderComm::Cancel,
                                 (msg.chat.id(), data.clone()),
                                 String::new(),
                                 Duration::from_secs(0),
                             ))
-                            .await;
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(e) => {
+                                debug!(
+                                    "Error {} happens in RemindCancelPending watcher",
+                                    e.to_string()
+                                );
+                                return;
+                            }
+                        }
                     } else {
                         debug!(
                             "Cannot find this chat_id {} in pending table with data {}",

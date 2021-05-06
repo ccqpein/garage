@@ -74,14 +74,35 @@ impl Reminder {
                 (ReminderComm::Cancel, id_pair, ..) => {
                     if let Some(ch) = self.to_timer.remove(&id_pair) {
                         let _ = ch.send(Msg2Timer);
+                        match self
+                            .to_deliver
+                            .send(Msg2Deliver::new(
+                                String::from("send"),
+                                id_pair.0,
+                                String::from(format!("Reminder {} cancelled", id_pair.1)),
+                            ))
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(e) => {
+                                debug!("Error {} happens in {:?}", e.to_string(), id_pair);
+                            }
+                        }
                     } else {
-                        self.to_deliver
+                        match self
+                            .to_deliver
                             .send(Msg2Deliver::new(
                                 "send".to_string(),
                                 id_pair.0,
                                 format!("Cannot found {} reminder", id_pair.1),
                             ))
-                            .await;
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(e) => {
+                                debug!("Error {} happens in {:?}", e.to_string(), id_pair);
+                            }
+                        }
                     }
                 }
             }
@@ -102,7 +123,7 @@ impl Reminder {
         let to_deliver = self.to_deliver.clone();
 
         async move {
-            to_deliver
+            match to_deliver
                 .send(Msg2Deliver::new(
                     String::from("send"),
                     id_pair.0,
@@ -112,14 +133,21 @@ impl Reminder {
                         duration.as_secs() / 60
                     )),
                 ))
-                .await;
+                .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    debug!("Error {} happens in {:?}", e.to_string(), id_pair);
+                    return Ok(());
+                }
+            }
 
             loop {
+                sleep(duration).await;
                 match rec.try_recv() {
                     Ok(_) => break,
                     _ => (),
                 }
-                sleep(duration).await;
                 match to_deliver
                     .send(Msg2Deliver::new(
                         String::from("send"),
@@ -135,13 +163,6 @@ impl Reminder {
                 }
             }
 
-            to_deliver
-                .send(Msg2Deliver::new(
-                    String::from("send"),
-                    id_pair.0,
-                    String::from(format!("Reminder {} cancelled", id_pair.1)),
-                ))
-                .await;
             info!("Remind {:?} cancelled", id_pair);
             Ok(())
         }

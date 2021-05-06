@@ -1,8 +1,7 @@
-use async_std::sync::Mutex;
 use clap::Clap;
+use std::fs::File;
+use std::io::prelude::*;
 use std::io::BufReader;
-use std::{fs::File, sync::Arc};
-use std::{io::prelude::*, ops::Deref};
 use telegram_bot::{
     types::{requests::SendMessage, MessageChat, MessageKind, Update, UpdateKind},
     Api, Message,
