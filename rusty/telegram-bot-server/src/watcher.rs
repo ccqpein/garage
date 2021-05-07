@@ -37,7 +37,14 @@ enum SpecialMsg {
     Reminder(u64), // time of reminder
     CancelReminder(String),
     CancelReminderPending,
+    Check(CheckMsg),
     UnSpport,
+}
+
+enum CheckMsg {
+    Nil,
+    Reminder,
+    //:= TODO: All
 }
 
 impl From<&String> for SpecialMsg {
@@ -49,13 +56,14 @@ impl From<&String> for SpecialMsg {
                     Self::Reminder(30) // default is 30 mins
                 }
                 "cancelremind" => Self::CancelReminder(String::new()),
+                "check" => Self::Check(CheckMsg::Nil),
                 _ => Self::UnSpport,
             }
         } else {
             Self::UnSpport
         };
 
-        match (pre_comm, a.next()) {
+        match (pre_comm, a.next().map(|s| s.to_lowercase())) {
             (Self::Reminder(i), Some(n)) => Self::Reminder(n.parse::<u64>().unwrap_or(i)),
 
             (re @ Self::Reminder(_), None) => re,
@@ -65,6 +73,11 @@ impl From<&String> for SpecialMsg {
             (Self::CancelReminder(_), None) => Self::CancelReminderPending,
 
             (re @ Self::UnSpport, _) => re,
+
+            (Self::Check(_), a) => match a.as_ref().map(String::as_str) {
+                Some("reminder") => Self::Check(CheckMsg::Reminder),
+                _ => Self::UnSpport,
+            },
 
             _ => Self::UnSpport,
         }
@@ -251,6 +264,32 @@ impl Watcher {
                                 REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
                             });
                         }
+
+                        SpecialMsg::Check(cm) => match cm {
+                            CheckMsg::Nil => unreachable!(),
+                            CheckMsg::Reminder => {
+                                match self
+                                    .reminder
+                                    .send(Msg2Reminder::new(
+                                        ReminderComm::Check,
+                                        (msg.chat.id(), String::new()),
+                                        String::new(),
+                                        Duration::from_secs(0),
+                                    ))
+                                    .await
+                                {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        debug!(
+                                            "Error {} happens in reminder checking watcher",
+                                            e.to_string()
+                                        );
+                                        return;
+                                    }
+                                }
+                            }
+                        },
+
                         SpecialMsg::UnSpport => {
                             debug!("unsupport {}", data)
                         }

@@ -12,6 +12,7 @@ use crate::deliver::Msg2Deliver;
 pub enum ReminderComm {
     New,
     Cancel,
+    Check,
 }
 
 pub struct Msg2Reminder {
@@ -102,6 +103,27 @@ impl Reminder {
                             Err(e) => {
                                 debug!("Error {} happens in {:?}", e.to_string(), id_pair);
                             }
+                        }
+                    }
+                }
+                (ReminderComm::Check, (chatid, _), ..) => {
+                    let msg = format!(
+                        "In this chat, there are {:?} reminders awaiting",
+                        self.to_timer
+                            .iter()
+                            .filter(|((cid, _), _)| *cid == chatid)
+                            .map(|((_, msgid), _)| msgid.clone())
+                            .collect::<Vec<String>>()
+                    );
+
+                    match self
+                        .to_deliver
+                        .send(Msg2Deliver::new("send".to_string(), chatid, msg))
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(e) => {
+                            debug!("Error {} happens in {:?}", e.to_string(), chatid);
                         }
                     }
                 }
