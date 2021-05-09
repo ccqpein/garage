@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lazy_static::*;
 use std::sync::Mutex;
-use telegram_bot::{Api, ChatId, Message, MessageKind, ToMessageId};
+use telegram_bot::{Api, ChatId, Message, MessageChat, MessageKind, ToMessageId};
 use tokio::{
     sync::{
         mpsc::{Receiver, Sender},
@@ -39,6 +39,7 @@ enum SpecialMsg {
     CancelReminderPending,
     Check(CheckMsg),
     UnSpport,
+    //UnSpport(String), // reason inside
 }
 
 enum CheckMsg {
@@ -109,8 +110,8 @@ impl Watcher {
             // check this chat window status
             let status = status_checker(&msg);
 
-            match (&msg.kind, status) {
-                (MessageKind::Text { ref data, .. }, Status::Nil) => {
+            match (&msg.kind, &msg.chat, status) {
+                (MessageKind::Text { ref data, .. }, MessageChat::Private(_), Status::Nil) => {
                     match SpecialMsg::from(data) {
                         SpecialMsg::Reminder(time) => {
                             //:= guard private chat
@@ -296,7 +297,11 @@ impl Watcher {
                     }
                 }
 
-                (MessageKind::Text { ref data, .. }, Status::RemindPending(time)) => {
+                (
+                    MessageKind::Text { ref data, .. },
+                    MessageChat::Private(_),
+                    Status::RemindPending(time),
+                ) => {
                     if let Some((_, snd)) =
                         REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id())
                     {
@@ -327,7 +332,11 @@ impl Watcher {
                     };
                 }
 
-                (MessageKind::Text { ref data, .. }, Status::RemindCancelPending) => {
+                (
+                    MessageKind::Text { ref data, .. },
+                    MessageChat::Private(_),
+                    Status::RemindCancelPending,
+                ) => {
                     if let Some((_, snd)) =
                         REMIND_PENDING_TABLE.lock().unwrap().remove(&msg.chat.id())
                     {
@@ -356,20 +365,36 @@ impl Watcher {
                         debug!(
                             "Cannot find this chat_id {} in pending table with data {}",
                             msg.chat.id(),
-                            data
+                            data,
                         )
                     };
                 }
-                _ => {}
+
+                _ => {
+                    match self
+                        .send
+                        .send(Msg2Deliver::new(
+                            "send".into(),
+                            msg.chat.id(),
+                            "Nothing for you".into(),
+                        ))
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(e) => {
+                            debug!("Error {} happens in send to unspport match", e.to_string());
+                            return;
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 fn status_checker(msg: &Message) -> Status {
-    if let Some((status, _)) = REMIND_PENDING_TABLE.lock().unwrap().get(&msg.chat.id()) {
-        status.clone()
-    } else {
-        Status::Nil
+    match REMIND_PENDING_TABLE.lock().unwrap().get(&msg.chat.id()) {
+        Some((status, _)) => status.clone(),
+        None => Status::Nil,
     }
 }
