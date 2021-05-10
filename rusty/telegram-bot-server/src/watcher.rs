@@ -39,7 +39,7 @@ enum SpecialMsg {
     CancelReminderPending,
     Check(CheckMsg),
     UnSpport,
-    //UnSpport(String), // reason inside
+    UnSpportMsg(String), // reason inside
 }
 
 enum CheckMsg {
@@ -58,7 +58,7 @@ impl From<&String> for SpecialMsg {
                 }
                 "cancelremind" => Self::CancelReminder(String::new()),
                 "check" => Self::Check(CheckMsg::Nil),
-                _ => Self::UnSpport,
+                a @ _ => Self::UnSpportMsg(String::from(a)),
             }
         } else {
             Self::UnSpport
@@ -73,12 +73,14 @@ impl From<&String> for SpecialMsg {
 
             (Self::CancelReminder(_), None) => Self::CancelReminderPending,
 
-            (re @ Self::UnSpport, _) => re,
-
             (Self::Check(_), a) => match a.as_ref().map(String::as_str) {
                 Some("reminder") => Self::Check(CheckMsg::Reminder),
                 _ => Self::UnSpport,
             },
+
+            (re @ Self::UnSpport, _) => re,
+
+            (re @ Self::UnSpportMsg(_), _) => re,
 
             _ => Self::UnSpport,
         }
@@ -107,6 +109,7 @@ impl Watcher {
         info!("Watcher is running");
         while let Some(msg) = self.ch.recv().await {
             info!("Watcher receive message: {:?}", msg);
+
             // check this chat window status
             let status = status_checker(&msg);
 
@@ -290,6 +293,21 @@ impl Watcher {
                                 }
                             }
                         },
+
+                        SpecialMsg::UnSpportMsg(m) => {
+                            debug!("unsupport {}", data);
+                            match self
+                                .send
+                                .send(Msg2Deliver::new("send".into(), msg.chat.id(), m))
+                                .await
+                            {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    debug!("Error {} happens in pending watcher", e.to_string());
+                                    return;
+                                }
+                            }
+                        }
 
                         SpecialMsg::UnSpport => {
                             debug!("unsupport {}", data)
