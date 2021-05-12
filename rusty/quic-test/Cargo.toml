@@ -7,5 +7,6 @@ edition = "2018"
 
 [dependencies]
 quiche = "0.8.1"
-env_logger = "0.6"
+log = "0.4"
+env_logger = "0.8"
 mio = "0.6"
