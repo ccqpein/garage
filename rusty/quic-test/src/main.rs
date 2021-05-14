@@ -22,6 +22,8 @@ fn main() -> ! {
     )
     .unwrap();
 
+    let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION).unwrap();
+
     //:= don't know what are these
     let rng = SystemRandom::new();
     let conn_id_seed = ring::hmac::Key::generate(ring::hmac::HMAC_SHA256, &rng).unwrap();
@@ -93,6 +95,25 @@ fn main() -> ! {
         scid.copy_from_slice(&conn_id);
 
         let mut odcid: Option<ConnectionId> = None;
+
+        //:= Don't know what is !args.no_retry
+
+        let scid = quiche::ConnectionId::from_vec(scid.to_vec());
+
+        //:= why there are two ids?
+        debug!("New connection: dcid={:?} scid={:?}", hdr.dcid, scid);
+
+        let mut conn = quiche::accept(&scid, odcid.as_ref(), &mut config).unwrap();
+
+        let read = match conn.recv(pkt_buf) {
+            Ok(v) => v,
+
+            Err(e) => {
+                panic!("{} recv failed: {:?}", conn.trace_id(), e);
+            }
+        };
+
+        trace!("{} processed {} bytes", conn.trace_id(), read);
     }
 
     // let config = Config::new(quiche::PROTOCOL_VERSION)?;
