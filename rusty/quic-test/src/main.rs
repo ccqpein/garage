@@ -96,10 +96,58 @@ fn main() -> ! {
 
         let mut odcid: Option<ConnectionId> = None;
 
-        //:= Don't know what is !args.no_retry
+        //
+        // let token = hdr.token.as_ref().unwrap();
+        // if token.is_empty() {
+        //     debug!("Doing stateless retry");
+
+        //     let scid = quiche::ConnectionId::from_ref(&scid);
+        //     let new_token = mint_token(&hdr, &src);
+
+        //     let len = quiche::retry(
+        //         &hdr.scid,
+        //         &hdr.dcid,
+        //         &scid,
+        //         &new_token,
+        //         hdr.version,
+        //         &mut out,
+        //     )
+        //     .unwrap();
+
+        //     let out = &out[..len];
+
+        //     if let Err(e) = socket.send_to(out, &src) {
+        //         if e.kind() == std::io::ErrorKind::WouldBlock {
+        //             trace!("send() would block");
+        //         }
+
+        //         panic!("send() failed: {:?}", e);
+        //     }
+        // }
+
+        //odcid = validate_token(&src, token);
+
+        // The token was not valid, meaning the retry failed, so
+        // drop the packet.
+        if odcid.is_none() {
+            error!("Invalid address validation token");
+            continue;
+        }
+
+        if scid.len() != hdr.dcid.len() {
+            error!("Invalid destination connection ID");
+            continue;
+        }
+
+        // Reuse the source connection ID we sent in the Retry
+        // packet, instead of changing it again.
+        scid.copy_from_slice(&hdr.dcid);
+
+        ////////////
 
         let scid = quiche::ConnectionId::from_vec(scid.to_vec());
 
+        trace!("got packet {:?}", hdr);
         //:= why there are two ids?
         debug!("New connection: dcid={:?} scid={:?}", hdr.dcid, scid);
 
@@ -119,4 +167,43 @@ fn main() -> ! {
     // let config = Config::new(quiche::PROTOCOL_VERSION)?;
     // let conn = quiche::accept(&scid, None, &mut config)?;
     // println!("Hello, world!");
+}
+
+fn mint_token(hdr: &quiche::Header, src: &net::SocketAddr) -> Vec<u8> {
+    let mut token = Vec::new();
+
+    token.extend_from_slice(b"quiche");
+
+    let addr = match src.ip() {
+        std::net::IpAddr::V4(a) => a.octets().to_vec(),
+        std::net::IpAddr::V6(a) => a.octets().to_vec(),
+    };
+
+    token.extend_from_slice(&addr);
+    token.extend_from_slice(&hdr.dcid);
+
+    token
+}
+
+fn validate_token<'a>(src: &net::SocketAddr, token: &'a [u8]) -> Option<quiche::ConnectionId<'a>> {
+    if token.len() < 6 {
+        return None;
+    }
+
+    if &token[..6] != b"quiche" {
+        return None;
+    }
+
+    let token = &token[6..];
+
+    let addr = match src.ip() {
+        std::net::IpAddr::V4(a) => a.octets().to_vec(),
+        std::net::IpAddr::V6(a) => a.octets().to_vec(),
+    };
+
+    if token.len() < addr.len() || &token[..addr.len()] != addr.as_slice() {
+        return None;
+    }
+
+    Some(quiche::ConnectionId::from_ref(&token[addr.len()..]))
 }
