@@ -4,7 +4,7 @@ use quiche::{Config, ConnectionId};
 use ring::rand::*;
 use std::net;
 
-fn main() -> ! {
+fn learn_from_app() {
     env_logger::builder().format_timestamp_nanos().init();
 
     // mio event poll
@@ -207,3 +207,5 @@ fn validate_token<'a>(src: &net::SocketAddr, token: &'a [u8]) -> Option<quiche::
 
     Some(quiche::ConnectionId::from_ref(&token[addr.len()..]))
 }
+
+fn main() {}
