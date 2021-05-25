@@ -10,6 +10,7 @@ body > div.question-picker-detail__Rehh > div.question-picker-detail-menu__1-eB.
 
   * [ ] get question
     * [ ] get special level
+    * [x] get question
   * [ ] get descriptions
     * [ ] parse it to markdown
   * [ ] shuttle questions from problems list

@@ -1,3 +1,5 @@
+mod regex_handle;
+
 use ego_tree::NodeRef;
 use reqwest::blocking::{get, Response};
 use scraper::{ElementRef, Html, Node, Selector};
@@ -49,9 +51,14 @@ fn description_markdown<'a>(ir: impl Iterator<Item = NodeRef<'a, Node>>) -> Vec<
         // Node::Fragment => {}
         // Node::Doctype(_) => {}
         // Node::Comment(_) => {}
-        // Node::Text(_) => {}
+        Node::Text(s) => match s.text.to_string().as_str() {
+            nl @ "\n\n" | nl @ "\n" => Some(nl.to_string()),
+            _ => None,
+        },
         Node::Element(e) => match e.name() {
-            "<p>" => Some(ElementRef::wrap(n).unwrap().inner_html()),
+            "p" => Some(ElementRef::wrap(n).unwrap().inner_html()),
+            "pre" => Some(ElementRef::wrap(n).unwrap().inner_html()), //:= need inner code
+            "ul" => Some(ElementRef::wrap(n).unwrap().inner_html()),
             _ => None,
         },
         //Node::ProcessingInstruction(_) => {}
@@ -100,10 +107,17 @@ mod tests {
     fn test_find_description() {
         let a = include_str!("../tests/questions_description_test_case0");
         let fragment = Html::parse_fragment(a);
-        //description_nodes(&fragment).for_each(|ele| println!("v: {:?}", ele.value()));
+        description_nodes(&fragment).for_each(|ele| println!("v: {:?}", ele.value()));
         let mut vv = description_nodes(&fragment);
         assert_eq!(ElementRef::wrap(vv.next().unwrap()).unwrap().html(),"<p>A conveyor belt has packages that must be shipped from one port to another within <code>days</code> days.</p>".to_string());
         vv.next(); // <- kill Text("\n\n")
         assert_eq!(ElementRef::wrap(vv.next().unwrap()).unwrap().inner_html(),"The <code>i<sup>th</sup></code> package on the conveyor belt has a weight of <code>weights[i]</code>. Each day, we load the ship with packages on the conveyor belt (in the order given by <code>weights</code>). We may not load more weight than the maximum weight capacity of the ship.".to_string());
+    }
+
+    #[test]
+    fn test_description_markdown() {
+        let a = include_str!("../tests/questions_description_test_case0");
+        let fragment = Html::parse_fragment(a);
+        dbg!(description_markdown(description_nodes(&fragment)));
     }
 }
