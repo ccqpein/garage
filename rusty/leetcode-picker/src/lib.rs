@@ -1,6 +1,7 @@
 mod regex_handle;
 
 use ego_tree::NodeRef;
+use regex_handle::*;
 use reqwest::blocking::{get, Response};
 use scraper::{ElementRef, Html, Node, Selector};
 
@@ -51,24 +52,32 @@ fn description_markdown<'a>(ir: impl Iterator<Item = NodeRef<'a, Node>>) -> Vec<
         // Node::Fragment => {}
         // Node::Doctype(_) => {}
         // Node::Comment(_) => {}
-        Node::Text(s) => match s.text.to_string().as_str() {
-            nl @ "\n\n" | nl @ "\n" => Some(nl.to_string()),
-            _ => None,
-        },
+        // Node::Text(s) => match s.text.to_string().as_str() {
+        //     nl @ "\n\n" | nl @ "\n" => Some(nl.to_string()),
+        //     _ => None,
+        // },
+        Node::Text(s) => Some(s.to_string()),
         Node::Element(e) => match e.name() {
             "p" => Some(ElementRef::wrap(n).unwrap().inner_html()),
-            "pre" => Some(ElementRef::wrap(n).unwrap().inner_html()), //:= need inner code
+            "pre" => Some(ElementRef::wrap(n).unwrap().html()),
             "ul" => Some(ElementRef::wrap(n).unwrap().inner_html()),
             _ => None,
         },
         //Node::ProcessingInstruction(_) => {}
         _ => None,
     })
+    .map(|mut chunk| {
+        clean_all_tags(&mut chunk);
+        chunk
+    })
     .collect::<Vec<String>>()
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
+    use std::io::Write;
+
     use super::*;
     use scraper::{ElementRef, Html, Selector};
 
@@ -118,6 +127,12 @@ mod tests {
     fn test_description_markdown() {
         let a = include_str!("../tests/questions_description_test_case0");
         let fragment = Html::parse_fragment(a);
-        dbg!(description_markdown(description_nodes(&fragment)));
+        let content = description_markdown(description_nodes(&fragment));
+        dbg!(&content);
+
+        let mut file = File::create("./tests/questions_description_test_case0.md").unwrap();
+        for c in content {
+            file.write(&c.as_bytes()).unwrap();
+        }
     }
 }
