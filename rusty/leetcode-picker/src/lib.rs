@@ -9,17 +9,22 @@ const QUESTION_ID_SELECTOR: &str = r#"div.question__1Nd3.active__iWA5"#;
 const QUESTION_DESCRIPTION: &str = r#"div.content__u3I1.question-content__JfgR"#;
 
 /// return response
-fn get_quiz_by_name(url: &str) -> Result<Response, String> {
+pub fn get_quiz_by_name(url: &str) -> Result<Response, String> {
     get(url).map_err(|e| e.to_string())
 }
 
-fn parse_response_body(rep: Response) {
+pub fn parse_response_body(rep: Response) {
     match rep.text() {
         Ok(ref s) => {
             let hh = Html::parse_fragment(s);
 
             //:= TODO: get header?
             //:= TODO: get question id
+
+            let q_des = description_nodes(&hh);
+            description_markdown(q_des)
+                .iter()
+                .for_each(|s| println!("{}", s));
         }
         Err(_) => {} //:= todo
     }
@@ -48,14 +53,6 @@ fn description_nodes(h: &Html) -> impl Iterator<Item = NodeRef<'_, Node>> {
 
 fn description_markdown<'a>(ir: impl Iterator<Item = NodeRef<'a, Node>>) -> Vec<String> {
     ir.filter_map(|n| match n.value() {
-        // Node::Document => {}
-        // Node::Fragment => {}
-        // Node::Doctype(_) => {}
-        // Node::Comment(_) => {}
-        // Node::Text(s) => match s.text.to_string().as_str() {
-        //     nl @ "\n\n" | nl @ "\n" => Some(nl.to_string()),
-        //     _ => None,
-        // },
         Node::Text(s) => Some(s.to_string()),
         Node::Element(e) => match e.name() {
             "p" => Some(ElementRef::wrap(n).unwrap().inner_html()),
@@ -63,7 +60,6 @@ fn description_markdown<'a>(ir: impl Iterator<Item = NodeRef<'a, Node>>) -> Vec<
             "ul" => Some(ElementRef::wrap(n).unwrap().inner_html()),
             _ => None,
         },
-        //Node::ProcessingInstruction(_) => {}
         _ => None,
     })
     .map(|mut chunk| {
@@ -87,7 +83,7 @@ mod tests {
 <div class="question__1Nd3 active__iWA5" data-title-slug="capacity-to-ship-packages-within-d-days" data-question-id="1056" data-paid-only="false" title="capacity-to-ship-packages-within-d-days"></div>
 "#;
         let fragment = Html::parse_fragment(a);
-        //let selector = Selector::parse(r#"div[class="question__1Nd3 active__iWA5"]"#).unwrap();
+
         let selector0 = Selector::parse(r#"div.question__1Nd3.active__iWA5"#).unwrap();
 
         for element in fragment.select(&selector0) {
@@ -116,7 +112,9 @@ mod tests {
     fn test_find_description() {
         let a = include_str!("../tests/questions_description_test_case0");
         let fragment = Html::parse_fragment(a);
-        description_nodes(&fragment).for_each(|ele| println!("v: {:?}", ele.value()));
+
+        //description_nodes(&fragment).for_each(|ele| println!("v: {:?}", ele.value()));
+
         let mut vv = description_nodes(&fragment);
         assert_eq!(ElementRef::wrap(vv.next().unwrap()).unwrap().html(),"<p>A conveyor belt has packages that must be shipped from one port to another within <code>days</code> days.</p>".to_string());
         vv.next(); // <- kill Text("\n\n")
