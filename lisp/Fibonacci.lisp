@@ -27,4 +27,4 @@
           (setf (gethash n memo)
                 (if (< n 2)
                     n
-                    (the fixnum (+ (fibonacci-2 (1- n)) (fibonacci-2 (- n 2))))))))))
+                    (+ (fibonacci-2 (1- n)) (fibonacci-2 (- n 2)))))))))
