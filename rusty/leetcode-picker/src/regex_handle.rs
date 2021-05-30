@@ -59,8 +59,8 @@ fn special_sym_clean(text: &str) -> String {
     lazy_static! {
         static ref SPACE_TAG: Regex = Regex::new(r"(?P<data>\&nbsp;?)").unwrap();
         static ref LESS_TAG: Regex = Regex::new(r"(?P<data>\&lt;?)").unwrap();
-        static ref NEWL_TAG: Regex = Regex::new(r"(?P<data>\n+?)").unwrap();
-        static ref TAB_TAG: Regex = Regex::new(r"(?P<data>\t+?)").unwrap();
+        static ref NEWL_TAG: Regex = Regex::new(r"(?P<data>(\\+n)+?)").unwrap();
+        static ref TAB_TAG: Regex = Regex::new(r"(?P<data>(\\+t)+?)").unwrap();
     }
 
     String::from(
@@ -129,6 +129,8 @@ mod tests {
     fn test_special_sym_clean() {
         assert_eq!(special_sym_clean("&nbsp;"), "");
         assert_eq!(special_sym_clean("&nbsp;&lt;="), "<=");
+        assert_eq!(special_sym_clean("\n\n"), "\n\n");
+        assert_eq!(special_sym_clean("\\n\\n"), "\n\n");
     }
 
     #[test]

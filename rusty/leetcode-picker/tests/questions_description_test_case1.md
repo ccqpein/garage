@@ -8,6 +8,7 @@ Return the least weight capacity of the ship that will result in all the package
 **Example 1:**
 
 ```
+
 **Input:** weights = [1,2,3,4,5,6,7,8,9,10], days = 5
 **Output:** 15
 **Explanation:** A ship capacity of 15 is the minimum to ship all the packages in 5 days like this:
@@ -24,6 +25,7 @@ Note that the cargo must be shipped in the order given, so using a ship of capac
 **Example 2:**
 
 ```
+
 **Input:** weights = [3,2,2,4,1,4], days = 3
 **Output:** 6
 **Explanation:** A ship capacity of 6 is the minimum to ship all the packages in 3 days like this:
@@ -36,6 +38,7 @@ Note that the cargo must be shipped in the order given, so using a ship of capac
 **Example 3:**
 
 ```
+
 **Input:** weights = [1,2,3,1,1], days = 4
 **Output:** 3
 **Explanation:**
@@ -50,7 +53,6 @@ Note that the cargo must be shipped in the order given, so using a ship of capac
 **Constraints:**
 
 
-	+ `1 <= days <= weights.length <= 5 * 104`
-	+ `1 <= weights[i] <= 500`
-
+  + `1 <= days <= weights.length <= 5 * 104`
+  + `1 <= weights[i] <= 500`
 
