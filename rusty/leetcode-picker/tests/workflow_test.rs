@@ -1,10 +1,11 @@
 use leetcode_picker::*;
 
 #[test]
-fn work_flow_test() -> Result<(), String> {
-    let rep =
-        get_quiz_by_url("https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/")?;
+fn work_flow_test() {
+    let resp =
+        get_quiz_by_url("https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/")
+            .unwrap();
 
-    response_parse(rep)?;
-    Ok(())
+    assert_eq!(resp.quiz_id().unwrap(), "1056");
+    println!("{}", resp.quiz_description().unwrap()); // pretty print
 }

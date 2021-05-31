@@ -10,6 +10,8 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::sync::Arc;
 
+use super::to_markdown::Quiz;
+
 const LC_GRAPHQL_ENDPOINT: &str = "https://leetcode.com/graphql";
 const LC_GRAPHQL_BODY: [&str; 2] = [
     r#"{"operationName": "questionData", "variables": {"titleSlug": ""#,
@@ -17,11 +19,11 @@ const LC_GRAPHQL_BODY: [&str; 2] = [
 ];
 
 /// return response
-pub fn get_quiz_by_url(url: &str) -> Result<Response, String> {
+pub fn get_quiz_by_url(url: &str) -> Result<Quiz, String> {
     let token = get_csrftoken("./vault/csrftoken")?; //:= need change to some other path
     let cli = make_client(&token, url).map_err(|e| e.to_string())?;
     let req = request_builder(&cli, Method::POST, url, &token).map_err(|e| e.to_string())?;
-    cli.execute(req).map_err(|e| e.to_string())
+    Quiz::from_resp(cli.execute(req).map_err(|e| e.to_string())?)
 }
 
 /// read csrftoken from file
@@ -62,16 +64,6 @@ mod tests {
     use reqwest::blocking::Client;
 
     use super::*;
-
-    #[test]
-    fn test_get_quiz_by_url() {
-        dbg!(get_quiz_by_url(
-            "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/"
-        )
-        .unwrap()
-        .text()
-        .unwrap());
-    }
 
     #[test]
     fn test_request_builder() {

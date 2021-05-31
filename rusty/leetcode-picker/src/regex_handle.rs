@@ -112,11 +112,11 @@ mod tests {
     fn test_strong_tag() {
         assert_eq!(
             strong_tag("aaaaa ggg bb<strong>sss</strong>dd,ddd"),
-            "aaaaa ggg bb*sss*dd,ddd"
+            "aaaaa ggg bb**sss**dd,ddd"
         );
         assert_eq!(
             strong_tag("aaaaa ggg bb<strong>sss</strong>dd,<strong>ddd</strong>"),
-            "aaaaa ggg bb*sss*dd,*ddd*"
+            "aaaaa ggg bb**sss**dd,**ddd**"
         );
     }
 

@@ -2,10 +2,33 @@ use super::regex_handle::*;
 use ego_tree::NodeRef;
 use reqwest::blocking::{get, Response};
 use scraper::{ElementRef, Html, Node, Selector};
-//use serde::{Deserialize, Serialize};
-use serde_json::json;
 
-pub fn graphql_response_parse(rep: Response) -> Result<serde_json::Value, String> {
+pub struct Quiz {
+    data: serde_json::Value,
+}
+
+impl Quiz {
+    pub fn from_resp(resp: Response) -> Result<Self, String> {
+        Ok(Quiz {
+            data: graphql_response_parse(resp)?,
+        })
+    }
+
+    pub fn quiz_id(&self) -> Result<String, String> {
+        find_question_id_from_graphql_req(&self.data)
+    }
+
+    pub fn quiz_pure_description(&self) -> Result<&str, String> {
+        find_question_content(&self.data)
+    }
+
+    pub fn quiz_description(&self) -> Result<String, String> {
+        let fragment = Html::parse_fragment(self.quiz_pure_description()?);
+        Ok(description_markdown(description_in_graphql(&fragment)).join(""))
+    }
+}
+
+fn graphql_response_parse(rep: Response) -> Result<serde_json::Value, String> {
     match rep.text() {
         Ok(c) => serde_json::from_str(&c).map_err(|e| e.to_string()),
         Err(e) => Err(e.to_string()),
@@ -25,11 +48,11 @@ fn find_question_id_from_graphql_req(obj: &serde_json::Value) -> Result<String, 
     }
 }
 
-fn find_question_content(obj: &serde_json::Value) -> Result<String, String> {
+fn find_question_content(obj: &serde_json::Value) -> Result<&str, String> {
     match obj.get("data") {
         Some(d) => match d.get("question") {
             Some(q) => match q.get("content") {
-                Some(id) => id.as_str().map(|x| x.into()).ok_or("Not Found".into()),
+                Some(id) => id.as_str().ok_or("Not Found".into()),
                 None => Err("Not Found".into()),
             },
             None => Err("Not Found".into()),
@@ -188,7 +211,7 @@ mod tests {
         let a = include_str!("../tests/questions_description_test_case1");
         let fragment = Html::parse_fragment(a);
         let content = description_markdown(description_in_graphql(&fragment));
-        dbg!(&content);
+        //dbg!(&content);
 
         let mut file = File::create("./tests/questions_description_test_case1.md").unwrap();
         for c in content {
