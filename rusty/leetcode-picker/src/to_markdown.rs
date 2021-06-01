@@ -1,41 +1,19 @@
 use super::regex_handle::*;
 use ego_tree::NodeRef;
-use reqwest::blocking::{get, Response};
+use reqwest::blocking::Response;
 use scraper::{ElementRef, Html, Node, Selector};
 
-pub struct Quiz {
-    data: serde_json::Value,
-}
-
-impl Quiz {
-    pub fn from_resp(resp: Response) -> Result<Self, String> {
-        Ok(Quiz {
-            data: graphql_response_parse(resp)?,
-        })
-    }
-
-    pub fn quiz_id(&self) -> Result<String, String> {
-        find_question_id_from_graphql_req(&self.data)
-    }
-
-    pub fn quiz_pure_description(&self) -> Result<&str, String> {
-        find_question_content(&self.data)
-    }
-
-    pub fn quiz_description(&self) -> Result<String, String> {
-        let fragment = Html::parse_fragment(self.quiz_pure_description()?);
-        Ok(description_markdown(description_in_graphql(&fragment)).join(""))
-    }
-}
-
-fn graphql_response_parse(rep: Response) -> Result<serde_json::Value, String> {
+pub(super) fn graphql_response_parse(rep: Response) -> Result<serde_json::Value, String> {
     match rep.text() {
-        Ok(c) => serde_json::from_str(&c).map_err(|e| e.to_string()),
+        Ok(c) => {
+            //dbg!(&c);
+            serde_json::from_str(&c).map_err(|e| e.to_string())
+        }
         Err(e) => Err(e.to_string()),
     }
 }
 
-fn find_question_id_from_graphql_req(obj: &serde_json::Value) -> Result<String, String> {
+pub(super) fn find_question_id_from_graphql_req(obj: &serde_json::Value) -> Result<String, String> {
     match obj.get("data") {
         Some(d) => match d.get("question") {
             Some(q) => match q.get("questionId") {
@@ -48,7 +26,7 @@ fn find_question_id_from_graphql_req(obj: &serde_json::Value) -> Result<String, 
     }
 }
 
-fn find_question_content(obj: &serde_json::Value) -> Result<&str, String> {
+pub(super) fn find_question_content(obj: &serde_json::Value) -> Result<&str, String> {
     match obj.get("data") {
         Some(d) => match d.get("question") {
             Some(q) => match q.get("content") {
@@ -61,11 +39,11 @@ fn find_question_content(obj: &serde_json::Value) -> Result<&str, String> {
     }
 }
 
-fn description_in_graphql(h: &Html) -> impl Iterator<Item = NodeRef<'_, Node>> {
+pub(super) fn description_in_graphql(h: &Html) -> impl Iterator<Item = NodeRef<'_, Node>> {
     h.root_element().children()
 }
 
-fn description_markdown<'a>(ir: impl Iterator<Item = NodeRef<'a, Node>>) -> Vec<String> {
+pub(super) fn description_markdown<'a>(ir: impl Iterator<Item = NodeRef<'a, Node>>) -> Vec<String> {
     ir.filter_map(|n| match n.value() {
         Node::Text(s) => Some(s.to_string()),
         Node::Element(e) => match e.name() {

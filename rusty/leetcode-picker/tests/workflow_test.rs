@@ -2,10 +2,23 @@ use leetcode_picker::*;
 
 #[test]
 fn work_flow_test() {
-    let resp =
-        get_quiz_by_url("https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/")
-            .unwrap();
+    let resp = match Quiz::get_by_name("capacity-to-ship-packages-within-d-days") {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{:?}", e);
+            panic!();
+        }
+    };
 
     assert_eq!(resp.quiz_id().unwrap(), "1056");
-    println!("{}", resp.quiz_description().unwrap()); // pretty print
+    //println!("{}", resp.quiz_description().unwrap()); // pretty print
+}
+
+#[test]
+fn random_pick_work_flow_test() {
+    let resp = Quiz::get_randomly(None).unwrap();
+
+    //assert_eq!(resp.quiz_id().unwrap(), "1056");
+    //dbg!(resp.quiz_id().unwrap());
+    //println!("{}", resp.quiz_description().unwrap()); // pretty print
 }
