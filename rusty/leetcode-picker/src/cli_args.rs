@@ -11,8 +11,12 @@ pub struct Args {
     #[clap(long = "name")]
     quiz_name: Option<String>,
 
+    /// quiz id
+    #[clap(long = "id")]
+    quiz_id: Option<u64>,
+
     /// random pick one
-    #[clap(long)]
+    #[clap(short, long)]
     random: bool,
 
     /// interact or not
@@ -21,8 +25,8 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn name(&self) -> &str {
-        self.quiz_name.as_ref().unwrap().as_str()
+    pub fn name(&self) -> &Option<String> {
+        &self.quiz_name
     }
 
     pub fn if_random(&self) -> bool {
@@ -31,5 +35,9 @@ impl Args {
 
     pub fn if_interact(&self) -> bool {
         self.interact
+    }
+
+    pub fn quiz_id(&self) -> &Option<u64> {
+        &self.quiz_id
     }
 }

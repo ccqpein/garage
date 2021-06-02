@@ -4,7 +4,7 @@ use question::{Answer, Question};
 
 fn main() -> Result<(), String> {
     let commandline_args = cli_args::Args::parse();
-    dbg!(&commandline_args);
+    //dbg!(&commandline_args);
     match commandline_args.if_random() {
         true => {
             if commandline_args.if_interact() {
@@ -26,10 +26,22 @@ fn main() -> Result<(), String> {
                 println!("{}", Quiz::get_randomly(None)?)
             }
         }
-        false => {}
+        false => {
+            // try id first
+            if let Some(ref id) = commandline_args.quiz_id() {
+                println!("{}", Quiz::get_by_id(*id)?);
+                return Ok(());
+            }
+
+            // try name then
+            if let Some(ref name) = commandline_args.name() {
+                println!("{}", Quiz::get_by_name(name)?);
+                return Ok(());
+            }
+
+            println!("If it is not random, need more info. Check -h")
+        }
     }
 
-    //let rep = Quiz::get_by_name(commandline_args.name())?;
-    //println!("{}", rep.quiz_description()?);
     Ok(())
 }

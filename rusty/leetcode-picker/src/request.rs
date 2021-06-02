@@ -63,6 +63,35 @@ pub(super) fn get_all_quiz() -> Result<serde_json::Value, String> {
     }
 }
 
+pub(super) fn get_quiz_by_id(id: u64) -> Result<Quiz, String> {
+    let v = get_all_quiz()?;
+    let quiz_list = v
+        .get("stat_status_pairs")
+        .ok_or("Cannot found stat_status_pairs".to_string())?
+        .as_array()
+        .ok_or("Cannot as_array".to_string())?;
+
+    let quiz_name = quiz_list
+        .iter()
+        .find_map(|v| {
+            v.get("stat").map_or(None, |stat| {
+                // fronted id
+                stat.get("frontend_question_id").map_or(None, |v| {
+                    if v.as_u64().unwrap() == id {
+                        stat.get("question__title_slug")
+                    } else {
+                        None
+                    }
+                })
+            })
+        })
+        .ok_or("Cannot found this id".to_string())?
+        .as_str()
+        .ok_or("Cannot parse to string".to_string())?;
+
+    Quiz::get_by_name(quiz_name)
+}
+
 pub(super) fn get_random_quiz() -> Result<Quiz, String> {
     let token = get_csrftoken("./vault/csrftoken")?; //:= need change to some other path
     let cli = make_client(&token, LC_RANDOM_QUIZ_API).map_err(|e| e.to_string())?;

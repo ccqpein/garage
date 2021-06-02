@@ -10,7 +10,7 @@ fn work_flow_test() {
         }
     };
 
-    assert_eq!(resp.quiz_id().unwrap(), "1056");
+    assert_eq!(resp.quiz_id().unwrap(), "1011");
     //println!("{}", resp.quiz_description().unwrap()); // pretty print
 }
 
@@ -21,4 +21,11 @@ fn random_pick_work_flow_test() {
     //assert_eq!(resp.quiz_id().unwrap(), "1056");
     //dbg!(resp.quiz_id().unwrap());
     //println!("{}", resp.quiz_description().unwrap()); // pretty print
+}
+
+#[test]
+fn pick_by_id_work_flow_test() {
+    let resp = Quiz::get_by_id(1011).unwrap();
+    //dbg!(&resp);
+    assert_eq!(resp.quiz_id().unwrap(), "1011");
 }

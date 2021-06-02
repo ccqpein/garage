@@ -37,6 +37,11 @@ impl Quiz {
         get_random_quiz()
     }
 
+    /// get quiz id
+    pub fn get_by_id(id: u64) -> Result<Self, String> {
+        get_quiz_by_id(id)
+    }
+
     pub fn quiz_id(&self) -> Result<String, String> {
         find_question_id_from_graphql_req(&self.content)
     }
