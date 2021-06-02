@@ -13,13 +13,11 @@ body > div.question-picker-detail__Rehh > div.question-picker-detail-menu__1-eB.
     * [x] get question
   * [x] get descriptions
     * [x] parse it to markdown
-  * [ ] shuttle questions from problems list
-    * [ ] need get list first because this app is stateless
   * [ ] Get quiz code template
   * [ ] how to login and get token in this app?
   * [ ] cli arguments
     * [ ] default give random
-    * [ ] `-i` after random means ask user if it is ok
+    * [ ] `-i` after random means ask user if it is ok (sub command)
     * [x] `--name`
-    * [ ] `--id`
+    * [ ] `--id` (cannot find graphql query message of it, might get all quizs then filter)
 
