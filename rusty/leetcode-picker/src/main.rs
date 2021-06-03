@@ -4,12 +4,12 @@ use question::{Answer, Question};
 
 fn main() -> Result<(), String> {
     let commandline_args = cli_args::Args::parse();
-    //dbg!(&commandline_args);
+    dbg!(&commandline_args);
     match commandline_args.if_random() {
         true => {
             if commandline_args.if_interact() {
                 loop {
-                    println!("{}", Quiz::get_randomly(None)?);
+                    println!("{}", Quiz::get_randomly(commandline_args.level())?);
 
                     // ask
                     let a = Question::new("Is this good?")
@@ -23,7 +23,7 @@ fn main() -> Result<(), String> {
                     }
                 }
             } else {
-                println!("{}", Quiz::get_randomly(None)?)
+                println!("{}", Quiz::get_randomly(commandline_args.level())?)
             }
         }
         false => {

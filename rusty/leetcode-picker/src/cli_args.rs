@@ -1,12 +1,11 @@
+use super::Level;
 use clap::Clap;
+use std::str::FromStr;
 
 /// command line arguments
 #[derive(Default, Clap, Debug)]
 #[clap(version = "0.1")]
 pub struct Args {
-    // quiz id
-    // #[clap(long)]
-    // id: usize,
     /// quiz name
     #[clap(long = "name")]
     quiz_name: Option<String>,
@@ -22,6 +21,10 @@ pub struct Args {
     /// interact or not
     #[clap(short)]
     interact: bool,
+
+    /// difficulty of quiz
+    #[clap(short, long)]
+    level: Option<String>,
 }
 
 impl Args {
@@ -39,5 +42,30 @@ impl Args {
 
     pub fn quiz_id(&self) -> &Option<u64> {
         &self.quiz_id
+    }
+
+    pub fn level(&self) -> Option<Level> {
+        match self.level {
+            Some(ref s) => Level::from_str(s).map_or_else(
+                |e| {
+                    println!("{:?}", e.to_string());
+                    None
+                },
+                |a| Some(a),
+            ),
+            None => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_level_parse() {
+        //let a = Args::parse_from(["-l", "easy"]);
+        let a = Args::parse_from(["-l", "easy"]);
+        dbg!(a);
     }
 }

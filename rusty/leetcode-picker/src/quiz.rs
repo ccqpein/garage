@@ -1,7 +1,9 @@
 use std::fmt;
+use std::str::FromStr;
 
 use super::request::*;
 use super::to_markdown::*;
+
 use reqwest::blocking::Response;
 use scraper::Html;
 
@@ -10,13 +12,28 @@ const LC_P: &str = "https://leetcode.com/problems/";
 #[derive(Debug)]
 pub struct Quiz {
     title: String,
+    level: Level,
     content: serde_json::Value,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Level {
     Easy,
     Medium,
     Hard,
+}
+
+impl FromStr for Level {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Easy" => Ok(Self::Easy),
+            "Medium" => Ok(Self::Medium),
+            "Hard" => Ok(Self::Hard),
+            _ => Err("Unspport difficulty".to_string()),
+        }
+    }
 }
 
 impl Quiz {
@@ -24,6 +41,7 @@ impl Quiz {
         let content = graphql_response_parse(resp)?;
         Ok(Quiz {
             title: find_question_title_from_graphql_req(&content)?,
+            level: Level::from_str(&find_question_level_from_graphql_req(&content)?)?,
             content,
         })
     }
@@ -34,7 +52,7 @@ impl Quiz {
 
     /// get quiz randomly
     pub fn get_randomly(level: Option<Level>) -> Result<Self, String> {
-        get_random_quiz()
+        get_random_quiz(level)
     }
 
     /// get quiz id
@@ -54,6 +72,10 @@ impl Quiz {
     pub fn quiz_description(&self) -> Result<String, String> {
         let fragment = Html::parse_fragment(self.quiz_pure_description()?);
         Ok(description_markdown(description_in_graphql(&fragment)).join(""))
+    }
+
+    pub fn quiz_level(&self) -> &Level {
+        &self.level
     }
 }
 

@@ -26,6 +26,21 @@ pub(super) fn find_question_id_from_graphql_req(obj: &serde_json::Value) -> Resu
     }
 }
 
+pub(super) fn find_question_level_from_graphql_req(
+    obj: &serde_json::Value,
+) -> Result<String, String> {
+    match obj.get("data") {
+        Some(d) => match d.get("question") {
+            Some(q) => match q.get("difficulty") {
+                Some(id) => id.as_str().map(|x| x.into()).ok_or("Not Found".into()),
+                None => Err("Not Found".into()),
+            },
+            None => Err("Not Found".into()),
+        },
+        None => Err("Not Found".into()),
+    }
+}
+
 pub(super) fn find_question_title_from_graphql_req(
     obj: &serde_json::Value,
 ) -> Result<String, String> {
