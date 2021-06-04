@@ -64,8 +64,7 @@ mod tests {
 
     #[test]
     fn test_level_parse() {
-        //let a = Args::parse_from(["-l", "easy"]);
-        let a = Args::parse_from(["-l", "easy"]);
+        let a = Args::parse_from(["a", "-l", "e"]);
         dbg!(a);
     }
 }

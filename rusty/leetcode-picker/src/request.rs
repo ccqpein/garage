@@ -28,7 +28,6 @@ const LC_ALL_QUIZ_API: &str = "https://leetcode.com/api/problems/all/";
 /// endpoint of random pick
 const LC_RANDOM_QUIZ_API: &str = "https://leetcode.com/problems/random-one-question/all";
 
-/// csrtoken
 lazy_static! {
     /// csrf token
     static ref CSRFTOKEN: Mutex<Option<String>> = Mutex::new(None);
@@ -157,7 +156,7 @@ fn get_csrftoken(path: impl AsRef<Path>) -> Result<String, String> {
         }
         // this part is meanless when app run. but for test.
         // need to handle err
-        Err(e) => {
+        Err(_) => {
             let mut f = File::open(path).map_err(|e| e.to_string())?;
             let mut buffer = Vec::new();
             f.read_to_end(&mut buffer).map_err(|e| e.to_string())?;

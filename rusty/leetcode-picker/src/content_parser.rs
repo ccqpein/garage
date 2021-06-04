@@ -1,7 +1,7 @@
 use super::regex_handle::*;
 use ego_tree::NodeRef;
 use reqwest::blocking::Response;
-use scraper::{ElementRef, Html, Node, Selector};
+use scraper::{ElementRef, Html, Node};
 
 pub(super) fn graphql_response_parse(rep: Response) -> Result<serde_json::Value, String> {
     match rep.text() {
@@ -89,6 +89,35 @@ pub(super) fn description_markdown<'a>(ir: impl Iterator<Item = NodeRef<'a, Node
         chunk
     })
     .collect::<Vec<String>>()
+}
+
+pub(super) fn find_code_snippets(
+    content: &serde_json::Value,
+) -> Result<&Vec<serde_json::Value>, String> {
+    match content.get("data") {
+        Some(d) => match d.get("question") {
+            Some(q) => match q.get("codeSnippets") {
+                Some(cs) => cs.as_array().ok_or("Not Found".into()),
+                None => Err("Not Found codeSnippets".into()),
+            },
+            None => Err("Not Found question".into()),
+        },
+        None => Err("Not Found data".into()),
+    }
+}
+
+pub(super) fn find_code_snippet<'quiz>(
+    content: &'quiz serde_json::Value,
+    lang: &str,
+) -> Result<Option<&'quiz str>, String> {
+    let all = find_code_snippets(content)?;
+    match all
+        .iter()
+        .find(|v| v.get("langSlug").map_or("", |v| v.as_str().unwrap()) == lang)
+    {
+        Some(cs) => Ok(cs.get("code").unwrap().as_str()),
+        None => Err("Cannot found langSlug".into()),
+    }
 }
 
 #[cfg(test)]
