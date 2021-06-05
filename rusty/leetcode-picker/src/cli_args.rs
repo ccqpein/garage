@@ -25,6 +25,10 @@ pub struct Args {
     /// difficulty of quiz
     #[clap(short, long)]
     level: Option<String>,
+
+    /// show code snippet
+    #[clap(short, long = "code")]
+    code_snippet: Option<String>,
 }
 
 impl Args {
@@ -55,6 +59,10 @@ impl Args {
             ),
             None => None,
         }
+    }
+
+    pub fn if_show_code_snippet(&self) -> &Option<String> {
+        &self.code_snippet
     }
 }
 

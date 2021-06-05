@@ -25,7 +25,7 @@ fn pre_tag(text: &str) -> String {
         static ref PRE_TAG: Regex = Regex::new(r"<pre>(?P<data>(.|\n|\t)*?)</pre>").unwrap();
     }
 
-    String::from(PRE_TAG.replace_all(text, "```\n$data\n```"))
+    String::from(PRE_TAG.replace_all(text, "```\n$data\n```\n"))
 }
 
 /// <ul></ul>

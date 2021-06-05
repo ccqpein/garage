@@ -78,6 +78,8 @@ impl Quiz {
         &self.level
     }
 
+    /// Get code snippet of special language
+    /// if None, give first one
     pub fn code_snippet(&self, lang: &str) -> Option<&str> {
         match find_code_snippet(&self.content, lang) {
             Ok(d) => d,

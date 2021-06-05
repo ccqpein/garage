@@ -2,14 +2,25 @@ use clap::Clap;
 use leetcode_picker::*;
 use question::{Answer, Question};
 
+fn print_code_snippet(arg: &Option<String>, qq: &Quiz) -> Result<(), String> {
+    if let Some(ll) = arg {
+        match qq.code_snippet(ll) {
+            Some(cs) => println!("code snippet:\n{}", cs),
+            None => return Err(format!("Cannot found {} code snippet", ll)),
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<(), String> {
     let commandline_args = cli_args::Args::parse();
-    dbg!(&commandline_args);
+    //dbg!(&commandline_args);
     match commandline_args.if_random() {
         true => {
-            if commandline_args.if_interact() {
+            let qq = if commandline_args.if_interact() {
                 loop {
-                    println!("{}", Quiz::get_randomly(commandline_args.level())?);
+                    let qq = Quiz::get_randomly(commandline_args.level())?;
+                    println!("{}", qq);
 
                     // ask
                     let a = Question::new("Is this good?")
@@ -19,23 +30,34 @@ fn main() -> Result<(), String> {
                         .unwrap();
 
                     if Answer::YES == a {
-                        break;
+                        break qq;
                     }
                 }
             } else {
-                println!("{}", Quiz::get_randomly(commandline_args.level())?)
-            }
+                let qq = Quiz::get_randomly(commandline_args.level())?;
+                println!("{}", qq);
+                qq
+            };
+
+            // show code snippet
+            print_code_snippet(commandline_args.if_show_code_snippet(), &qq)?;
         }
         false => {
             // try id first
             if let Some(ref id) = commandline_args.quiz_id() {
-                println!("{}", Quiz::get_by_id(*id)?);
+                let qq = Quiz::get_by_id(*id)?;
+                println!("{}", qq);
+                // show code snippet
+                print_code_snippet(commandline_args.if_show_code_snippet(), &qq)?;
                 return Ok(());
             }
 
             // try name then
             if let Some(ref name) = commandline_args.name() {
-                println!("{}", Quiz::get_by_name(name)?);
+                let qq = Quiz::get_by_name(name)?;
+                println!("{}", qq);
+                // show code snippet
+                print_code_snippet(commandline_args.if_show_code_snippet(), &qq)?;
                 return Ok(());
             }
 
