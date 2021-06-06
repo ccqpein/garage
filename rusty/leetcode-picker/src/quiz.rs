@@ -13,6 +13,7 @@ const LC_P: &str = "https://leetcode.com/problems/";
 pub struct Quiz {
     title: String,
     level: Level,
+    source_link: String,
     content: serde_json::Value,
 }
 
@@ -37,11 +38,12 @@ impl FromStr for Level {
 }
 
 impl Quiz {
-    pub(super) fn from_resp(resp: Response) -> Result<Self, String> {
+    pub(super) fn from_resp(resp: Response, source_link: String) -> Result<Self, String> {
         let content = graphql_response_parse(resp)?;
         Ok(Quiz {
             title: find_question_title_from_graphql_req(&content)?,
             level: Level::from_str(&find_question_level_from_graphql_req(&content)?)?,
+            source_link,
             content,
         })
     }
@@ -62,6 +64,10 @@ impl Quiz {
 
     pub fn quiz_id(&self) -> Result<String, String> {
         find_question_id_from_graphql_req(&self.content)
+    }
+
+    pub fn quiz_source(&self) -> &str {
+        &self.source_link
     }
 
     pub fn quiz_pure_description(&self) -> Result<&str, String> {

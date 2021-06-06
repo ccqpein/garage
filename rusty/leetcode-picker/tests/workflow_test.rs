@@ -11,7 +11,10 @@ fn work_flow_test() {
     };
 
     assert_eq!(resp.quiz_id().unwrap(), "1011");
-    //println!("{}", resp.quiz_description().unwrap()); // pretty print
+    assert_eq!(
+        resp.quiz_source(),
+        "https://leetcode.com/problems/capacity-to-ship-packages-within-d-days/"
+    );
 }
 
 #[test]

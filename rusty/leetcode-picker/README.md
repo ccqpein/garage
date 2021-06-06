@@ -14,6 +14,6 @@
     * [x] `-i` after random means ask user if it is ok ~~(sub command)~~
     * [x] `--name`
     * [x] `--id` (cannot find graphql query message of it, might get all quizs then filter)
-  * [ ] source link
+  * [x] source link
   * [ ] custom print format
-
+    * [ ] also source link should in format too

@@ -22,6 +22,7 @@ Note that the cargo must be shipped in the order given, so using a ship of capac
 
 ```
 
+
 **Example 2:**
 
 ```
@@ -34,6 +35,7 @@ Note that the cargo must be shipped in the order given, so using a ship of capac
 3rd day: 1, 4
 
 ```
+
 
 **Example 3:**
 
@@ -48,6 +50,7 @@ Note that the cargo must be shipped in the order given, so using a ship of capac
 4th day: 1, 1
 
 ```
+
 
 
 **Constraints:**

@@ -49,7 +49,7 @@ pub(super) fn get_quiz_by_url(url: &str) -> Result<Quiz, String> {
     .map_err(|e| e.to_string())?;
 
     let resp = cli.execute(req).map_err(|e| e.to_string())?;
-    Quiz::from_resp(resp)
+    Quiz::from_resp(resp, url.into())
 }
 
 pub(super) fn get_all_quiz() -> Result<serde_json::Value, String> {

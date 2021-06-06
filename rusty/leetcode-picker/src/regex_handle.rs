@@ -135,8 +135,8 @@ mod tests {
 
     #[test]
     fn test_pre_tag() {
-        assert_eq!(pre_tag("<pre>lalal</pre>"), "```\nlalal\n```");
-        assert_eq!(pre_tag("<pre>**lala**</pre>"), "```\n**lala**\n```");
-        assert_eq!(pre_tag("<pre>**lala**\n</pre>"), "```\n**lala**\n\n```");
+        assert_eq!(pre_tag("<pre>lalal</pre>"), "```\nlalal\n```\n");
+        assert_eq!(pre_tag("<pre>**lala**</pre>"), "```\n**lala**\n```\n");
+        assert_eq!(pre_tag("<pre>**lala**\n</pre>"), "```\n**lala**\n\n```\n");
     }
 }
