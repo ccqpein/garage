@@ -15,6 +15,9 @@ pub struct Quiz {
     level: Level,
     source_link: String,
     content: serde_json::Value,
+
+    // fmt
+    fmt_args: Option<String>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -45,6 +48,8 @@ impl Quiz {
             level: Level::from_str(&find_question_level_from_graphql_req(&content)?)?,
             source_link,
             content,
+
+            fmt_args: None,
         })
     }
 
@@ -95,6 +100,19 @@ impl Quiz {
             }
         }
     }
+
+    pub fn fmt_temp(&self) -> String {
+        match self.fmt_args.as_ref() {
+            Some(s) => s.to_string(),
+            None => String::from("{}: {}\n\n{}"),
+        }
+    }
+}
+
+macro_rules! fmt_temp {
+    ( $e:expr ) => {
+        e.fmt_temp()
+    };
 }
 
 impl fmt::Display for Quiz {
@@ -104,7 +122,31 @@ impl fmt::Display for Quiz {
             "{}: {}\n\n{}",
             self.quiz_id().unwrap(),
             self.title,
-            self.quiz_description().unwrap()
+            self.quiz_description().unwrap(),
         )
+    }
+}
+
+#[cfg(test)]
+impl Quiz {
+    fn new() -> Self {
+        Self {
+            title: String::new(),
+            level: Level::Easy,
+            source_link: String::new(),
+            content: serde_json::Value::Null,
+            fmt_args: Some("{} test".to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_macro_in_format() {
+        let q = Quiz::new();
+        println!(fmt_temp!(q), 1);
     }
 }
