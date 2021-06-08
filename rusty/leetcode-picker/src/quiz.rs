@@ -6,6 +6,8 @@ use super::request::*;
 
 use reqwest::blocking::Response;
 use scraper::Html;
+use serde::Serialize;
+use tinytemplate::TinyTemplate;
 
 const LC_P: &str = "https://leetcode.com/problems/";
 
@@ -20,11 +22,20 @@ pub struct Quiz {
     fmt_args: Option<String>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Serialize, Clone)]
 pub enum Level {
     Easy,
     Medium,
     Hard,
+}
+
+#[derive(Serialize)]
+struct FmtTemplate {
+    level: Level,
+    source: String,
+    title: String,
+    content: String,
+    code_snippet: String,
 }
 
 impl FromStr for Level {
@@ -101,18 +112,28 @@ impl Quiz {
         }
     }
 
-    pub fn fmt_temp(&self) -> String {
+    //:= TEST: need test of this
+    pub fn fmt_temp(&self) -> Result<String, String> {
         match self.fmt_args.as_ref() {
-            Some(s) => s.to_string(),
-            None => String::from("{}: {}\n\n{}"),
+            Some(s) => {
+                // make template
+                let mut tt = TinyTemplate::new();
+                tt.add_template("quiz", s).map_err(|e| e.to_string())?;
+                tt.render(
+                    "quiz",
+                    &FmtTemplate {
+                        level: self.level.clone(),
+                        source: self.source_link.clone(),
+                        title: self.title.clone(),
+                        content: self.quiz_description()?,
+                        code_snippet: String::new(), //:= need input language
+                    },
+                )
+                .map_err(|e| e.to_string())
+            }
+            None => Ok(String::from("{}: {}\n\n{}")),
         }
     }
-}
-
-macro_rules! fmt_temp {
-    ( $e:expr ) => {
-        e.fmt_temp()
-    };
 }
 
 impl fmt::Display for Quiz {
@@ -147,6 +168,5 @@ mod tests {
     #[test]
     fn test_macro_in_format() {
         let q = Quiz::new();
-        println!(fmt_temp!(q), 1);
     }
 }
