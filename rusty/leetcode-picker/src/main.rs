@@ -20,7 +20,7 @@ fn main() -> Result<(), String> {
             let qq = if commandline_args.if_interact() {
                 loop {
                     let qq = Quiz::get_randomly(commandline_args.level())?;
-                    println!("{}", qq);
+                    println!("{}", qq.use_fmt_temp(commandline_args.template())?);
 
                     // ask
                     let a = Question::new("Is this good?")
@@ -35,7 +35,7 @@ fn main() -> Result<(), String> {
                 }
             } else {
                 let qq = Quiz::get_randomly(commandline_args.level())?;
-                println!("{}", qq);
+                println!("{}", qq.use_fmt_temp(commandline_args.template())?);
                 qq
             };
 
@@ -46,7 +46,7 @@ fn main() -> Result<(), String> {
             // try id first
             if let Some(ref id) = commandline_args.quiz_id() {
                 let qq = Quiz::get_by_id(*id)?;
-                println!("{}", qq);
+                println!("{}", qq.use_fmt_temp(commandline_args.template())?);
                 // show code snippet
                 print_code_snippet(commandline_args.if_show_code_snippet(), &qq)?;
                 return Ok(());
@@ -55,7 +55,7 @@ fn main() -> Result<(), String> {
             // try name then
             if let Some(ref name) = commandline_args.name() {
                 let qq = Quiz::get_by_name(name)?;
-                println!("{}", qq);
+                println!("{}", qq.use_fmt_temp(commandline_args.template())?);
                 // show code snippet
                 print_code_snippet(commandline_args.if_show_code_snippet(), &qq)?;
                 return Ok(());

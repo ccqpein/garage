@@ -17,9 +17,6 @@ pub struct Quiz {
     level: Level,
     source_link: String,
     content: serde_json::Value,
-
-    // fmt
-    fmt_args: Option<String>,
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Clone)]
@@ -59,8 +56,6 @@ impl Quiz {
             level: Level::from_str(&find_question_level_from_graphql_req(&content)?)?,
             source_link,
             content,
-
-            fmt_args: None,
         })
     }
 
@@ -112,13 +107,14 @@ impl Quiz {
         }
     }
 
-    //:= TEST: need test of this
-    pub fn fmt_temp(&self) -> Result<String, String> {
-        match self.fmt_args.as_ref() {
+    /// Parse content in template
+    pub fn use_fmt_temp(&self, temp: &Option<String>) -> Result<String, String> {
+        match temp {
             Some(s) => {
                 // make template
                 let mut tt = TinyTemplate::new();
                 tt.add_template("quiz", s).map_err(|e| e.to_string())?;
+
                 tt.render(
                     "quiz",
                     &FmtTemplate {
@@ -131,7 +127,7 @@ impl Quiz {
                 )
                 .map_err(|e| e.to_string())
             }
-            None => Ok(String::from("{}: {}\n\n{}")),
+            None => Ok(format!("{}", self)), //default format
         }
     }
 }
@@ -156,7 +152,6 @@ impl Quiz {
             level: Level::Easy,
             source_link: String::new(),
             content: serde_json::Value::Null,
-            fmt_args: Some("{} test".to_string()),
         }
     }
 }
@@ -166,7 +161,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_macro_in_format() {
-        let q = Quiz::new();
+    fn test_fmt_temp() {
+        //let mut q = Quiz::new();
+        let s = "README {source}, {title}; {content}..{level}";
+
+        // make template
+        let mut tt = TinyTemplate::new();
+        tt.add_template("quiz", s)
+            .map_err(|e| e.to_string())
+            .unwrap();
+
+        let result = tt
+            .render(
+                "quiz",
+                &FmtTemplate {
+                    level: Level::Easy,
+                    source: "linklink".to_string(),
+                    title: "titititle".to_string(),
+                    content: "main content".to_string(),
+                    code_snippet: String::new(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(result, "README linklink, titititle; main content..Easy");
     }
 }

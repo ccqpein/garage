@@ -15,5 +15,5 @@
     * [x] `--name`
     * [x] `--id` (cannot find graphql query message of it, might get all quizs then filter)
   * [x] source link
-  * [ ] custom print format
-    * [ ] also source link should in format too
+  * [x] custom print format
+    * [x] also source link should in format too

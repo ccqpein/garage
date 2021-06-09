@@ -29,6 +29,13 @@ pub struct Args {
     /// show code snippet
     #[clap(short, long = "code")]
     code_snippet: Option<String>,
+
+    /// template string
+    #[clap(long = "temp-str")]
+    temp_str: Option<String>,
+    // /// template file
+    // #[clap(short, long = "temp-file")]
+    // temp_file: Option<String>,
 }
 
 impl Args {
@@ -63,6 +70,10 @@ impl Args {
 
     pub fn if_show_code_snippet(&self) -> &Option<String> {
         &self.code_snippet
+    }
+
+    pub fn template(&self) -> &Option<String> {
+        &self.temp_str
     }
 }
 
