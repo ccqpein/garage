@@ -1,6 +1,11 @@
+// protoc --proto_path=../protocols --go_out=. --go_opt=paths=import hello.protoprotoc --proto_path=../protocols --go_out=. --go_opt=paths=import --go-grpc_out=. --go-grpc_opt=paths=import hello.proto
 syntax = "proto3";
 
 option go_package = "protocols/hello";
+
+service HelloWorld {
+  rpc SayHello (HelloRequest) returns (HelloResponse) {}
+}
 
 message HelloRequest {
   string clientType = 1;
