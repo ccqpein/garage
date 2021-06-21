@@ -21,7 +21,7 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 func clientRPC() {
-	conn, err := grpc.Dial("127.0.0.1:9090", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
+	conn, err := grpc.Dial("[::1]:9090", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -29,7 +29,7 @@ func clientRPC() {
 	defer conn.Close()
 
 	client := pb.NewHelloWorldClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	for {
@@ -41,7 +41,6 @@ func clientRPC() {
 
 		log.Printf("Resp: %s", r.GetMessageBody())
 	}
-
 }
 
 func main() {
