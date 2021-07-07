@@ -52,4 +52,5 @@ impl<S> Functor for A<S> {
 fn main() {
     let a = A { inner: 2 };
     assert_eq!(a.fmap(|x| *x + 2), 4);
+    assert_eq!(a.fmap(|x| (*x + 2).to_string()), "4".to_string());
 }
