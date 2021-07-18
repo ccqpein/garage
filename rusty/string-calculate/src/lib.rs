@@ -1,1 +1,3 @@
-pub mod add;
+mod add;
+
+pub use add::*;

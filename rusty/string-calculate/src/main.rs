@@ -1,3 +1,8 @@
+use string_calculate::*;
+
 fn main() {
-    println!("Hello, world!");
+    let a = QStr::new("123");
+    let b = QStr::new("456");
+
+    println!("{}", a + b);
 }

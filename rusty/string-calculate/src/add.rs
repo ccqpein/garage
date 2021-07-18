@@ -1,42 +1,83 @@
+use std::fmt;
 use std::ops::Add;
 
-pub trait AddStr<Rhs = Self> {
-    type Output;
+#[derive(Debug)]
+pub struct QStr {
+    inner: Box<Vec<u8>>,
 }
 
-impl Add for String {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-        addition(self, other)
+impl fmt::Display for QStr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.inner
+                .as_ref()
+                .iter()
+                .map(|d| d.to_string())
+                .collect::<Vec<String>>()
+                .join("")
+        )
     }
 }
 
-pub fn addition(num1: String, num2: String) -> String {
-    let mut result = vec![];
-    let num1_ = (0..num1.len())
-        .into_iter()
-        .map(|ind| &num1[ind..ind + 1])
-        .map(|s| s.parse().unwrap())
-        .rev()
-        .collect::<Vec<u8>>();
+impl QStr {
+    pub fn new(s: &str) -> Self {
+        let a = (0..s.len())
+            .into_iter()
+            .map(|ind| &s[ind..ind + 1])
+            .map(|s| s.parse().unwrap())
+            .rev()
+            .collect::<Vec<u8>>();
 
-    let num2_ = (0..num2.len())
-        .into_iter()
-        .map(|ind| &num2[ind..ind + 1])
-        .map(|s| s.parse().unwrap())
-        .rev()
-        .collect::<Vec<u8>>();
-
-    let mut a = 0;
-
-    addition_(&num1_, &num2_, &mut a, &mut result);
-    result
-        .into_iter()
-        .rev()
-        .map(|d| d.to_string())
-        .collect::<Vec<String>>()
-        .join("")
+        Self { inner: Box::new(a) }
+    }
 }
+
+impl Add for QStr {
+    type Output = QStr;
+    fn add(self, other: Self) -> QStr {
+        let (mut a, mut result) = (0, vec![]);
+
+        addition_(
+            self.inner.as_ref().as_ref(),
+            other.inner.as_ref().as_ref(),
+            &mut a,
+            &mut result,
+        );
+
+        QStr {
+            inner: Box::new(result.into_iter().rev().collect::<Vec<_>>()),
+        }
+    }
+}
+
+// pub fn addition(num1: String, num2: String) -> String {
+//     let mut result = vec![];
+//     let num1_ = (0..num1.len())
+//         .into_iter()
+//         .map(|ind| &num1[ind..ind + 1])
+//         .map(|s| s.parse().unwrap())
+//         .rev()
+//         .collect::<Vec<u8>>();
+
+//     let num2_ = (0..num2.len())
+//         .into_iter()
+//         .map(|ind| &num2[ind..ind + 1])
+//         .map(|s| s.parse().unwrap())
+//         .rev()
+//         .collect::<Vec<u8>>();
+
+//     let mut a = 0;
+
+//     addition_(&num1_, &num2_, &mut a, &mut result);
+//     result
+//         .into_iter()
+//         .rev()
+//         .map(|d| d.to_string())
+//         .collect::<Vec<String>>()
+//         .join("")
+// }
 
 fn addition_(num1: &[u8], num2: &[u8], a: &mut u8, result: &mut Vec<u8>) {
     match (num1, num2) {
