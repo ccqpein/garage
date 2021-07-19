@@ -52,33 +52,6 @@ impl Add for QStr {
     }
 }
 
-// pub fn addition(num1: String, num2: String) -> String {
-//     let mut result = vec![];
-//     let num1_ = (0..num1.len())
-//         .into_iter()
-//         .map(|ind| &num1[ind..ind + 1])
-//         .map(|s| s.parse().unwrap())
-//         .rev()
-//         .collect::<Vec<u8>>();
-
-//     let num2_ = (0..num2.len())
-//         .into_iter()
-//         .map(|ind| &num2[ind..ind + 1])
-//         .map(|s| s.parse().unwrap())
-//         .rev()
-//         .collect::<Vec<u8>>();
-
-//     let mut a = 0;
-
-//     addition_(&num1_, &num2_, &mut a, &mut result);
-//     result
-//         .into_iter()
-//         .rev()
-//         .map(|d| d.to_string())
-//         .collect::<Vec<String>>()
-//         .join("")
-// }
-
 fn addition_(num1: &[u8], num2: &[u8], a: &mut u8, result: &mut Vec<u8>) {
     match (num1, num2) {
         (e @ [], [n, tail @ ..]) | ([n, tail @ ..], e @ []) => {
