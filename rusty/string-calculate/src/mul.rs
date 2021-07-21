@@ -1,4 +1,15 @@
 use super::{add::*, *};
+use std::ops::Mul;
+
+impl Mul for QStr {
+    type Output = Self;
+    fn mul(self, other: Self) -> <Self as Mul>::Output {
+        let result = mul(self.inner.as_ref().as_ref(), other.inner.as_ref().as_ref());
+        QStr {
+            inner: Box::new(result.into_iter().collect::<Vec<_>>()),
+        }
+    }
+}
 
 /// num1 * num2
 fn mul(num1: &[u8], num2: &[u8]) -> Vec<u8> {
@@ -19,21 +30,21 @@ fn mul(num1: &[u8], num2: &[u8]) -> Vec<u8> {
 
 fn mul_single(num1: &[u8], num2: &u8, result: &mut Vec<u8>) {
     let mut add = 0;
-    {
-        for n1 in num1 {
-            let mut a = num2 * n1;
-            a += add;
-            if a >= 10 {
-                result.push(a % 10);
-                add = a / 10;
-            } else {
-                add = 0;
-                result.push(a);
-            }
+
+    for n1 in num1 {
+        let mut a = num2 * n1;
+        a += add;
+        if a >= 10 {
+            result.push(a % 10);
+            add = a / 10;
+        } else {
+            add = 0;
+            result.push(a);
         }
-        if add != 0 {
-            result.push(add);
-        }
+    }
+
+    if add != 0 {
+        result.push(add);
     }
 }
 
@@ -48,5 +59,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mul() {}
+    fn test_mul() {
+        assert_eq!(mul(&[3, 2, 1], &[6, 5, 4]), vec![8, 8, 0, 6, 5]);
+    }
 }

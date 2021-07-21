@@ -3,9 +3,7 @@ mod mul;
 
 use std::fmt;
 
-pub use add::*;
-
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct QStr {
     inner: Box<Vec<u8>>,
 }
@@ -18,6 +16,7 @@ impl fmt::Display for QStr {
             self.inner
                 .as_ref()
                 .iter()
+                .rev()
                 .map(|d| d.to_string())
                 .collect::<Vec<String>>()
                 .join("")

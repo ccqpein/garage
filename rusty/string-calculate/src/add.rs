@@ -7,7 +7,7 @@ impl Add for QStr {
         let result = addition(self.inner.as_ref().as_ref(), other.inner.as_ref().as_ref());
 
         QStr {
-            inner: Box::new(result.into_iter().rev().collect::<Vec<_>>()),
+            inner: Box::new(result.into_iter().collect::<Vec<_>>()),
         }
     }
 }
@@ -51,5 +51,15 @@ fn addition_(num1: &[u8], num2: &[u8], a: &mut u8, result: &mut Vec<u8>) {
             }
             return;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_addition() {
+        assert_eq!(vec![9, 7, 5], addition(&[3, 2, 1], &[6, 5, 4]));
+        assert_eq!(vec![5, 5, 2, 1], addition(&[6, 4, 3], &[9, 0, 9]));
     }
 }
