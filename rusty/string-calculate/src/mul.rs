@@ -4,9 +4,9 @@ use std::ops::Mul;
 impl Mul for QStr {
     type Output = Self;
     fn mul(self, other: Self) -> <Self as Mul>::Output {
-        let result = mul(self.inner.as_ref().as_ref(), other.inner.as_ref().as_ref());
+        let result = mul(self.inner.as_ref(), other.inner.as_ref());
         QStr {
-            inner: Box::new(result.into_iter().collect::<Vec<_>>()),
+            inner: result.into_iter().collect::<Vec<_>>(),
         }
     }
 }
@@ -21,11 +21,7 @@ fn mul(num1: &[u8], num2: &[u8]) -> Vec<u8> {
         result.push(cache);
     }
 
-    result
-        .into_iter()
-        .reduce(|a, b| addition(&a, &b))
-        .unwrap()
-        .clone()
+    result.into_iter().reduce(|a, b| addition(&a, &b)).unwrap()
 }
 
 fn mul_single(num1: &[u8], num2: &u8, result: &mut Vec<u8>) {

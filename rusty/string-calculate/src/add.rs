@@ -4,10 +4,10 @@ use std::ops::Add;
 impl Add for QStr {
     type Output = QStr;
     fn add(self, other: Self) -> QStr {
-        let result = addition(self.inner.as_ref().as_ref(), other.inner.as_ref().as_ref());
+        let result = addition(self.inner.as_ref(), other.inner.as_ref());
 
         QStr {
-            inner: Box::new(result.into_iter().collect::<Vec<_>>()),
+            inner: result.into_iter().collect::<Vec<_>>(),
         }
     }
 }
@@ -30,7 +30,6 @@ fn addition_(num1: &[u8], num2: &[u8], a: &mut u8, result: &mut Vec<u8>) {
             } else {
                 result.push(this);
                 result.extend_from_slice(tail);
-                return;
             }
         }
         ([n1, tail1 @ ..], [n2, tail2 @ ..]) => {
@@ -38,18 +37,16 @@ fn addition_(num1: &[u8], num2: &[u8], a: &mut u8, result: &mut Vec<u8>) {
             if this >= 10 {
                 result.push(this % 10);
                 *a = 1;
-                addition_(tail1, tail2, a, result)
             } else {
                 result.push(this);
                 *a = 0;
-                addition_(tail1, tail2, a, result)
             }
+            addition_(tail1, tail2, a, result)
         }
         ([], []) => {
             if *a != 0 {
                 result.push(*a);
             }
-            return;
         }
     }
 }

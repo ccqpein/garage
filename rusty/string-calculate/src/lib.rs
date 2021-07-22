@@ -5,7 +5,7 @@ use std::fmt;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct QStr {
-    inner: Box<Vec<u8>>,
+    inner: Vec<u8>,
 }
 
 impl fmt::Display for QStr {
@@ -14,7 +14,6 @@ impl fmt::Display for QStr {
             f,
             "{}",
             self.inner
-                .as_ref()
                 .iter()
                 .rev()
                 .map(|d| d.to_string())
@@ -25,14 +24,24 @@ impl fmt::Display for QStr {
 }
 
 impl QStr {
-    pub fn new(s: &str) -> Self {
+    pub fn new(s: &str) -> Result<Self, String> {
         let a = (0..s.len())
             .into_iter()
             .map(|ind| &s[ind..ind + 1])
-            .map(|s| s.parse().unwrap())
-            .rev()
-            .collect::<Vec<u8>>();
+            .map(|s| s.parse());
 
-        Self { inner: Box::new(a) }
+        let mut cache: Vec<u8> = vec![];
+
+        for aa in a {
+            if !aa.is_ok() {
+                return Err("Chars have to be number".to_string());
+            } else {
+                cache.push(aa.unwrap())
+            }
+        }
+
+        cache.reverse();
+
+        Ok(Self { inner: cache })
     }
 }
