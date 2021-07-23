@@ -1,4 +1,5 @@
 mod add;
+mod div;
 mod mul;
 
 use std::fmt;

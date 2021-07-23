@@ -23,11 +23,19 @@ fn over_flow_test() -> Result<(), String> {
 }
 
 #[test]
-fn some_tests() -> Result<(), String> {
+fn normal_tests() -> Result<(), String> {
     assert_eq!(
         QStr::new("1000")? * QStr::new("5000")?,
         QStr::new("5000000")?
     );
+
+    let a = QStr::new("123")?;
+    let b = QStr::new("456")?;
+
+    dbg!(&a);
+    dbg!(&b);
+
+    assert_eq!(QStr::new("579")?, a + b);
 
     Ok(())
 }
