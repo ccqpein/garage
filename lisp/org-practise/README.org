@@ -1,0 +1,4 @@
+#+TITLE: Practice of Org mode
+
+Follow this [[https://www.youtube.com/playlist?list=PLVtKhBrRV_ZkPnBtt_TD1Cs9PJlU0IIdE][tutorial]].
+
