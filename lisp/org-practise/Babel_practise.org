@@ -1,10 +1,5 @@
-* E01S01 Headlines
-
-** alt -> 
-
 * Babel practise
-
+  need run slime first
   #+begin_src lisp
     (+ 1 2)
   #+end_src
-

@@ -1,0 +1,62 @@
+#+TODO: A B C GG | D E 
+* E01S01 Headlines
+
+** alt upper
+
+** alt -> 
+
+** move headline with C-c C-w
+
+* E02S01 ToDo keywords
+
+  need run C-c C-c refresh
+  
+** A shift -> <-
+
+* E03S01 Schedule
+  need run ~C-c [~ (org-agenda-file-to-front) to add this file to agenda first.
+  Or put this file inside `org-agenda-files` var, which defined inside [[~/.emacs.d/lisp/init-org.el][org init]]
+
+** scheduled
+   view them inside ~C-c a~ a. And keys document in [[https://orgmode.org/manual/Agenda-Commands.html][agenda command]]
+   
+** aaaaa SCHEDULED: <2021-07-24 Sat 13:00>
+   C-c C-s
+
+** B deadline
+   DEADLINE: <2021-07-24 Sat>
+   C-c C-d
+
+** B more 
+   SCHEDULED: <2021-07-25 Sun>
+   aaaa
+
+* E04S01 Repeating tasks
+
+** Repeat
+   SCHEDULED: <2021-07-25 Sun +1w>
+   
+  - +1w Next occurence in one week. (w=week, d=day, m=month, y=year)
+  - ++1w Next occurence on the same day of week, but definitely in the future.
+  - .+4w Next occurence 4 weeks after the task is marked as
+   done.
+
+   =verbatim text= and ~code~
+   
+* E05S01 Checklists
+  aaaaa[1/3]
+  - [ ] one
+  - [X] two
+  - [ ] three (add alt+shift+return)
+
+* Some key shortcut
+  
+** shift -> gonna change the style of tasks [/]
+  - [ ] aa
+  - [ ] bb
+  - [ ] cc
+
+** alt shift -> gonna move tasks (if first one, then the whole) below to right a bit
+   - aa
+   - bb
+   - cc
