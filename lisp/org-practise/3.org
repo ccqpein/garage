@@ -1,0 +1,29 @@
+#+TODO: AA(a@/!) BB(b/!) | DONE
+
+* E3S1 Function: Automatic logging of status changes
+  
+** AA test
+   :LOGBOOK:
+   - State "AA"         from              [2021-07-25 Sun 13:46] \\
+     aaaa
+   - State "BB"         from              [2021-07-25 Sun 13:45]
+   - State "BB"         from              [2021-07-25 Sun 13:45] \\
+     ajiajisi
+   :END:
+
+** DONE ttest
+   CLOSED: [2021-07-25 Sun 13:47]
+   :LOGBOOK:
+   - State "DONE"       from "BB"         [2021-07-25 Sun 13:47]
+   - State "BB"         from "AA"         [2021-07-25 Sun 13:46]
+   :END:
+   
+** DONE testbbb
+   CLOSED: [2021-07-25 Sun 13:48]
+   :LOGBOOK:
+   - State "DONE"       from "BB"         [2021-07-25 Sun 13:48]
+   :END:
+   fsdfsdfds
+
+* E3S2
+

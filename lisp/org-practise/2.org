@@ -1,0 +1,34 @@
+#+TAGS: AA BB @hh(h)
+#+TAGS: [ Grandfather : Father Uncle]
+#+TAGS: [ Father : F(f) ]
+#+TAGS: [ Uncle : U(u) ]
+
+* E2S1 Tags                                                             :@hh:
+  
+** father                                                        :Father:F:U:
+
+** father                                                                 :F:
+
+   
+* E2S3 Customized agenda views
+
+  
+* E2S4
+** fff
+   
+   :INSIDE:
+   This is inside the drawer.  
+   :END:
+
+   :LOGBOOK:
+   - Note taken on [2021-07-25 Sun 12:13] \\
+     aaaa
+   :END:
+
+* E02S05 Function: Archiving
+  # C-u C-c C-x C-s pick which to archive one by one
+** bbb
+** vcccc
+** dddd
+** ffff
+** ggg
