@@ -66,7 +66,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rt.block_on(async {
         Server::builder()
-            .add_service(HelloWorldServer::new(server))
+            .accept_http1(true)
+            .add_service(tonic_web::enable(HelloWorldServer::new(server)))
             .serve(addr)
             .await
             .unwrap()
