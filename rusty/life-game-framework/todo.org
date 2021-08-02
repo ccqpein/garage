@@ -1,0 +1,5 @@
+* life-game-framework
+  Prepare for AOC lifegame related questions.
+
+  
+** TODO func call for map

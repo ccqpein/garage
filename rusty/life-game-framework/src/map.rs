@@ -1,57 +1,195 @@
-#![feature(const_evaluatable_checked)]
-
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-#[derive(Debug)]
-struct Node<const D: usize> {
-    coord: [isize; D],
-    neighbours: Vec<Rc<RefCell<Self>>>,
+#[derive(Debug, Clone)]
+struct Node<T: Clone> {
+    val: T,
 }
 
-impl<const D: usize> Node<D> {
-    #[inline]
-    fn new(coord: [isize; D]) -> Self {
-        Self {
-            coord,
-            neighbours: vec![],
+impl<T: Clone> Node<T> {
+    fn new(val: T) -> Self {
+        Self { val }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum Layer<T: Clone> {
+    Map(Map<T>),
+    Node(Node<T>),
+}
+
+impl<T: Clone> Layer<T> {
+    fn get(&self, index: impl AsRef<[usize]>) -> Option<&Layer<T>> {
+        if index.as_ref().is_empty() {
+            Some(&self)
+        } else {
+            match self {
+                Layer::Map(m) => m.get(index),
+                re @ Layer::Node(_) => Some(re),
+            }
         }
     }
 
-    fn add_neighbours(&mut self, neighbours: Vec<Rc<RefCell<Self>>>) {
-        self.neighbours = neighbours
+    fn get_mut(&mut self, index: impl AsRef<[usize]>) -> Option<&mut Layer<T>> {
+        if index.as_ref().is_empty() {
+            Some(self)
+        } else {
+            match self {
+                Layer::Map(m) => m.get_mut(index),
+                re @ Layer::Node(_) => Some(re),
+            }
+        }
     }
 }
 
-struct MapConfig<const D: usize> {
-    ranges: [(isize, isize); D],
-    unit_size: isize,
+#[derive(Debug, Clone)]
+struct Map<T>
+where
+    T: Clone,
+{
+    dimension: usize,
+
+    /// from 0 to range
+    range: usize,
+    /// each size of unit
+    unit_size: usize,
+
+    layer: HashMap<usize, Layer<T>>,
 }
 
-impl<const D: usize> MapConfig<D> {
-    fn new(ranges: [(isize, isize); D], unit_size: isize) -> Self {
-        Self { ranges, unit_size }
+impl<T: Clone> Map<T> {
+    /// new empty map
+    fn new(dim: usize, range: usize, unit_size: usize, init_val: T) -> Self {
+        if dim < 1 {
+            panic!("dimension less than 1");
+        }
+
+        if dim == 1 {
+            Map {
+                dimension: dim,
+                range,
+                unit_size,
+                layer: {
+                    (0..range)
+                        .into_iter()
+                        .step_by(unit_size)
+                        .map(|d| (d, Layer::Node(Node::new(init_val.clone()))))
+                        .collect::<HashMap<usize, Layer<T>>>()
+                },
+            }
+        } else {
+            Map {
+                dimension: dim,
+                range,
+                unit_size,
+                layer: {
+                    (0..range)
+                        .into_iter()
+                        .step_by(unit_size)
+                        .map(|d| {
+                            (
+                                d,
+                                Layer::Map(Map::new(dim - 1, range, unit_size, init_val.clone())),
+                            )
+                        })
+                        .collect::<HashMap<usize, Layer<T>>>()
+                },
+            }
+        }
+    }
+
+    /// recursively get layer
+    fn get(&self, index: impl AsRef<[usize]>) -> Option<&Layer<T>> {
+        match index.as_ref().get(0) {
+            Some(first) => match self.get_layer(first) {
+                re @ Some(next) => match index.as_ref().get(1..) {
+                    Some(tail) => next.get(tail),
+                    None => re,
+                },
+                None => None,
+            },
+            None => None,
+        }
+    }
+
+    fn get_layer(&self, ind: &usize) -> Option<&Layer<T>> {
+        if self.dimension == 0 {
+            None
+        } else {
+            self.layer.get(ind)
+        }
+    }
+
+    fn get_mut(&mut self, index: impl AsRef<[usize]>) -> Option<&mut Layer<T>> {
+        match index.as_ref().get(0) {
+            Some(first) => match self.get_layer_mut(first) {
+                Some(next) => match index.as_ref().get(1..) {
+                    Some(tail) => next.get_mut(tail),
+                    None => Some(next),
+                },
+                None => None,
+            },
+            None => None,
+        }
+    }
+
+    fn get_layer_mut(&mut self, ind: &usize) -> Option<&mut Layer<T>> {
+        if self.dimension == 0 {
+            None
+        } else {
+            self.layer.get_mut(ind)
+        }
+    }
+
+    fn count(&self) -> usize {
+        if self.dimension == 1 {
+            self.layer.keys().count()
+        } else {
+            self.layer
+                .values()
+                .map(|v| match v {
+                    Layer::Map(m) => m.count(),
+                    Layer::Node(_) => unreachable!(),
+                })
+                .sum()
+        }
     }
 }
 
-/// D is dimension of this map, 3 or 2.
-struct Map<const D: usize> {
-    /// key is coord
-    table: HashMap<[isize; D], Rc<RefCell<Node<D>>>>,
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl<const D: usize> Map<D> {
-    // fn new(start_point:[isize;D], end_point:[isize;D], unit_size:isize) {
-    //     // dimension
-    //     for dim in start_point.len(){
+    #[test]
+    fn test_new_map_get() {
+        let m = Map::new(3, 3, 1, 10);
+        //dbg!(&m);
+        //dbg!([0,].get(1..)); // Some([])
+        //dbg!([0,].get(2..)); // None
+        assert_eq!(m.count(), 27);
+        assert!(m.get([]).is_none());
 
-    //     }
-    // }
+        match m.get([0, 1, 1]) {
+            Some(&Layer::Node(Node { val })) => assert_eq!(val, 10),
+            _ => panic!("shouldn't be none or map"),
+        };
+    }
 
-    fn new(self) -> Map<D> {}
-}
+    #[test]
+    fn test_new_map_get_mut() {
+        let mut m = Map::new(3, 3, 1, 10);
+        match m.get_mut([1, 1, 1]) {
+            Some(Layer::Node(n)) => n.val = 100,
+            _ => panic!(),
+        }
 
-impl<const D: usize> From<&MapConfig<D>> for Map<D> {
-    fn from(conf: &MapConfig<D>) -> Self {
-        //let start
+        match m.get([1, 1, 1]) {
+            Some(Layer::Node(n)) => assert_eq!(n.val, 100),
+            _ => panic!(),
+        }
+
+        match m.get([1, 1, 0]) {
+            Some(Layer::Node(n)) => assert_eq!(n.val, 10),
+            _ => panic!(),
+        }
     }
 }
