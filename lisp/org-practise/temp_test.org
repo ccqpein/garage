@@ -2,3 +2,11 @@
   [[file:~/Desktop/garage/lisp/org-practise/temp_test.org][file:~/Desktop/garage/lisp/org-practise/temp_test.org]]
 * Hello hhhhhhh
   [[file:~/Desktop/garage/lisp/org-practise/temp_test.org][file:~/Desktop/garage/lisp/org-practise/temp_test.org]]
+* Hello hhhhhhh
+  [[file:~/Desktop/garage/lisp/org-practise/temp_test.org][file:~/Desktop/garage/lisp/org-practise/temp_test.org]]
+* TODO here we go
+  [2021-08-02 Mon]
+  [[file:~/Desktop/garage/lisp/org-practise/temp_test.org::*Hello hhhhhhh][Hello hhhhhhh]]
+* TODO 
+  [2021-08-02 Mon]
+  [[file:~/Desktop/garage/lisp/org-practise/temp_test.org::*here we go][here we go]]

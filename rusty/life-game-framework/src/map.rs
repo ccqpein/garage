@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 #[derive(Debug, Clone)]
 struct Node<T: Clone> {
     val: T,
+    //:= Do I need store all neighbour?
 }
 
 impl<T: Clone> Node<T> {
@@ -13,7 +14,7 @@ impl<T: Clone> Node<T> {
 
 #[derive(Debug, Clone)]
 enum Layer<T: Clone> {
-    Map(Map<T>),
+    Space(Space<T>),
     Node(Node<T>),
 }
 
@@ -23,7 +24,7 @@ impl<T: Clone> Layer<T> {
             Some(&self)
         } else {
             match self {
-                Layer::Map(m) => m.get(index),
+                Layer::Space(m) => m.get(index),
                 re @ Layer::Node(_) => Some(re),
             }
         }
@@ -34,7 +35,7 @@ impl<T: Clone> Layer<T> {
             Some(self)
         } else {
             match self {
-                Layer::Map(m) => m.get_mut(index),
+                Layer::Space(m) => m.get_mut(index),
                 re @ Layer::Node(_) => Some(re),
             }
         }
@@ -42,7 +43,7 @@ impl<T: Clone> Layer<T> {
 }
 
 #[derive(Debug, Clone)]
-struct Map<T>
+struct Space<T>
 where
     T: Clone,
 {
@@ -56,7 +57,7 @@ where
     layer: HashMap<usize, Layer<T>>,
 }
 
-impl<T: Clone> Map<T> {
+impl<T: Clone> Space<T> {
     /// new empty map
     fn new(dim: usize, range: usize, unit_size: usize, init_val: T) -> Self {
         if dim < 1 {
@@ -64,7 +65,7 @@ impl<T: Clone> Map<T> {
         }
 
         if dim == 1 {
-            Map {
+            Space {
                 dimension: dim,
                 range,
                 unit_size,
@@ -77,7 +78,7 @@ impl<T: Clone> Map<T> {
                 },
             }
         } else {
-            Map {
+            Space {
                 dimension: dim,
                 range,
                 unit_size,
@@ -88,7 +89,12 @@ impl<T: Clone> Map<T> {
                         .map(|d| {
                             (
                                 d,
-                                Layer::Map(Map::new(dim - 1, range, unit_size, init_val.clone())),
+                                Layer::Space(Space::new(
+                                    dim - 1,
+                                    range,
+                                    unit_size,
+                                    init_val.clone(),
+                                )),
                             )
                         })
                         .collect::<HashMap<usize, Layer<T>>>()
@@ -147,7 +153,7 @@ impl<T: Clone> Map<T> {
             self.layer
                 .values()
                 .map(|v| match v {
-                    Layer::Map(m) => m.count(),
+                    Layer::Space(m) => m.count(),
                     Layer::Node(_) => unreachable!(),
                 })
                 .sum()
@@ -161,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_new_map_get() {
-        let m = Map::new(3, 3, 1, 10);
+        let m = Space::new(3, 3, 1, 10);
         //dbg!(&m);
         //dbg!([0,].get(1..)); // Some([])
         //dbg!([0,].get(2..)); // None
@@ -176,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_new_map_get_mut() {
-        let mut m = Map::new(3, 3, 1, 10);
+        let mut m = Space::new(3, 3, 1, 10);
         match m.get_mut([1, 1, 1]) {
             Some(Layer::Node(n)) => n.val = 100,
             _ => panic!(),
