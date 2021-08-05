@@ -4,11 +4,15 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 struct Node<T: Clone> {
     val: T,
     //:= Do I need store all neighbour?
+    //neighbour: Vec<Rc<RefCell<Node<T>>>>,
 }
 
 impl<T: Clone> Node<T> {
     fn new(val: T) -> Self {
-        Self { val }
+        Self {
+            val,
+            //neighbour: vec![],
+        }
     }
 }
 
@@ -158,6 +162,17 @@ impl<T: Clone> Space<T> {
                 })
                 .sum()
         }
+    }
+}
+
+impl<'a, T> Iterator for &'a Space<T>
+where
+    T: Clone,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
     }
 }
 
