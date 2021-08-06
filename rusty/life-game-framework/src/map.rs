@@ -3,16 +3,11 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 #[derive(Debug, Clone)]
 struct Node<T: Clone> {
     val: T,
-    //:= Do I need store all neighbour?
-    //neighbour: Vec<Rc<RefCell<Node<T>>>>,
 }
 
 impl<T: Clone> Node<T> {
     fn new(val: T) -> Self {
-        Self {
-            val,
-            //neighbour: vec![],
-        }
+        Self { val }
     }
 }
 
@@ -150,6 +145,7 @@ impl<T: Clone> Space<T> {
         }
     }
 
+    /// count of nodes of this space
     fn count(&self) -> usize {
         if self.dimension == 1 {
             self.layer.keys().count()
@@ -163,6 +159,12 @@ impl<T: Clone> Space<T> {
                 .sum()
         }
     }
+}
+
+struct SpaceIter<'a, T: Clone> {
+    index: [usize],
+    max_index: [usize],
+    inner: &'a Space<T>,
 }
 
 impl<'a, T> Iterator for &'a Space<T>
