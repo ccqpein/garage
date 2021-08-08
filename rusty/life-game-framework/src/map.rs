@@ -46,6 +46,7 @@ struct Space<T>
 where
     T: Clone,
 {
+    /// how many dimension
     dimension: usize,
 
     /// from 0 to range
@@ -162,19 +163,49 @@ impl<T: Clone> Space<T> {
 }
 
 struct SpaceIter<'a, T: Clone> {
-    index: Vec<usize>,
-    max_index: Vec<usize>,
     inner: &'a Space<T>,
+
+    /// current index
+    index: Vec<usize>,
+    start: Vec<usize>,
+    done: bool,
+
+    /// the range of inner
+    max_index: Vec<usize>,
+
+    unit_size: usize,
 }
 
 impl<'a, T> Iterator for SpaceIter<'a, T>
 where
     T: Clone,
 {
-    type Item = ((usize, usize, usize), Node<T>);
+    type Item = (Vec<usize>, &'a Node<T>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        if self.done == true {
+            return None;
+        }
+
+        let re = match self.inner.get(&self.index) {
+            Some(Layer::Node(n)) => Some((self.index.clone(), n)),
+            _ => None,
+        };
+
+        for dim in (0..self.index.len()).rev() {
+            self.index[dim] += self.unit_size;
+            if self.index[dim] < self.max_index[dim] {
+                break;
+            } else {
+                self.index[dim] = 0;
+            }
+        }
+
+        if self.index == self.start {
+            self.done = true;
+        }
+
+        re
     }
 }
 
@@ -213,6 +244,29 @@ mod tests {
         match m.get([1, 1, 0]) {
             Some(Layer::Node(n)) => assert_eq!(n.val, 10),
             _ => panic!(),
+        }
+
+        match m.get([1, 1, 2]) {
+            Some(Layer::Node(n)) => assert_eq!(n.val, 10),
+            _ => panic!(),
+        }
+    }
+
+    #[test]
+    fn test_space_iter() {
+        let m = Space::new(3, 3, 1, 10);
+        let a = SpaceIter {
+            inner: &m,
+            index: vec![0, 0, 0],
+            start: vec![0, 0, 0],
+            done: false,
+            max_index: vec![3, 3, 3],
+            unit_size: 2,
+        };
+
+        for (ind, v) in a {
+            println!("index: {:?}", ind);
+            println!("value: {:?}", v);
         }
     }
 }
