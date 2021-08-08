@@ -162,16 +162,16 @@ impl<T: Clone> Space<T> {
 }
 
 struct SpaceIter<'a, T: Clone> {
-    index: [usize],
-    max_index: [usize],
+    index: Vec<usize>,
+    max_index: Vec<usize>,
     inner: &'a Space<T>,
 }
 
-impl<'a, T> Iterator for &'a Space<T>
+impl<'a, T> Iterator for SpaceIter<'a, T>
 where
     T: Clone,
 {
-    type Item = &'a T;
+    type Item = ((usize, usize, usize), Node<T>);
 
     fn next(&mut self) -> Option<Self::Item> {
         todo!()
