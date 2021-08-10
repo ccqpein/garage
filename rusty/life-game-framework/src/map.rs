@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, path::Iter, rc::Rc};
 
 #[derive(Debug, Clone)]
 struct Node<T: Clone> {
@@ -162,6 +162,44 @@ impl<T: Clone> Space<T> {
     }
 }
 
+struct SpaceIterResult<'a, T: Clone> {
+    current_index: Vec<usize>,
+    step: &'a usize,
+    inner_node: &'a Node<T>,
+    inner_space: &'a Space<T>,
+}
+
+impl<'a, T: Clone> SpaceIterResult<'a, T> {
+    fn new(
+        current_index: Vec<usize>,
+        step: &'a usize,
+        inner_node: &'a Node<T>,
+        inner_space: &'a Space<T>,
+    ) -> Self {
+        Self {
+            current_index,
+            step,
+            inner_node,
+            inner_space,
+        }
+    }
+
+    /// get all neighbours of this node
+    fn neighbour(&self) -> impl Iterator<Item = &'a Node<T>> {
+        todo!()
+    }
+}
+
+fn index_helper<'a>(center: &'a [usize], offset: &usize) -> impl Iterator<Item = [usize]> {
+    let a = if center[0] < *offset {
+        vec![vec![center[0] + offset]]
+    } else {
+        vec![vec![center[0] + offset], vec![center[0] - offset]
+    };
+
+    a.into_iter().map(|v| v.append)
+}
+
 struct SpaceIter<'a, T: Clone> {
     inner: &'a Space<T>,
 
@@ -180,7 +218,7 @@ impl<'a, T> Iterator for SpaceIter<'a, T>
 where
     T: Clone,
 {
-    type Item = (Vec<usize>, &'a Node<T>);
+    type Item = SpaceIterResult<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done == true {
@@ -188,7 +226,12 @@ where
         }
 
         let re = match self.inner.get(&self.index) {
-            Some(Layer::Node(n)) => Some((self.index.clone(), n)),
+            Some(Layer::Node(n)) => Some(SpaceIterResult::new(
+                self.index.clone(),
+                &self.inner.unit_size,
+                n,
+                self.inner,
+            )),
             _ => None,
         };
 
