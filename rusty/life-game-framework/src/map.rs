@@ -162,6 +162,7 @@ impl<T: Clone> Space<T> {
     }
 }
 
+#[derive(Debug)]
 struct SpaceIterResult<'a, T: Clone> {
     current_index: Vec<usize>,
     step: &'a usize,
@@ -184,20 +185,39 @@ impl<'a, T: Clone> SpaceIterResult<'a, T> {
         }
     }
 
-    /// get all neighbours of this node
-    fn neighbour(&self) -> impl Iterator<Item = &'a Node<T>> {
-        todo!()
-    }
+    // get all neighbours of this node
+    //fn neighbour(&mut self) -> impl Iterator<Item = &'a Node<T>> {}
 }
 
-fn index_helper<'a>(center: &'a [usize], offset: &usize) -> impl Iterator<Item = [usize]> {
-    let a = if center[0] < *offset {
-        vec![vec![center[0] + offset]]
+fn index_helper<'a>(center: &'a [usize], offset: &usize) -> Vec<Vec<usize>> {
+    if center.len() == 0 {
+        return vec![vec![]];
+    }
+
+    let this: Vec<Vec<usize>> = if center[0] < *offset {
+        vec![vec![center[0] + offset], vec![center[0]]]
     } else {
-        vec![vec![center[0] + offset], vec![center[0] - offset]
+        vec![
+            vec![center[0] + offset],
+            vec![center[0]],
+            vec![center[0] - offset],
+        ]
     };
 
-    a.into_iter().map(|v| v.append)
+    index_helper(&center[1..], offset)
+        .into_iter()
+        .map(|n| {
+            this.clone()
+                .iter()
+                .map(|inner| {
+                    let mut ii = inner.clone();
+                    ii.extend_from_slice(&n);
+                    ii
+                })
+                .collect::<Vec<Vec<_>>>()
+        })
+        .flatten()
+        .collect()
 }
 
 struct SpaceIter<'a, T: Clone> {
@@ -307,9 +327,20 @@ mod tests {
             unit_size: 2,
         };
 
-        for (ind, v) in a {
-            println!("index: {:?}", ind);
+        for v in a {
             println!("value: {:?}", v);
         }
+    }
+
+    #[test]
+    fn test_index_helper() {
+        // let testcase = [0];
+        // dbg!(index_helper(&testcase, &1));
+
+        // let testcase = [0, 0];
+        // dbg!(index_helper(&testcase, &1));
+
+        let testcase = [1, 1, 1];
+        assert_eq!(index_helper(&testcase, &1).len(), 27);
     }
 }
