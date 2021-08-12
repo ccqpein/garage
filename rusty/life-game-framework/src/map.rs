@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, path::Iter, rc::Rc};
 
 #[derive(Debug, Clone)]
-struct Node<T: Clone> {
+pub struct Node<T: Clone> {
     val: T,
 }
 
@@ -12,9 +12,9 @@ impl<T: Clone> Node<T> {
 }
 
 #[derive(Debug, Clone)]
-enum Layer<T: Clone> {
-    Space(Space<T>),
-    Node(Node<T>),
+pub enum Layer<T: Clone> {
+    Space(Space<T>), // >0 dimension
+    Node(Node<T>),   // 0 dimension
 }
 
 impl<T: Clone> Layer<T> {
@@ -42,7 +42,7 @@ impl<T: Clone> Layer<T> {
 }
 
 #[derive(Debug, Clone)]
-struct Space<T>
+pub struct Space<T>
 where
     T: Clone,
 {
@@ -59,7 +59,7 @@ where
 
 impl<T: Clone> Space<T> {
     /// new empty map
-    fn new(dim: usize, range: usize, unit_size: usize, init_val: T) -> Self {
+    pub fn new(dim: usize, range: usize, unit_size: usize, init_val: T) -> Self {
         if dim < 1 {
             panic!("dimension less than 1");
         }
@@ -104,7 +104,7 @@ impl<T: Clone> Space<T> {
     }
 
     /// recursively get layer
-    fn get(&self, index: impl AsRef<[usize]>) -> Option<&Layer<T>> {
+    pub fn get(&self, index: impl AsRef<[usize]>) -> Option<&Layer<T>> {
         match index.as_ref().get(0) {
             Some(first) => match self.get_layer(first) {
                 re @ Some(next) => match index.as_ref().get(1..) {
@@ -117,7 +117,7 @@ impl<T: Clone> Space<T> {
         }
     }
 
-    fn get_layer(&self, ind: &usize) -> Option<&Layer<T>> {
+    pub fn get_layer(&self, ind: &usize) -> Option<&Layer<T>> {
         if self.dimension == 0 {
             None
         } else {
@@ -125,7 +125,7 @@ impl<T: Clone> Space<T> {
         }
     }
 
-    fn get_mut(&mut self, index: impl AsRef<[usize]>) -> Option<&mut Layer<T>> {
+    pub fn get_mut(&mut self, index: impl AsRef<[usize]>) -> Option<&mut Layer<T>> {
         match index.as_ref().get(0) {
             Some(first) => match self.get_layer_mut(first) {
                 Some(next) => match index.as_ref().get(1..) {
@@ -138,7 +138,7 @@ impl<T: Clone> Space<T> {
         }
     }
 
-    fn get_layer_mut(&mut self, ind: &usize) -> Option<&mut Layer<T>> {
+    pub fn get_layer_mut(&mut self, ind: &usize) -> Option<&mut Layer<T>> {
         if self.dimension == 0 {
             None
         } else {
@@ -147,7 +147,7 @@ impl<T: Clone> Space<T> {
     }
 
     /// count of nodes of this space
-    fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         if self.dimension == 1 {
             self.layer.keys().count()
         } else {
@@ -160,17 +160,31 @@ impl<T: Clone> Space<T> {
                 .sum()
         }
     }
+
+    pub fn iter(&self) -> SpaceIter<'_, T> {
+        SpaceIter {
+            inner: self,
+
+            // start
+            index: vec![0; self.dimension],
+            start: vec![0; self.dimension],
+            done: false,
+
+            max_index: vec![self.range; self.dimension],
+            unit_size: self.unit_size,
+        }
+    }
 }
 
 #[derive(Debug)]
-struct SpaceIterResult<'a, T: Clone> {
+pub struct SpaceIterLoc<'a, T: Clone> {
     current_index: Vec<usize>,
     step: &'a usize,
     inner_node: &'a Node<T>,
     inner_space: &'a Space<T>,
 }
 
-impl<'a, T: Clone> SpaceIterResult<'a, T> {
+impl<'a, T: Clone> SpaceIterLoc<'a, T> {
     fn new(
         current_index: Vec<usize>,
         step: &'a usize,
@@ -186,7 +200,16 @@ impl<'a, T: Clone> SpaceIterResult<'a, T> {
     }
 
     // get all neighbours of this node
-    //fn neighbour(&mut self) -> impl Iterator<Item = &'a Node<T>> {}
+    pub fn neighbour<'b: 'a>(&'b self) -> impl Iterator<Item = &'a Layer<T>> {
+        index_helper(&self.current_index, self.step)
+            .into_iter()
+            .filter(move |n| **n != self.current_index)
+            .filter_map(move |coord| self.inner_space.get(coord))
+    }
+
+    pub fn current_index(&self) -> &Vec<usize> {
+        &self.current_index
+    }
 }
 
 fn index_helper<'a>(center: &'a [usize], offset: &usize) -> Vec<Vec<usize>> {
@@ -220,7 +243,7 @@ fn index_helper<'a>(center: &'a [usize], offset: &usize) -> Vec<Vec<usize>> {
         .collect()
 }
 
-struct SpaceIter<'a, T: Clone> {
+pub struct SpaceIter<'a, T: Clone> {
     inner: &'a Space<T>,
 
     /// current index
@@ -238,7 +261,7 @@ impl<'a, T> Iterator for SpaceIter<'a, T>
 where
     T: Clone,
 {
-    type Item = SpaceIterResult<'a, T>;
+    type Item = SpaceIterLoc<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done == true {
@@ -246,7 +269,7 @@ where
         }
 
         let re = match self.inner.get(&self.index) {
-            Some(Layer::Node(n)) => Some(SpaceIterResult::new(
+            Some(Layer::Node(n)) => Some(SpaceIterLoc::new(
                 self.index.clone(),
                 &self.inner.unit_size,
                 n,
@@ -299,6 +322,14 @@ mod tests {
             _ => panic!(),
         }
 
+        match m.get_mut([1, 1]) {
+            Some(Layer::Space(n)) => match n.get([1]) {
+                Some(Layer::Node(m)) => assert_eq!(m.val, 100),
+                _ => panic!(),
+            },
+            _ => panic!(),
+        }
+
         match m.get([1, 1, 1]) {
             Some(Layer::Node(n)) => assert_eq!(n.val, 100),
             _ => panic!(),
@@ -324,22 +355,20 @@ mod tests {
             start: vec![0, 0, 0],
             done: false,
             max_index: vec![3, 3, 3],
-            unit_size: 2,
+            unit_size: 2, // not as same as Space size on purpose
         };
 
-        for v in a {
-            println!("value: {:?}", v);
-        }
+        let mut m_iter = m.iter();
+        m_iter.next();
+        assert_eq!(*m_iter.next().unwrap().current_index(), vec![0, 0, 1]);
+        assert_eq!(*m_iter.next().unwrap().current_index(), vec![0, 0, 2]);
+        assert_eq!(*m_iter.next().unwrap().current_index(), vec![0, 1, 0]);
+
+        assert_eq!(*m.iter().last().unwrap().current_index(), vec![2, 2, 2]);
     }
 
     #[test]
     fn test_index_helper() {
-        // let testcase = [0];
-        // dbg!(index_helper(&testcase, &1));
-
-        // let testcase = [0, 0];
-        // dbg!(index_helper(&testcase, &1));
-
         let testcase = [1, 1, 1];
         assert_eq!(index_helper(&testcase, &1).len(), 27);
     }
