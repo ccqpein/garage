@@ -12,20 +12,35 @@ impl<'a> HashMapWrap {
 
 struct HashMapWrapIterMut<'a> {
     temp_k: i32,
-    data: &'a mut HashMapWrap,
+    //data: &'a mut HashMapWrap,
+    data: Option<&'a mut HashMapWrap>,
 }
+
+// impl<'a> Iterator for HashMapWrapIterMut<'a> {
+//     fn next(&mut self) -> Option<Self::Item> {
+//         Some(LeakResult {
+//             v: unsafe {
+//                 (self.data.get_mut(&self.temp_k).unwrap() as *mut i32)
+//                     .as_mut()
+//                     .unwrap()
+//             },
+//         })
+//     }
+// }
 
 impl<'a> Iterator for HashMapWrapIterMut<'a> {
     type Item = LeakResult<'a>;
 
+    // get solution in
+    // https://users.rust-lang.org/t/need-some-help-of-e495/63507/9
     fn next(&mut self) -> Option<Self::Item> {
-        Some(LeakResult {
-            v: unsafe {
-                (self.data.get_mut(&self.temp_k).unwrap() as *mut i32)
-                    .as_mut()
-                    .unwrap()
-            },
-        })
+        self.temp_k += 1;
+        match self.data.take() {
+            Some(data) => Some(LeakResult {
+                v: data.get_mut(&self.temp_k).unwrap(),
+            }),
+            None => None,
+        }
     }
 }
 
