@@ -1,3 +1,4 @@
+use std::collections::hash_map::IterMut;
 use std::{cell::RefCell, collections::HashMap, path::Iter, rc::Rc};
 
 #[derive(Debug, Clone)]
@@ -300,7 +301,8 @@ impl<'a, T: Clone> SpaceIterLoc<'a, T> {
 
 // iter_mut below
 
-pub struct SpaceIterMut<'a, T: Clone> {
+pub struct SpaceIterMut<'a, T: Clone + 'a> {
+    //inner: IterMut<'a, usize, Layer<T>>,
     inner: &'a mut Space<T>,
 
     /// current index
@@ -314,24 +316,29 @@ pub struct SpaceIterMut<'a, T: Clone> {
     unit_size: usize,
 }
 
-impl<'b, 'a: 'b, T: Clone> SpaceIterMut<'a, T> {
-    fn get_mut(&'b mut self) -> Option<&'b mut Layer<T>> {
-        self.inner.get_mut(&self.index)
-    }
-}
+// impl<'a, T: Clone + 'a> SpaceIterMut<'a, T> {
+//     fn get_mut(&mut self) -> Option<&mut Layer<T>> {
+//         self.inner.get_mut(&self.index)
+//     }
+// }
 
 impl<'a, T> Iterator for SpaceIterMut<'a, T>
 where
     T: Clone,
 {
-    type Item = &mut Layer<T>;
+    type Item = &'a mut Layer<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done == true {
             return None;
         }
 
-        let re = self.get_mut();
+        let re = {
+            let a = self.inner as *mut Space<T>;
+            unsafe { (a as &mut Space<T>).get_mut(self.index) }
+        };
+
+        // update dim
         for dim in (0..self.index.len()).rev() {
             self.index[dim] += self.unit_size;
             if self.index[dim] < self.max_index[dim] {
