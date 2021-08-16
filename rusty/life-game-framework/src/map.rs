@@ -1,5 +1,4 @@
-use std::collections::hash_map::IterMut;
-use std::{cell::RefCell, collections::HashMap, path::Iter, rc::Rc};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct Node<T: Clone> {
@@ -335,7 +334,7 @@ where
 
         let re = {
             let a = self.inner as *mut Space<T>;
-            unsafe { (a as &mut Space<T>).get_mut(self.index) }
+            unsafe { (&mut *a as &mut Space<T>).get_mut(self.index.clone()) }
         };
 
         // update dim
