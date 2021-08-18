@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+/// Node define
 #[derive(Debug, Clone)]
 pub struct Node<T: Clone> {
     val: T,
@@ -11,6 +12,7 @@ impl<T: Clone> Node<T> {
     }
 }
 
+/// Layer of each dimension
 #[derive(Debug, Clone)]
 pub enum Layer<T: Clone> {
     Space(Space<T>), // >0 dimension
@@ -41,6 +43,7 @@ impl<T: Clone> Layer<T> {
     }
 }
 
+/// Space
 #[derive(Debug, Clone)]
 pub struct Space<T>
 where
@@ -174,8 +177,27 @@ impl<T: Clone> Space<T> {
             unit_size: self.unit_size,
         }
     }
+
+    pub fn iter_mut(&mut self) -> SpaceIterMut<'_, T> {
+        let dimension = self.dimension;
+        let range = self.range;
+        let size = self.unit_size;
+        SpaceIterMut {
+            inner: self,
+
+            // start
+            index: vec![0; dimension],
+            start: vec![0; dimension],
+            done: false,
+
+            max_index: vec![range; dimension],
+            unit_size: size,
+        }
+    }
 }
 
+/// Give center coordinate and offset, return all neighbours (including center self).
+/// Range should from [0,limit], so if coordinate less than 0 won't count.
 fn index_helper<'a>(center: &'a [usize], offset: &usize) -> Vec<Vec<usize>> {
     if center.len() == 0 {
         return vec![vec![]];
@@ -209,7 +231,7 @@ fn index_helper<'a>(center: &'a [usize], offset: &usize) -> Vec<Vec<usize>> {
 
 /* iter below */
 
-//
+/// Space Iter struct
 pub struct SpaceIter<'a, T: Clone> {
     inner: &'a Space<T>,
 
@@ -262,6 +284,7 @@ where
     }
 }
 
+/// result of SpaceIter
 #[derive(Debug)]
 pub struct SpaceIterLoc<'a, T: Clone> {
     current_index: Vec<usize>,
@@ -286,7 +309,7 @@ impl<'a, T: Clone> SpaceIterLoc<'a, T> {
     }
 
     // get all neighbours of this node
-    pub fn neighbour<'b: 'a>(&'b self) -> impl Iterator<Item = &'a Layer<T>> {
+    pub fn neighbour(&self) -> impl Iterator<Item = &Layer<T>> {
         index_helper(&self.current_index, self.step)
             .into_iter()
             .filter(move |n| **n != self.current_index)
@@ -315,17 +338,11 @@ pub struct SpaceIterMut<'a, T: Clone + 'a> {
     unit_size: usize,
 }
 
-// impl<'a, T: Clone + 'a> SpaceIterMut<'a, T> {
-//     fn get_mut(&mut self) -> Option<&mut Layer<T>> {
-//         self.inner.get_mut(&self.index)
-//     }
-// }
-
 impl<'a, T> Iterator for SpaceIterMut<'a, T>
 where
     T: Clone,
 {
-    type Item = &'a mut Layer<T>;
+    type Item = SpaceIterLocMut<'a, T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done == true {
@@ -334,7 +351,17 @@ where
 
         let re = {
             let a = self.inner as *mut Space<T>;
-            unsafe { (&mut *a as &mut Space<T>).get_mut(self.index.clone()) }
+            unsafe {
+                match (&mut *a as &mut Space<T>).get_mut(self.index.clone()) {
+                    Some(l) => Some(SpaceIterLocMut::new(
+                        self.index.clone(),
+                        self.unit_size,
+                        l,
+                        &mut *a as &mut Space<T>,
+                    )),
+                    None => return None,
+                }
+            }
         };
 
         // update dim
@@ -355,41 +382,51 @@ where
     }
 }
 
-// #[derive(Debug)]
-// pub struct SpaceIterLocMut<'a, T: Clone> {
-//     current_index: Vec<usize>,
-//     step: &'a usize,
-//     inner_node: &'a mut Layer<T>,
-//     inner_space: &'a mut Space<T>,
-// }
+#[derive(Debug)]
+pub struct SpaceIterLocMut<'a, T: Clone> {
+    current_index: Vec<usize>,
+    step: usize,
+    inner_layer: &'a mut Layer<T>,
+    inner_space: &'a mut Space<T>,
+}
 
-// impl<'a, T: Clone> SpaceIterLocMut<'a, T> {
-//     fn new(
-//         current_index: Vec<usize>,
-//         step: &'a usize,
-//         inner_node: &'a mut Node<T>,
-//         inner_space: &'a mut Space<T>,
-//     ) -> Self {
-//         Self {
-//             current_index,
-//             step,
-//             inner_node,
-//             inner_space,
-//         }
-//     }
+impl<'a, T: Clone> SpaceIterLocMut<'a, T> {
+    pub fn current_index(&self) -> &Vec<usize> {
+        &self.current_index
+    }
 
-//     // get all neighbours of this node
-//     pub fn neighbour<'b: 'a>(&'b self) -> impl Iterator<Item = &'a Layer<T>> {
-//         index_helper(&self.current_index, self.step)
-//             .into_iter()
-//             .filter(move |n| **n != self.current_index)
-//             .filter_map(move |coord| self.inner_space.get(coord))
-//     }
+    // get all neighbours of this node
+    pub fn neighbour(&mut self) -> impl Iterator<Item = &'a mut Layer<T>> {
+        //let this_clone = self.current_index.clone();
+        unsafe {
+            let a = self.inner_space as *mut Space<T>;
+            let current_coop = self.current_index.clone();
+            index_helper(&self.current_index, &self.step)
+                .into_iter()
+                .filter(move |n| *n != current_coop)
+                .filter_map(
+                    move |coord| match (&mut *a as &'a mut Space<T>).get_mut(coord) {
+                        Some(l) => Some(l),
+                        None => return None,
+                    },
+                )
+        }
+    }
 
-//     pub fn current_index(&self) -> &Vec<usize> {
-//         &self.current_index
-//     }
-// }
+    fn new(
+        current_index: Vec<usize>,
+        step: usize,
+        inner_layer: &'a mut Layer<T>,
+        inner_space: &'a mut Space<T>,
+    ) -> Self {
+        Self {
+            current_index,
+            step,
+            inner_layer,
+            inner_space,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -445,7 +482,7 @@ mod tests {
     #[test]
     fn test_space_iter() {
         let m = Space::new(3, 3, 1, 10);
-        let a = SpaceIter {
+        let _ = SpaceIter {
             inner: &m,
             index: vec![0, 0, 0],
             start: vec![0, 0, 0],
