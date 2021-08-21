@@ -10,6 +10,14 @@ impl<T: Clone> Node<T> {
     fn new(val: T) -> Self {
         Self { val }
     }
+
+    pub fn set(&mut self, val: T) {
+        self.val = val;
+    }
+
+    pub fn get(&self) -> &T {
+        &self.val
+    }
 }
 
 /// Layer of each dimension
@@ -43,6 +51,29 @@ impl<T: Clone> Layer<T> {
     }
 }
 
+impl<T: Clone> Layer<T> {
+    pub fn as_node(&self) -> Option<&Node<T>> {
+        if let Self::Node(n) = self {
+            return Some(n);
+        }
+        None
+    }
+
+    pub fn as_space(&self) -> Option<&Space<T>> {
+        if let Self::Space(s) = self {
+            return Some(s);
+        }
+        None
+    }
+
+    pub fn as_node_mut(&mut self) -> Option<&mut Node<T>> {
+        if let Self::Node(s) = self {
+            return Some(s);
+        }
+        None
+    }
+}
+
 /// Space
 #[derive(Debug, Clone)]
 pub struct Space<T>
@@ -66,7 +97,6 @@ impl<T: Clone> Space<T> {
         if dim < 1 {
             panic!("dimension less than 1");
         }
-
         if dim == 1 {
             Space {
                 dimension: dim,
@@ -318,6 +348,10 @@ impl<'a, T: Clone> SpaceIterLoc<'a, T> {
 
     pub fn current_index(&self) -> &Vec<usize> {
         &self.current_index
+    }
+
+    pub fn get_node_val(&self) -> &T {
+        self.inner_node.get()
     }
 }
 
