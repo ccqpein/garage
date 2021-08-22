@@ -38,6 +38,9 @@ fn AOC2020_day17_demo() {
 
     // map run ruler here
     //:= TODO: here
+    s.iter_mut()
+        .filter(|n| *n.get_node_val() == '#')
+        .for_each(|n| println!("{:?}", n.current_index()));
 
     // check
     s.iter()

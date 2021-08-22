@@ -339,11 +339,14 @@ impl<'a, T: Clone> SpaceIterLoc<'a, T> {
     }
 
     // get all neighbours of this node
-    pub fn neighbour(&self) -> impl Iterator<Item = &Layer<T>> {
+    pub fn neighbour(&self) -> impl Iterator<Item = &Node<T>> {
         index_helper(&self.current_index, self.step)
             .into_iter()
             .filter(move |n| **n != self.current_index)
-            .filter_map(move |coord| self.inner_space.get(coord))
+            .filter_map(move |coord| match self.inner_space.get(coord) {
+                Some(Layer::Node(n)) => Some(n),
+                _ => None,
+            })
     }
 
     pub fn current_index(&self) -> &Vec<usize> {
@@ -387,13 +390,13 @@ where
             let a = self.inner as *mut Space<T>;
             unsafe {
                 match (&mut *a as &mut Space<T>).get_mut(self.index.clone()) {
-                    Some(l) => Some(SpaceIterLocMut::new(
+                    Some(Layer::Node(n)) => Some(SpaceIterLocMut::new(
                         self.index.clone(),
                         self.unit_size,
-                        l,
+                        n,
                         &mut *a as &mut Space<T>,
                     )),
-                    None => return None,
+                    _ => return None,
                 }
             }
         };
@@ -420,7 +423,7 @@ where
 pub struct SpaceIterLocMut<'a, T: Clone> {
     current_index: Vec<usize>,
     step: usize,
-    inner_layer: &'a mut Layer<T>,
+    inner_node: &'a mut Node<T>,
     inner_space: &'a mut Space<T>,
 }
 
@@ -430,7 +433,7 @@ impl<'a, T: Clone> SpaceIterLocMut<'a, T> {
     }
 
     // get all neighbours of this node
-    pub fn neighbour(&mut self) -> impl Iterator<Item = &'a mut Layer<T>> {
+    pub fn neighbour(&mut self) -> impl Iterator<Item = &'a mut Node<T>> {
         //let this_clone = self.current_index.clone();
         unsafe {
             let a = self.inner_space as *mut Space<T>;
@@ -440,8 +443,8 @@ impl<'a, T: Clone> SpaceIterLocMut<'a, T> {
                 .filter(move |n| *n != current_coop)
                 .filter_map(
                     move |coord| match (&mut *a as &'a mut Space<T>).get_mut(coord) {
-                        Some(l) => Some(l),
-                        None => return None,
+                        Some(Layer::Node(n)) => Some(n),
+                        _ => None,
                     },
                 )
         }
@@ -450,15 +453,19 @@ impl<'a, T: Clone> SpaceIterLocMut<'a, T> {
     fn new(
         current_index: Vec<usize>,
         step: usize,
-        inner_layer: &'a mut Layer<T>,
+        inner_node: &'a mut Node<T>,
         inner_space: &'a mut Space<T>,
     ) -> Self {
         Self {
             current_index,
             step,
-            inner_layer,
+            inner_node,
             inner_space,
         }
+    }
+
+    pub fn get_node_val(&self) -> &T {
+        self.inner_node.get()
     }
 }
 
