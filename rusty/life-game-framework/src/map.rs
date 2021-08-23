@@ -49,9 +49,7 @@ impl<T: Clone> Layer<T> {
             }
         }
     }
-}
 
-impl<T: Clone> Layer<T> {
     pub fn as_node(&self) -> Option<&Node<T>> {
         if let Self::Node(n) = self {
             return Some(n);
@@ -150,7 +148,7 @@ impl<T: Clone> Space<T> {
         }
     }
 
-    pub fn get_layer(&self, ind: &usize) -> Option<&Layer<T>> {
+    fn get_layer(&self, ind: &usize) -> Option<&Layer<T>> {
         if self.dimension == 0 {
             None
         } else {
@@ -158,7 +156,8 @@ impl<T: Clone> Space<T> {
         }
     }
 
-    pub fn get_mut<'a>(&'a mut self, index: impl AsRef<[usize]>) -> Option<&'a mut Layer<T>> {
+    /// recursively get mut layer
+    pub fn get_mut(&mut self, index: impl AsRef<[usize]>) -> Option<&mut Layer<T>> {
         match index.as_ref().get(0) {
             Some(first) => match self.get_layer_mut(first) {
                 Some(next) => match index.as_ref().get(1..) {
@@ -171,7 +170,7 @@ impl<T: Clone> Space<T> {
         }
     }
 
-    pub fn get_layer_mut(&mut self, ind: &usize) -> Option<&mut Layer<T>> {
+    fn get_layer_mut(&mut self, ind: &usize) -> Option<&mut Layer<T>> {
         if self.dimension == 0 {
             None
         } else {
@@ -222,6 +221,16 @@ impl<T: Clone> Space<T> {
 
             max_index: vec![range; dimension],
             unit_size: size,
+        }
+    }
+
+    pub fn set_node(&mut self, index: impl AsRef<[usize]>, v: T) -> Result<(), String> {
+        match self.get_mut(index) {
+            Some(Layer::Node(n)) => {
+                n.set(v);
+                Ok(())
+            }
+            _ => Err("it isn't node".into()),
         }
     }
 }
@@ -466,6 +475,10 @@ impl<'a, T: Clone> SpaceIterLocMut<'a, T> {
 
     pub fn get_node_val(&self) -> &T {
         self.inner_node.get()
+    }
+
+    pub fn set_node(&mut self, v: T) {
+        self.inner_node.set(v)
     }
 }
 
