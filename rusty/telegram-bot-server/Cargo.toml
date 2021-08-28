@@ -25,3 +25,11 @@ lazy_static = "1"
 
 # I dont know why I have to put this here
 openssl = { version = "0.10.32", features = ["vendored"] }
+
+[[bin]]
+name = "telegram-bot-server-actix"
+path = "src/bin/main_actix.rs"
+
+[[bin]]
+name = "telegram-bot-server-axum"
+path = "src/bin/main_axum.rs"

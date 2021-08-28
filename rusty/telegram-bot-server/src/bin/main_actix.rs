@@ -67,7 +67,7 @@ fn init(api: Api) -> (Watcher, Deliver, Reminder, Sender<Message>) {
 
 fn main() -> std::io::Result<()> {
     // read token
-    let mut lines = include_str!("../vault/telebottoken").lines();
+    let mut lines = include_str!("../../vault/telebottoken").lines();
     let token = lines.next().unwrap();
 
     let (mut watcher, mut deliver, mut reminder, tx) = init(Api::new(token));
@@ -110,7 +110,7 @@ fn main() -> std::io::Result<()> {
             config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
 
             // declare endpoint
-            let endpoint = include_str!("../vault/endpoint");
+            let endpoint = include_str!("../../vault/endpoint");
 
             // tracing
             tracing::subscriber::set_global_default(
