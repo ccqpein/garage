@@ -44,9 +44,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // client
     let client = HelloWorldClient::connect("http://localhost:9091");
+    //let client = HelloWorldClient::connect("http://localhost:9091/yoyoyo"); // test golang grpc binding with http
     rt.spawn(async {
         sleep(Duration::from_secs(3)).await;
-        let mut cc = client.await.unwrap();
+        let mut cc = match client.await {
+            Ok(c) => c,
+            Err(e) => panic!("{}", e),
+        };
         loop {
             sleep(Duration::from_secs(3)).await;
             println!(

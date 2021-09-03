@@ -34,7 +34,7 @@ func clientRPC() {
 
 	for {
 		time.Sleep(2 * time.Second)
-		r, err := client.SayHello(ctx, &pb.HelloRequest{ClientType: "Golang", MessageBody: "empty"})
+		r, err := client.SayHello(ctx, &pb.HelloRequest{ClientType: "Golang", MessageBody: "hello rust"})
 		if err != nil {
 			log.Printf("could not greet: %v", err)
 		}
@@ -47,7 +47,7 @@ func main() {
 
 	go clientRPC()
 
-	/// server
+	// pure grpc server below
 	lis, err := net.Listen("tcp", "localhost:9091")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
@@ -58,4 +58,10 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
+
+	// embed with http package
+	/* // looks like http1 http package isn't work with s.ServeHTTP
+	http.HandleFunc("/yoyoyo", s.ServeHTTP)
+	log.Fatal(http.ListenAndServe(":9091", nil))
+	*/
 }
