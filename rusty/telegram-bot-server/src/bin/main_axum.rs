@@ -1,4 +1,5 @@
 //use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
+use axum::{Router, Server};
 use clap::Clap;
 use futures::StreamExt;
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
@@ -16,54 +17,7 @@ use tokio::{
     sync::mpsc::{self, Sender},
 };
 
-async fn handler(
-    mut payload: web::Payload,
-    api: web::Data<Api>,
-    opts: web::Data<Opts>,
-    ch_sender: web::Data<Sender<Message>>,
-) -> Result<HttpResponse, Error> {
-    // parse json now
-    let mut body = web::BytesMut::new();
-    while let Some(chunk) = payload.next().await {
-        let chunk = chunk.map_err(|e| error::ErrorBadRequest(e.to_string()))?;
-
-        if (body.len() + chunk.len()) > 262_144_usize {
-            return Err(error::ErrorBadRequest(""));
-        }
-
-        body.extend_from_slice(&chunk);
-    }
-
-    let update = match serde_json::from_slice::<Update>(&body) {
-        Ok(u) => u,
-        Err(e) => {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()).into())
-        }
-    };
-
-    match update_router(update, &api, &opts, &ch_sender).await {
-        Ok(_) => Ok(HttpResponse::Ok().body("")),
-        Err(_) => Ok(HttpResponse::Ok().body("inner problem")),
-    }
-}
-
-fn init(api: Api) -> (Watcher, Deliver, Reminder, Sender<Message>) {
-    let (watcher_sender, watcher_receiver) = mpsc::channel::<Message>(32);
-    let (deliver_sender, deliver_receiver) = mpsc::channel::<Msg2Deliver>(5);
-    let (reminder_sender, reminder_receiver) = mpsc::channel::<Msg2Reminder>(5);
-
-    (
-        Watcher::new(
-            api.clone(),
-            watcher_receiver,
-            deliver_sender.clone(),
-            reminder_sender,
-        ),
-        Deliver::new(api, deliver_receiver),
-        Reminder::new(reminder_receiver, deliver_sender),
-        watcher_sender,
-    )
-}
+async fn app()
 
 fn main() -> std::io::Result<()> {
     let mut lines = include_str!("../../vault/telebottoken").lines();
@@ -96,13 +50,6 @@ fn main() -> std::io::Result<()> {
         let _ = rt.spawn(async move { reminder.run().await });
     }
 
-    // expand main macro
-    // tokio::runtime::Builder::new_multi_thread()
-    //     .enable_all()
-    //     .build()
-    //     .unwrap()
-    //     .block_on(async {})
-
     rt.block_on(async move {
         let opts: Opts = Opts::parse();
 
@@ -125,17 +72,15 @@ fn main() -> std::io::Result<()> {
         )
         .unwrap();
 
-        // start http server
-        // HttpServer::new(move || {
-        //     App::new()
-        //         .data(Api::new(token))
-        //         .data(opts.clone())
-        //         .data(tx.clone())
-        //         .route(endpoint, web::post().to(handler))
-        // })
-        // .bind_rustls("0.0.0.0:8443", config)
-        // .unwrap()
-        // .run()
-        // .await
+        // can I use rustls?
+        let app = Router::new();
+        Server::bind(SocketAddr::from("0.0.0.0:8443"));
     })
 }
+
+// expand main macro
+// tokio::runtime::Builder::new_multi_thread()
+//     .enable_all()
+//     .build()
+//     .unwrap()
+//     .block_on(async {})
