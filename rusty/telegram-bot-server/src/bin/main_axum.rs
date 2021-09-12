@@ -1,25 +1,30 @@
-//use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
-use axum::{Router, Server};
+use axum::{extract, AddExtensionLayer, Router, Server};
 use clap::Clap;
-use futures::StreamExt;
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{NoClientAuth, ServerConfig};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::Arc;
+use std::time::Duration;
 use std::{fs::File, io::BufReader};
 use telegram_bot::{types::Update, Api, Message};
-use telegram_bot_server::{
-    app::*,
-    deliver::{Deliver, Msg2Deliver},
-    reminder::{Msg2Reminder, Reminder},
-    watcher::Watcher,
-};
-use tokio::{
-    runtime,
-    sync::mpsc::{self, Sender},
-};
+use telegram_bot_server::{app::*, init};
+use tokio::{runtime, sync::mpsc::Sender};
+use tower::ServiceBuilder;
+use tower_http::compression::CompressionLayer;
 
-async fn app()
+async fn app(
+    extract::Json(update): extract::Json<Update>,
+    api: extract::Extension<Arc<Api>>,
+    opts: extract::Extension<Arc<Opts>>,
+    ch_sender: extract::Extension<Arc<Sender<Message>>>,
+) -> &'static str {
+    match update_router(update, &api, &opts, &ch_sender).await {
+        Ok(_) => "",
+        Err(_) => "inner problem",
+    }
+}
 
-fn main() -> std::io::Result<()> {
+fn main() {
     let mut lines = include_str!("../../vault/telebottoken").lines();
     let token = lines.next().unwrap();
 
@@ -27,13 +32,15 @@ fn main() -> std::io::Result<()> {
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
-        .build()?;
+        .build()
+        .unwrap();
 
     {
         // one thread runtime
         let local_rt = runtime::Builder::new_current_thread()
             .enable_all()
-            .build()?;
+            .build()
+            .unwrap();
 
         std::thread::spawn(move || {
             let local = tokio::task::LocalSet::new();
@@ -72,9 +79,28 @@ fn main() -> std::io::Result<()> {
         )
         .unwrap();
 
+        //
+        let middleware_stack = ServiceBuilder::new()
+            .timeout(Duration::from_secs(30))
+            .concurrency_limit(100)
+            .layer(CompressionLayer::new())
+            .into_inner();
+
         // can I use rustls?
-        let app = Router::new();
-        Server::bind(SocketAddr::from("0.0.0.0:8443"));
+        let app = Router::new()
+            .route(endpoint, axum::handler::post(app))
+            .layer(AddExtensionLayer::new(Api::new(token)))
+            .layer(AddExtensionLayer::new(opts.clone()))
+            .layer(AddExtensionLayer::new(tx.clone()))
+            .layer(middleware_stack);
+
+        Server::bind(&SocketAddr::from((
+            IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+            8443,
+        )))
+        .serve(app.into_make_service())
+        .await
+        .unwrap()
     })
 }
 
