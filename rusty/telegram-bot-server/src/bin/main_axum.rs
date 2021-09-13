@@ -1,14 +1,16 @@
-use axum::{extract, AddExtensionLayer, Router, Server};
+use axum::{extract, AddExtensionLayer, Router};
 use clap::Clap;
+use hyper::server::conn::Http;
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{NoClientAuth, ServerConfig};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 use std::{fs::File, io::BufReader};
 use telegram_bot::{types::Update, Api, Message};
 use telegram_bot_server::{app::*, init};
+use tokio::net::TcpListener;
 use tokio::{runtime, sync::mpsc::Sender};
+use tokio_rustls::TlsAcceptor;
 use tower::ServiceBuilder;
 use tower_http::compression::CompressionLayer;
 
@@ -60,17 +62,6 @@ fn main() {
     rt.block_on(async move {
         let opts: Opts = Opts::parse();
 
-        // SSL builder
-        let mut config = ServerConfig::new(NoClientAuth::new());
-        let cert_file = &mut BufReader::new(File::open(opts.vault.clone() + "/certs.pem").unwrap());
-        let key_file = &mut BufReader::new(File::open(opts.vault.clone() + "/key.pem").unwrap());
-        let cert_chain = certs(cert_file).unwrap();
-        let mut keys = pkcs8_private_keys(key_file).unwrap();
-        config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
-
-        // declare endpoint
-        let endpoint = include_str!("../../vault/endpoint");
-
         // tracing
         tracing::subscriber::set_global_default(
             tracing_subscriber::FmtSubscriber::builder()
@@ -78,6 +69,25 @@ fn main() {
                 .finish(),
         )
         .unwrap();
+
+        // SSL builder
+        let mut config = ServerConfig::new(NoClientAuth::new());
+        let cert_file = &mut BufReader::new(File::open(opts.vault.clone() + "/certs.pem").unwrap());
+        let key_file = &mut BufReader::new(File::open(opts.vault.clone() + "/key.pem").unwrap());
+        let cert_chain = certs(cert_file).unwrap();
+        let mut keys = pkcs8_private_keys(key_file).unwrap();
+        config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
+        config.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
+
+        let config = Arc::new(config);
+
+        // declare endpoint
+        let endpoint = include_str!("../../vault/endpoint");
+
+        let acceptor = TlsAcceptor::from(config);
+        let listener = TcpListener::bind(String::from("0.0.0.0:8443") + endpoint)
+            .await
+            .unwrap();
 
         //
         let middleware_stack = ServiceBuilder::new()
@@ -94,13 +104,27 @@ fn main() {
             .layer(AddExtensionLayer::new(tx.clone()))
             .layer(middleware_stack);
 
-        Server::bind(&SocketAddr::from((
-            IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-            8443,
-        )))
-        .serve(app.into_make_service())
-        .await
-        .unwrap()
+        // Server::bind(&SocketAddr::from((
+        //     IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+        //     8443,
+        // )))
+        // .serve(app.into_make_service())
+        // .await
+        // .unwrap()
+
+        // https://github.com/tokio-rs/axum/blob/main/examples/low-level-rustls/src/main.rs#L36
+        loop {
+            let (stream, _addr) = listener.accept().await.unwrap();
+            let acceptor = acceptor.clone();
+
+            let app = app.clone();
+
+            tokio::spawn(async move {
+                if let Ok(stream) = acceptor.accept(stream).await {
+                    let _ = Http::new().serve_connection(stream, app).await;
+                }
+            });
+        }
     })
 }
 

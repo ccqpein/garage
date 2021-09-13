@@ -24,9 +24,12 @@ chrono-tz = "0.4"
 clap = "3.0.0-beta.2"
 lazy_static = "1"
 
+# re-write axum need these
 axum = "0.2"
 tower-http = {version = "0.1", features = ["full"]}
 tower = {version = "0.4", features = ["full"]}
+tokio-rustls = "0.22.0"
+hyper = { version = "0.14", features = ["full"] }
 
 # I dont know why I have to put this here
 openssl = { version = "0.10.32", features = ["vendored"] }
