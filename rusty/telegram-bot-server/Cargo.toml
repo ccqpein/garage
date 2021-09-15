@@ -26,6 +26,7 @@ lazy_static = "1"
 
 # re-write axum need these
 axum = "0.2"
+#axum-server = { version = "^0.2", features = ["tls-rustls"] }
 tower-http = {version = "0.1", features = ["full"]}
 tower = {version = "0.4", features = ["full"]}
 tokio-rustls = "0.22.0"

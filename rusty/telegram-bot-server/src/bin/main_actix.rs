@@ -18,30 +18,11 @@ use tokio::{
 };
 
 async fn handler(
-    mut payload: web::Payload,
+    web::Json(update): web::Json<Update>,
     api: web::Data<Api>,
     opts: web::Data<Opts>,
     ch_sender: web::Data<Sender<Message>>,
 ) -> Result<HttpResponse, Error> {
-    // parse json now
-    let mut body = web::BytesMut::new();
-    while let Some(chunk) = payload.next().await {
-        let chunk = chunk.map_err(|e| error::ErrorBadRequest(e.to_string()))?;
-
-        if (body.len() + chunk.len()) > 262_144_usize {
-            return Err(error::ErrorBadRequest(""));
-        }
-
-        body.extend_from_slice(&chunk);
-    }
-
-    let update = match serde_json::from_slice::<Update>(&body) {
-        Ok(u) => u,
-        Err(e) => {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()).into())
-        }
-    };
-
     match update_router(update, &api, &opts, &ch_sender).await {
         Ok(_) => Ok(HttpResponse::Ok().body("")),
         Err(_) => Ok(HttpResponse::Ok().body("inner problem")),

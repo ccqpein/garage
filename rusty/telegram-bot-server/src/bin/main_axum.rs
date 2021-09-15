@@ -1,4 +1,4 @@
-use axum::{extract, AddExtensionLayer, Router};
+use axum::{body::Body, extract, http::Request, AddExtensionLayer, Router};
 use clap::Clap;
 use hyper::server::conn::Http;
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
@@ -13,6 +13,7 @@ use tokio::{runtime, sync::mpsc::Sender};
 use tokio_rustls::TlsAcceptor;
 use tower::ServiceBuilder;
 use tower_http::compression::CompressionLayer;
+use tracing::{debug, info};
 
 async fn app(
     extract::Json(update): extract::Json<Update>,
@@ -25,6 +26,19 @@ async fn app(
         Err(_) => "inner problem",
     }
 }
+
+// async fn app(mut req: Request<Body>) -> &'static str {
+//     let full_body = hyper::body::to_bytes(&mut req.body_mut()).await.unwrap();
+//     let update = serde_json::from_slice::<Update>(&full_body).unwrap();
+//     let api = req.extensions().get::<Arc<Api>>().unwrap();
+//     let opts = req.extensions().get::<Arc<Opts>>().unwrap();
+//     let ch_sender = req.extensions().get::<Arc<Sender<Message>>>().unwrap();
+
+//     match update_router(update, &api, &opts, &ch_sender).await {
+//         Ok(_) => "",
+//         Err(_) => "inner problem",
+//     }
+// }
 
 fn main() {
     let mut lines = include_str!("../../vault/telebottoken").lines();
@@ -81,13 +95,13 @@ fn main() {
 
         let config = Arc::new(config);
 
-        // declare endpoint
-        let endpoint = include_str!("../../vault/endpoint");
-
         let acceptor = TlsAcceptor::from(config);
-        let listener = TcpListener::bind(String::from("0.0.0.0:8443") + endpoint)
+        let listener = TcpListener::bind(String::from("0.0.0.0:8443"))
             .await
             .unwrap();
+
+        // declare endpoint
+        let endpoint = include_str!("../../vault/endpoint");
 
         //
         let middleware_stack = ServiceBuilder::new()
@@ -96,32 +110,26 @@ fn main() {
             .layer(CompressionLayer::new())
             .into_inner();
 
-        // can I use rustls?
         let app = Router::new()
             .route(endpoint, axum::handler::post(app))
-            .layer(AddExtensionLayer::new(Api::new(token)))
-            .layer(AddExtensionLayer::new(opts.clone()))
-            .layer(AddExtensionLayer::new(tx.clone()))
+            .layer(AddExtensionLayer::new(Arc::new(Api::new(token))))
+            .layer(AddExtensionLayer::new(Arc::new(opts.clone())))
+            .layer(AddExtensionLayer::new(Arc::new(tx.clone())))
             .layer(middleware_stack);
-
-        // Server::bind(&SocketAddr::from((
-        //     IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-        //     8443,
-        // )))
-        // .serve(app.into_make_service())
-        // .await
-        // .unwrap()
 
         // https://github.com/tokio-rs/axum/blob/main/examples/low-level-rustls/src/main.rs#L36
         loop {
-            let (stream, _addr) = listener.accept().await.unwrap();
+            let (stream, addr) = listener.accept().await.unwrap();
+            debug!("listener accept from {}", addr);
+
             let acceptor = acceptor.clone();
 
             let app = app.clone();
 
             tokio::spawn(async move {
-                if let Ok(stream) = acceptor.accept(stream).await {
-                    let _ = Http::new().serve_connection(stream, app).await;
+                match acceptor.accept(stream).await {
+                    Ok(stream) => Http::new().serve_connection(stream, app).await.unwrap(),
+                    Err(e) => println!("{:?}", e),
                 }
             });
         }
