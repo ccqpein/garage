@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 struct Grid {
     data: [[Option<usize>; 3]; 3],
     potential_records: [[Potential; 3]; 3],
@@ -8,7 +10,19 @@ impl Grid {
         self.data[row].iter().filter_map(|c| *c)
     }
 
-    //fn get_col(&self) -> Iterator<Item = usize> {}
+    fn get_col(&self, col: usize) -> impl Iterator<Item = usize> + '_ {
+        self.data.iter().filter_map(move |r| r[col])
+    }
+
+    fn get_all(&self) -> impl Iterator<Item = usize> + '_ {
+        //:= need check if has duplication
+        (0..3).map(|r| self.get_row(r)).flatten()
+    }
+
+    fn init_potential(&self) {
+        let all = self.get_all().collect::<HashSet<_>>();
+        //(1..=9).iter().collect::<HashSet<_>>().difference(all)
+    }
 }
 
 struct Potential {
@@ -16,8 +30,10 @@ struct Potential {
 }
 
 impl Potential {
-    fn new(inner: Vec<(usize, bool)>) -> Self {
-        Self { inner }
+    fn new(inner: Vec<usize>) -> Self {
+        Self {
+            inner: inner.iter().map(|x| (*x, false)).collect(),
+        }
     }
 }
 
@@ -62,5 +78,6 @@ mod tests {
         };
         //:= TODO
         dbg!(a.get_row(2).collect::<Vec<_>>());
+        dbg!(a.get_col(2).collect::<Vec<_>>());
     }
 }
