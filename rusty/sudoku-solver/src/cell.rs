@@ -2,10 +2,19 @@ use std::collections::HashSet;
 
 struct Grid {
     data: [[Option<usize>; 3]; 3],
-    potential_records: [[Potential; 3]; 3],
+    potential_records: Option<[[Potential; 3]; 3]>,
 }
 
 impl Grid {
+    fn new(inner: &[[Option<usize>; 3]; 3]) -> Self {
+        let mut a = Self {
+            data: *inner,
+            potential_records: None,
+        };
+        a.init_potential();
+        a
+    }
+
     fn get_row(&self, row: usize) -> impl Iterator<Item = usize> + '_ {
         self.data[row].iter().filter_map(|c| *c)
     }
@@ -19,9 +28,23 @@ impl Grid {
         (0..3).map(|r| self.get_row(r)).flatten()
     }
 
-    fn init_potential(&self) {
+    fn init_potential(&mut self) {
         let all = self.get_all().collect::<HashSet<_>>();
-        //(1..=9).iter().collect::<HashSet<_>>().difference(all)
+        let p = (1..=9) // 1 to 9
+            .into_iter()
+            .collect::<HashSet<_>>()
+            .difference(&all)
+            .cloned()
+            .collect::<Vec<_>>();
+        for r in 0..3 {
+            for c in 0..3 {
+                if self.data[r][c].is_none() {
+                    self.potential_records.as_mut().unwrap()[r][c] = Potential::new(&p);
+                } else {
+                    self.potential_records.as_mut().unwrap()[r][c] = Potential::new(&vec![]);
+                }
+            }
+        }
     }
 }
 
@@ -30,7 +53,11 @@ struct Potential {
 }
 
 impl Potential {
-    fn new(inner: Vec<usize>) -> Self {
+    fn placeholder() -> Self {
+        Self { inner: vec![] }
+    }
+
+    fn new(inner: &Vec<usize>) -> Self {
         Self {
             inner: inner.iter().map(|x| (*x, false)).collect(),
         }
@@ -60,19 +87,19 @@ mod tests {
             ],
             potential_records: [
                 [
-                    Potential::new(vec![]),
-                    Potential::new(vec![]),
-                    Potential::new(vec![]),
+                    Potential::new(&vec![]),
+                    Potential::new(&vec![]),
+                    Potential::new(&vec![]),
                 ],
                 [
-                    Potential::new(vec![]),
-                    Potential::new(vec![]),
-                    Potential::new(vec![]),
+                    Potential::new(&vec![]),
+                    Potential::new(&vec![]),
+                    Potential::new(&vec![]),
                 ],
                 [
-                    Potential::new(vec![]),
-                    Potential::new(vec![]),
-                    Potential::new(vec![]),
+                    Potential::new(&vec![]),
+                    Potential::new(&vec![]),
+                    Potential::new(&vec![]),
                 ],
             ],
         };
