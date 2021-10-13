@@ -40,8 +40,8 @@
     ;; here is some define enum inside
     `(progn
        (defcenum ,name
-         ,@(loop for (name type number) in enum-args
-                 collect (list name (enumerated-value type number))))
+           ,@(loop for (name type number) in enum-args
+                   collect (list name (enumerated-value type number))))
        ',name)))               
 
  (define-curl-options curl-option
@@ -60,3 +60,19 @@
       (:url 10002))
     'curl-option)
 |#
+
+
+;; https://common-lisp.net/project/cffi/manual/html_node/Tutorial_002dLisp-easy_005fsetopt.html
+;;; We will use this type later in a more creative way.  For now, just
+;;; consider it a marker that this isn't just any pointer.
+(defctype easy-handle :pointer)
+   
+(defmacro curl-easy-setopt (easy-handle enumerated-name
+                            value-type new-value)
+  "Call `curl_easy_setopt' on EASY-HANDLE, using ENUMERATED-NAME
+  as the OPTION.  VALUE-TYPE is the CFFI foreign type of the third
+  argument, and NEW-VALUE is the Lisp data to be translated to the
+  third argument.  VALUE-TYPE is not evaluated."
+  `(foreign-funcall "curl_easy_setopt" easy-handle ,easy-handle
+                    curl-option ,enumerated-name
+                    ,value-type ,new-value curl-code))
