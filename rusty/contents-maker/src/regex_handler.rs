@@ -7,21 +7,21 @@ lazy_static! {
     static ref TITLE_REGEX: Regex = Regex::new(TITLE_REGEX_STR).unwrap();
 }
 
-fn capture_title(s: &str) -> Option<Captures> {
+pub fn capture_title(s: &str) -> Option<Captures> {
     TITLE_REGEX.captures(s)
 }
 
 /// match the # symbols in the front of title
-fn pick_the_head<'t>(cap: &Captures<'t>) -> Result<Match<'t>, String> {
+pub fn pick_the_head<'t>(cap: &Captures<'t>) -> Result<Match<'t>, String> {
     cap.name("HEAD").ok_or("Cannot find HEAD group.".into())
 }
 
 /// count how many # in this title match
-fn head_count(m: &Match) -> usize {
+pub fn head_count(m: &Match) -> usize {
     m.as_str().chars().filter(|c| *c == '#').count()
 }
 
-fn pick_the_head_content<'t>(cap: &Captures<'t>) -> Result<String, String> {
+pub fn pick_the_head_content<'t>(cap: &Captures<'t>) -> Result<String, String> {
     cap.name("CONTENT")
         .ok_or("Cannot find CONTENT group.".into())
         .map(|m| m.as_str().into())
