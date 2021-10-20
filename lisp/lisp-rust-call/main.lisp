@@ -76,3 +76,70 @@
   `(foreign-funcall "curl_easy_setopt" easy-handle ,easy-handle
                     curl-option ,enumerated-name
                     ,value-type ,new-value curl-code))
+
+(defun curry-curl-option-setter (function-name option-keyword)
+  "Wrap the function named by FUNCTION-NAME with a version that
+  curries the second argument as OPTION-KEYWORD.
+   
+  This function is intended for use in DEFINE-CURL-OPTION-SETTER."
+  (setf (symbol-function function-name)
+        (let ((c-function (symbol-function function-name)))
+          (lambda (easy-handle new-value)
+            (funcall c-function easy-handle option-keyword
+                     new-value)))))
+   
+(defmacro define-curl-option-setter (name option-type
+                                     option-value foreign-type)
+  "Define (with DEFCFUN) a function NAME that calls
+  curl_easy_setopt.  OPTION-TYPE and OPTION-VALUE are the CFFI
+  foreign type and value to be passed as the second argument to
+  easy_setopt, and FOREIGN-TYPE is the CFFI foreign type to be used
+  for the resultant function's third argument.
+   
+  This macro is intended for use in DEFINE-CURL-OPTIONS."
+  `(progn
+     (defcfun ("curl_easy_setopt" ,name) curl-code
+       (easy-handle easy-handle)
+       (option ,option-type)
+       (new-value ,foreign-type))
+     (curry-curl-option-setter ',name ',option-value)))
+   
+(defmacro define-curl-options (type-name type-offsets &rest enum-args)
+  "As with CFFI:DEFCENUM, except each of ENUM-ARGS is as follows:
+   
+      (NAME TYPE NUMBER)
+   
+  Where the arguments are as they are with the CINIT macro defined
+  in curl.h, except NAME is a keyword.
+   
+  TYPE-OFFSETS is a plist of TYPEs to their integer offsets, as
+  defined by the CURLOPTTYPE_LONG et al constants in curl.h.
+   
+  Also, define functions for each option named
+  set-`TYPE-NAME'-`OPTION-NAME', where OPTION-NAME is the NAME from
+  the above destructuring."
+  (flet ((enumerated-value (type offset)
+           (+ (getf type-offsets type) offset))
+         ;; map PROCEDURE, destructuring each of ENUM-ARGS
+         (map-enum-args (procedure)
+           (mapcar (lambda (arg) (apply procedure arg)) enum-args))
+         ;; build a name like SET-CURL-OPTION-NOSIGNAL
+         (make-setter-name (option-name)
+           (intern (concatenate
+                    'string "SET-" (symbol-name type-name)
+                    "-" (symbol-name option-name)))))
+    `(progn
+       (defcenum ,type-name
+           ,@(map-enum-args
+              (lambda (name type number)
+                (list name (enumerated-value type number)))))
+       ,@(map-enum-args
+          (lambda (name type number)
+            (declare (ignore number))
+            `(define-curl-option-setter ,(make-setter-name name)
+               ,type-name ,name ,(ecase type
+                                   (long :long)
+                                   (objectpoint :pointer)
+                                   (functionpoint :pointer)
+                                   (off-t :long)))))
+       ',type-name)))
