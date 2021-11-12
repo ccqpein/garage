@@ -37,14 +37,14 @@ func IsAsTest() {
 		fmt.Printf("equal same, err: %v, err0: %v", err, err0)
 	} else {
 		// diff address
-		fmt.Printf("ok?: %v\n", ok) // <- 
-		fmt.Printf("not equal, err: %p, err0: %p\n", err, err0) // <- 
+		fmt.Printf("ok?: %v\n", ok)                             // <-
+		fmt.Printf("not equal, err: %p, err0: %p\n", err, err0) // <-
 	}
 
 	err1 := ReturnMyErrVar()
 
 	if temp_e, ok := err.(*MyError); temp_e == err1 && ok {
-		fmt.Printf("equal same, err: %v, err1: %v\n", err, err1) // <- 
+		fmt.Printf("equal same, err: %v, err1: %v\n", err, err1) // <-
 	} else {
 		// diff address
 		fmt.Printf("ok?: %v\n", ok)
@@ -53,7 +53,7 @@ func IsAsTest() {
 
 	// now try is
 	if errors.Is(err1, err) {
-		fmt.Print("ok\n") // <- 
+		fmt.Print("ok\n") // <-
 	} else {
 		fmt.Print("not ok\n")
 	}
@@ -68,7 +68,7 @@ func IsAsTest() {
 	var asTarget *MyError
 
 	if errors.As(err0, &asTarget) {
-		fmt.Print("as ok\n") // <- 
+		fmt.Print("as ok\n") // <-
 	} else {
 		fmt.Print("as not ok\n")
 	}
@@ -76,13 +76,13 @@ func IsAsTest() {
 	// test wrapping
 	errW0 := fmt.Errorf("wrapping %w", err1)
 	if errors.Is(errW0, err) {
-		fmt.Print("wrap is ok\n") // <- 
+		fmt.Print("wrap is ok\n") // <-
 	} else {
 		fmt.Print("not ok\n")
 	}
 
 	if errors.As(errW0, &asTarget) {
-		fmt.Print("wrap as ok\n") // <- 
+		fmt.Print("wrap as ok\n") // <-
 	} else {
 		fmt.Print("as not ok\n")
 	}
