@@ -53,13 +53,19 @@ func IsAsTest() {
 
 	// now try is
 	if errors.Is(err1, err) {
-		fmt.Print("ok\n") // <-
+		fmt.Print("ok0\n") // <-
 	} else {
 		fmt.Print("not ok\n")
 	}
 
+	if errors.Is(&MyError{inner: "a", err: err}, err) {
+		fmt.Print("is ok because myerror Unwrap gonna return err\n") // <- it is ok because myerror Unwrap gonna return err
+	} else {
+		fmt.Print("is not ok\n")
+	}
+
 	if errors.Is(err0, err) {
-		fmt.Print("is ok\n")
+		fmt.Print("is ok2\n")
 	} else {
 		fmt.Print("is not ok\n") // <-
 	}
