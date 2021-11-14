@@ -2,7 +2,7 @@
 name = "telegram-bot-server"
 version = "0.1.0"
 authors = ["ccQpein"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -39,6 +39,6 @@ openssl = { version = "0.10.32", features = ["vendored"] }
 name = "telegram-bot-server-actix"
 path = "src/bin/main_actix.rs"
 
-[[bin]]
-name = "telegram-bot-server-axum"
-path = "src/bin/main_axum.rs"
+# [[bin]]
+# name = "telegram-bot-server-axum"
+# path = "src/bin/main_axum.rs"

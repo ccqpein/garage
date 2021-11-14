@@ -33,8 +33,9 @@ fn main() -> std::io::Result<()> {
     // read token
     let mut lines = include_str!("../../vault/telebottoken").lines();
     let token = lines.next().unwrap();
+    let opts: Opts = Opts::parse();
 
-    let (mut watcher, mut deliver, mut reminder, tx) = init(Api::new(token));
+    let (mut watcher, mut deliver, mut reminder, tx) = init(Api::new(token), opts);
 
     let rt = tokio::runtime::Runtime::new().unwrap();
 
@@ -42,6 +43,7 @@ fn main() -> std::io::Result<()> {
         // one thread runtime
         let local_rt = runtime::Builder::new_current_thread()
             .enable_all()
+            .worker_threads(2)
             .build()?;
 
         std::thread::spawn(move || {

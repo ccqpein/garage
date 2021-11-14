@@ -29,20 +29,6 @@ pub async fn update_router(
             (MessageKind::Text { ref data, .. }, ch @ MessageChat::Private(_)) => {
                 info!("Receive message data: {:?}", data);
                 match data.to_lowercase().as_str() {
-                    // commit
-                    "commit" => {
-                        let msg = my_github_commits(
-                            message.from.username.unwrap_or(String::new()),
-                            &opts.vault,
-                        )
-                        .await
-                        .unwrap_or("Inner error".to_string());
-
-                        let _ = api
-                            .send(SendMessage::new(ch, msg))
-                            .await
-                            .map_err(|e| e.to_string())?;
-                    }
                     _ => {
                         info!("Send message to Watcher: {:?}", message);
                         channel
@@ -60,7 +46,7 @@ pub async fn update_router(
     Ok(())
 }
 
-async fn my_github_commits(username: String, vault: &String) -> Result<String, String> {
+pub async fn my_github_commits(username: String, vault: &String) -> Result<String, String> {
     let f = BufReader::new(File::open(vault.clone() + "/myname").map_err(|e| e.to_string())?);
     let myname = f
         .lines()

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lazy_static::*;
 use std::sync::Mutex;
-use telegram_bot::{Api, ChatId, Message, MessageChat, MessageKind, ToMessageId};
+use telegram_bot::{Api, ChatId, Message, MessageChat, MessageKind, SendMessage, ToMessageId};
 use tokio::{
     sync::{
         mpsc::{Receiver, Sender},
@@ -15,6 +15,7 @@ use tokio::{
 use tracing::{debug, info};
 
 use crate::{
+    app::{my_github_commits, Opts},
     deliver::Msg2Deliver,
     reminder::{Msg2Reminder, ReminderComm},
 };
@@ -38,6 +39,8 @@ enum SpecialMsg {
     CancelReminder(String),
     CancelReminderPending,
     Check(CheckMsg),
+    Commit,
+
     UnSpport,
     UnSpportMsg(String), // reason inside
 }
@@ -58,6 +61,7 @@ impl From<&String> for SpecialMsg {
                 }
                 "cancelremind" => Self::CancelReminder(String::new()),
                 "check" => Self::Check(CheckMsg::Nil),
+                "commit" => Self::Commit,
                 a @ _ => Self::UnSpportMsg(String::from(a)),
             }
         } else {
@@ -78,6 +82,8 @@ impl From<&String> for SpecialMsg {
                 _ => Self::UnSpport,
             },
 
+            (re @ Self::Commit, _) => re,
+
             (re @ Self::UnSpport, _) => re,
 
             (re @ Self::UnSpportMsg(_), _) => re,
@@ -87,9 +93,14 @@ impl From<&String> for SpecialMsg {
     }
 }
 
+/// watcher for check which app should called with this message.
 pub struct Watcher {
+    opts: Opts,
+
+    /// the channel receive message
     ch: Receiver<Message>,
 
+    /// the channel send to deliver
     send: Sender<Msg2Deliver>,
 
     reminder: Sender<Msg2Reminder>,
@@ -98,11 +109,17 @@ pub struct Watcher {
 impl Watcher {
     pub fn new(
         _api: Api,
+        opts: Opts,
         ch: Receiver<Message>,
         send: Sender<Msg2Deliver>,
         reminder: Sender<Msg2Reminder>,
     ) -> Self {
-        Self { ch, send, reminder }
+        Self {
+            opts,
+            ch,
+            send,
+            reminder,
+        }
     }
 
     pub async fn run(&mut self) {
@@ -294,6 +311,27 @@ impl Watcher {
                             }
                         },
 
+                        SpecialMsg::Commit => {
+                            let reply = my_github_commits(
+                                msg.from.username.unwrap_or(String::new()),
+                                &self.opts.vault,
+                            )
+                            .await
+                            .unwrap_or("check commit error".to_string());
+
+                            match self
+                                .send
+                                .send(Msg2Deliver::new("send".into(), msg.chat.id(), reply))
+                                .await
+                            {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    debug!("Error {} happens in pending watcher", e.to_string());
+                                    return;
+                                }
+                            }
+                        }
+
                         SpecialMsg::UnSpportMsg(m) => {
                             debug!("unsupport {}", data);
                             match self
@@ -410,6 +448,7 @@ impl Watcher {
     }
 }
 
+/// check this chat window's status
 fn status_checker(msg: &Message) -> Status {
     match REMIND_PENDING_TABLE.lock().unwrap().get(&msg.chat.id()) {
         Some((status, _)) => status.clone(),
