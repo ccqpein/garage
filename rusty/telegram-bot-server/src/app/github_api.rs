@@ -193,3 +193,23 @@ mod tests {
         );
     }
 }
+
+pub async fn my_github_commits(username: String, vault: &String) -> Result<String, String> {
+    let f = BufReader::new(File::open(vault.clone() + "/myname").map_err(|e| e.to_string())?);
+    let myname = f
+        .lines()
+        .next()
+        .ok_or("Read 'myname' failed".to_string())?
+        .map_err(|e| e.to_string())?;
+
+    if username == myname {
+        if does_this_user_have_commit_today("ccqpein", Some(vault.clone() + "/githubtoken")).await?
+        {
+            Ok(format!("You have commit today"))
+        } else {
+            Ok(format!("You haven't commit today yet"))
+        }
+    } else {
+        Ok("Not for you".to_string())
+    }
+}
