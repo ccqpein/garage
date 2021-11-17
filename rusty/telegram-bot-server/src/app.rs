@@ -12,18 +12,14 @@ use tracing::info;
 mod github_api;
 pub use github_api::my_github_commits;
 
+/// app layer opts
 #[derive(Default, Clap, Clone)]
 pub struct Opts {
     #[clap(short, long)]
     pub vault: String,
 }
 
-pub async fn update_router(
-    update: Update,
-    api: &Api,
-    opts: &Opts,
-    channel: &Sender<Message>,
-) -> Result<(), String> {
+pub async fn update_router(update: Update, channel: &Sender<Message>) -> Result<(), String> {
     match update.kind {
         UpdateKind::Message(message) => match (&message.kind, &message.chat) {
             // message from private

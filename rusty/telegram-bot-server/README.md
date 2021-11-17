@@ -2,10 +2,11 @@
 
 Personal Telegram Bot
 
-**TODO:**
+**TODO**
 
-+ commit reply move to watcher
-+ checker status/tables features
+- [ ] move special msg parsing to app 
+- [ ] watcher call app parser and pick where to send this message
+- [ ] app layer handle what's the next.
 
 **crossing compiling**
 

@@ -23,7 +23,7 @@ async fn handler(
     opts: web::Data<Opts>,
     ch_sender: web::Data<Sender<Message>>,
 ) -> Result<HttpResponse, Error> {
-    match update_router(update, &api, &opts, &ch_sender).await {
+    match update_router(update, &ch_sender).await {
         Ok(_) => Ok(HttpResponse::Ok().body("")),
         Err(_) => Ok(HttpResponse::Ok().body("inner problem")),
     }
