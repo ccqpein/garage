@@ -1,3 +1,6 @@
+#![feature(associated_type_defaults)]
+#![feature(generic_associated_types)]
+
 pub mod app;
 
 /// deliver for sending message to chat

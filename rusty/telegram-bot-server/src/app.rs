@@ -1,7 +1,10 @@
 use clap::Clap;
+use futures::Future;
+use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::pin::Pin;
 use telegram_bot::{
     types::{requests::SendMessage, MessageChat, MessageKind, Update, UpdateKind},
     Api, Message,
@@ -41,4 +44,32 @@ pub async fn update_router(update: Update, channel: &Sender<Message>) -> Result<
     }
 
     Ok(())
+}
+
+trait App {
+    type Input;
+    type Output = Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>>>>;
+    fn run(input: Self::Input) -> Self::Output;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::App;
+
+    #[test]
+    fn test_async_trait() {
+        struct TestCase;
+
+        impl App for TestCase {
+            type Input = &'static str;
+            fn run(input: &str) -> Self::Output {
+                let inner = async {
+                    println!("inside aync");
+                    Ok(())
+                };
+
+                Box::pin(inner)
+            }
+        };
+    }
 }

@@ -108,6 +108,7 @@ mod tests {
         let time = NaiveTime::from_hms(0, 0, 0);
         let dt: NaiveDateTime = data.and_time(time);
 
+        // this test gonna failed when I am not in EST lol
         let date_time: DateTime<Local> = Local.from_local_datetime(&dt).unwrap();
         assert_eq!(
             date_time
