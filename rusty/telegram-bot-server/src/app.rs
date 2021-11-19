@@ -12,8 +12,11 @@ use telegram_bot::{
 use tokio::sync::mpsc::Sender;
 use tracing::info;
 
+use async_trait::async_trait;
+
 mod github_api;
-pub use github_api::my_github_commits;
+
+pub use github_api::*;
 
 /// app layer opts
 #[derive(Default, Clap, Clone)]
@@ -46,29 +49,47 @@ pub async fn update_router(update: Update, channel: &Sender<Message>) -> Result<
     Ok(())
 }
 
-trait App {
+#[async_trait]
+pub trait App<'a> {
     type Input;
-    type Output = Pin<Box<dyn Future<Output = Result<(), Box<dyn Error>>>>>;
-    fn run(input: Self::Input) -> Self::Output;
+    type Output;
+
+    /// match if this message match this app, return necessary information
+    /// from message
+    fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>>;
+
+    /// run this app
+    async fn run(&self, input: Self::Input) -> Self::Output
+    where
+        'a: 'async_trait;
 }
 
 #[cfg(test)]
 mod tests {
+
     use super::App;
+    use async_trait::async_trait;
 
     #[test]
     fn test_async_trait() {
         struct TestCase;
 
-        impl App for TestCase {
+        #[async_trait]
+        impl<'a> App<'a> for TestCase {
             type Input = &'static str;
-            fn run(input: &str) -> Self::Output {
+            type Output = Result<(), String>;
+
+            async fn run(&self, input: Self::Input) -> Self::Output {
                 let inner = async {
                     println!("inside aync");
                     Ok(())
                 };
 
-                Box::pin(inner)
+                inner.await
+            }
+
+            fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>> {
+                None
             }
         };
     }

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use chrono_tz::America::New_York;
 use octocrab::{initialise, instance, Octocrab, OctocrabBuilder, Result};
@@ -6,6 +7,41 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 use tracing::info;
+
+use super::App;
+
+pub struct GithubCommitCheck;
+pub struct GithubCommitCheckInput<'a> {
+    username: String,
+    vault: &'a String,
+}
+
+impl<'a> GithubCommitCheckInput<'a> {
+    pub fn new(username: String, vault: &'a String) -> Self {
+        Self { username, vault }
+    }
+}
+
+#[async_trait]
+impl<'a> App<'a> for GithubCommitCheck {
+    type Input = GithubCommitCheckInput<'a>;
+    type Output = Result<String, String>;
+
+    async fn run(&self, GithubCommitCheckInput { username, vault }: Self::Input) -> Self::Output
+    where
+        'a: 'async_trait,
+    {
+        my_github_commits(username, vault).await
+    }
+
+    fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>> {
+        if msg == "commit" {
+            Some(vec![])
+        } else {
+            None
+        }
+    }
+}
 
 async fn get_users_recently_repos(
     client: &Octocrab,
@@ -71,6 +107,26 @@ pub(super) async fn does_this_user_have_commit_today(
     let since = the_start_of_today_in_utc().await?;
     info!("check if you commit since {}", since);
     if_repo_has_commit_since(&client, username, since).await
+}
+
+pub async fn my_github_commits(username: String, vault: &String) -> Result<String, String> {
+    let f = BufReader::new(File::open(vault.clone() + "/myname").map_err(|e| e.to_string())?);
+    let myname = f
+        .lines()
+        .next()
+        .ok_or("Read 'myname' failed".to_string())?
+        .map_err(|e| e.to_string())?;
+
+    if username == myname {
+        if does_this_user_have_commit_today("ccqpein", Some(vault.clone() + "/githubtoken")).await?
+        {
+            Ok(format!("You have commit today"))
+        } else {
+            Ok(format!("You haven't commit today yet"))
+        }
+    } else {
+        Ok("Not for you".to_string())
+    }
 }
 
 #[cfg(test)]
@@ -192,25 +248,5 @@ mod tests {
             new_york_d.to_rfc3339_opts(SecondsFormat::Secs, true),
             "2021-05-24T04:00:00Z"
         );
-    }
-}
-
-pub async fn my_github_commits(username: String, vault: &String) -> Result<String, String> {
-    let f = BufReader::new(File::open(vault.clone() + "/myname").map_err(|e| e.to_string())?);
-    let myname = f
-        .lines()
-        .next()
-        .ok_or("Read 'myname' failed".to_string())?
-        .map_err(|e| e.to_string())?;
-
-    if username == myname {
-        if does_this_user_have_commit_today("ccqpein", Some(vault.clone() + "/githubtoken")).await?
-        {
-            Ok(format!("You have commit today"))
-        } else {
-            Ok(format!("You haven't commit today yet"))
-        }
-    } else {
-        Ok("Not for you".to_string())
     }
 }

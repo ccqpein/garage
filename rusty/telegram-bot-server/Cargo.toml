@@ -35,6 +35,8 @@ hyper = { version = "0.14", features = ["full"] }
 # I dont know why I have to put this here
 openssl = { version = "0.10.32", features = ["vendored"] }
 
+async-trait = "0.1"
+
 [[bin]]
 name = "telegram-bot-server-actix"
 path = "src/bin/main_actix.rs"

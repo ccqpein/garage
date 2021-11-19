@@ -15,7 +15,7 @@ use tokio::{
 use tracing::{debug, info};
 
 use crate::{
-    app::{my_github_commits, Opts},
+    app::{my_github_commits, App, GithubCommitCheck, GithubCommitCheckInput, Opts},
     deliver::Msg2Deliver,
     reminder::{Msg2Reminder, ReminderComm},
 };
@@ -61,7 +61,7 @@ impl From<&String> for SpecialMsg {
                 }
                 "cancelremind" => Self::CancelReminder(String::new()),
                 "check" => Self::Check(CheckMsg::Nil),
-                "commit" => Self::Commit,
+                //"commit" => Self::Commit, //:= UnSpportMsg as temp entrance for handling this
                 a @ _ => Self::UnSpportMsg(String::from(a)),
             }
         } else {
@@ -311,6 +311,7 @@ impl Watcher {
                             }
                         },
 
+                        //:= NEXT: make this because app trait implement
                         SpecialMsg::Commit => {
                             let reply = my_github_commits(
                                 msg.from.username.unwrap_or(String::new()),
@@ -334,9 +335,23 @@ impl Watcher {
 
                         SpecialMsg::UnSpportMsg(m) => {
                             debug!("unsupport {}", data);
+                            //:= commit command here
+                            let gc = GithubCommitCheck;
+                            let reply = match gc.match_str(&m) {
+                                Some(_) => gc
+                                    .run(GithubCommitCheckInput::new(
+                                        msg.from.username.unwrap_or(String::new()),
+                                        &self.opts.vault,
+                                    ))
+                                    .await
+                                    .unwrap_or("check commit error".to_string()),
+
+                                None => m,
+                            };
+
                             match self
                                 .send
-                                .send(Msg2Deliver::new("send".into(), msg.chat.id(), m))
+                                .send(Msg2Deliver::new("send".into(), msg.chat.id(), reply))
                                 .await
                             {
                                 Ok(_) => {}
