@@ -4,9 +4,7 @@ Personal Telegram Bot
 
 **TODO**
 
-- [ ] move special msg parsing to app 
-- [ ] watcher call app parser and pick where to send this message
-- [ ] app layer handle what's the next.
+- [ ] reminder has own app
 
 **crossing compiling**
 

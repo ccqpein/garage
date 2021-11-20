@@ -39,8 +39,7 @@ enum SpecialMsg {
     CancelReminder(String),
     CancelReminderPending,
     Check(CheckMsg),
-    Commit,
-
+    //Commit,
     UnSpport,
     UnSpportMsg(String), // reason inside
 }
@@ -82,8 +81,7 @@ impl From<&String> for SpecialMsg {
                 _ => Self::UnSpport,
             },
 
-            (re @ Self::Commit, _) => re,
-
+            //(re @ Self::Commit, _) => re,
             (re @ Self::UnSpport, _) => re,
 
             (re @ Self::UnSpportMsg(_), _) => re,
@@ -312,27 +310,26 @@ impl Watcher {
                         },
 
                         //:= NEXT: make this because app trait implement
-                        SpecialMsg::Commit => {
-                            let reply = my_github_commits(
-                                msg.from.username.unwrap_or(String::new()),
-                                &self.opts.vault,
-                            )
-                            .await
-                            .unwrap_or("check commit error".to_string());
+                        // SpecialMsg::Commit => {
+                        //     let reply = my_github_commits(
+                        //         msg.from.username.unwrap_or(String::new()),
+                        //         &self.opts.vault,
+                        //     )
+                        //     .await
+                        //     .unwrap_or("check commit error".to_string());
 
-                            match self
-                                .send
-                                .send(Msg2Deliver::new("send".into(), msg.chat.id(), reply))
-                                .await
-                            {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    debug!("Error {} happens in pending watcher", e.to_string());
-                                    return;
-                                }
-                            }
-                        }
-
+                        //     match self
+                        //         .send
+                        //         .send(Msg2Deliver::new("send".into(), msg.chat.id(), reply))
+                        //         .await
+                        //     {
+                        //         Ok(_) => {}
+                        //         Err(e) => {
+                        //             debug!("Error {} happens in pending watcher", e.to_string());
+                        //             return;
+                        //         }
+                        //     }
+                        // }
                         SpecialMsg::UnSpportMsg(m) => {
                             debug!("unsupport {}", data);
                             //:= commit command here
