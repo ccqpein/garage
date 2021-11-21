@@ -15,8 +15,10 @@ use tracing::info;
 use async_trait::async_trait;
 
 mod github_api;
+mod reminder;
 
 pub use github_api::*;
+pub use reminder::*;
 
 /// app layer opts
 #[derive(Default, Clap, Clone)]
@@ -66,7 +68,6 @@ pub trait App<'a> {
 
 #[cfg(test)]
 mod tests {
-
     use super::App;
     use async_trait::async_trait;
 
