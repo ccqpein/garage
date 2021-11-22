@@ -1,26 +1,57 @@
+use std::collections::HashMap;
+
+use telegram_bot::ChatId;
+use tokio::sync::oneshot;
+
 use super::App;
 
-struct Reminder {}
+enum ReminderStatus {
+    /// make new reminder
+    Reminder(u64), // time of reminder
+    ReminderPending,
 
-impl App for Reminder {
-    type Input;
+    /// cancel the reminder
+    CancelReminder(String),
+    CancelReminderPending,
+}
 
-    type Output;
+struct Reminder {
+    status_table: HashMap<ChatId, (ReminderStatus, oneshot::Sender<bool>)>,
+}
 
-    fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>> {
-        let mut pre_msg = msg.to_lowercase().split_whitespace();
-        match (pre_msg.next(), pre_msg.next()) {
-            (Some(), Some()) => {}
-            (Some(comm), None) => if comm = "remind" {},
-        }
-
-        None
+impl Reminder {
+    fn new() -> Self {
+        todo!()
     }
 
-    async fn run(&self, input: Self::Input) -> Self::Output
-    where
-        'a: 'async_trait,
-    {
+    /// check this chat window's status
+    pub fn status_checker() -> Option<ReminderStatus> {
         todo!()
     }
 }
+
+// #[async_trait]
+// impl<'a> App<'a> for Reminder {
+//     type Input;
+
+//     type Output;
+
+//     fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>> {
+//         // let mut pre_msg = msg.to_lowercase().split_whitespace();
+//         // match (pre_msg.next(), pre_msg.next()) {
+//         //     (Some(), Some()) => {}
+//         //     (Some(comm), None) => if comm = "remind" {},
+//         // }
+
+//         // None
+
+//         todo!()
+//     }
+
+//     async fn run(&self, input: Self::Input) -> Self::Output
+//     where
+//         'a: 'async_trait,
+//     {
+//         todo!()
+//     }
+// }

@@ -309,27 +309,6 @@ impl Watcher {
                             }
                         },
 
-                        //:= NEXT: make this because app trait implement
-                        // SpecialMsg::Commit => {
-                        //     let reply = my_github_commits(
-                        //         msg.from.username.unwrap_or(String::new()),
-                        //         &self.opts.vault,
-                        //     )
-                        //     .await
-                        //     .unwrap_or("check commit error".to_string());
-
-                        //     match self
-                        //         .send
-                        //         .send(Msg2Deliver::new("send".into(), msg.chat.id(), reply))
-                        //         .await
-                        //     {
-                        //         Ok(_) => {}
-                        //         Err(e) => {
-                        //             debug!("Error {} happens in pending watcher", e.to_string());
-                        //             return;
-                        //         }
-                        //     }
-                        // }
                         SpecialMsg::UnSpportMsg(m) => {
                             debug!("unsupport {}", data);
                             //:= commit command here
