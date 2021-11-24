@@ -51,20 +51,26 @@ pub async fn update_router(update: Update, channel: &Sender<Message>) -> Result<
     Ok(())
 }
 
-#[async_trait]
-pub trait App<'a> {
-    type Input;
-    type Output;
+pub trait AppInput {}
+pub trait AppOutput {}
 
+impl AppInput for str {}
+impl AppOutput for Result<(), String> {}
+impl AppOutput for Result<String, String> {}
+
+#[async_trait]
+pub trait App {
     /// match if this message match this app, return necessary information
     /// from message
-    fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>>;
+    fn match_str(&self, msg: &str) -> Option<Vec<&str>>;
 
     /// run this app
-    async fn run(&self, input: Self::Input) -> Self::Output
-    where
-        'a: 'async_trait;
+    async fn run(&self, input: &[&str]) -> Result<String, String>;
 }
+
+// pub fn app_picker(msg: &str) -> Box<&dyn App> {
+//     todo!()
+// }
 
 #[cfg(test)]
 mod tests {
@@ -76,20 +82,17 @@ mod tests {
         struct TestCase;
 
         #[async_trait]
-        impl<'a> App<'a> for TestCase {
-            type Input = &'static str;
-            type Output = Result<(), String>;
-
-            async fn run(&self, input: Self::Input) -> Self::Output {
+        impl App for TestCase {
+            async fn run(&self, input: &[&str]) -> Result<String, String> {
                 let inner = async {
                     println!("inside aync");
-                    Ok(())
+                    Ok("ok".to_string())
                 };
 
                 inner.await
             }
 
-            fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>> {
+            fn match_str(&self, msg: &str) -> Option<Vec<&str>> {
                 None
             }
         };

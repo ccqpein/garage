@@ -315,10 +315,10 @@ impl Watcher {
                             let gc = GithubCommitCheck;
                             let reply = match gc.match_str(&m) {
                                 Some(_) => gc
-                                    .run(GithubCommitCheckInput::new(
-                                        msg.from.username.unwrap_or(String::new()),
+                                    .run(&[
+                                        &msg.from.username.unwrap_or(String::new()),
                                         &self.opts.vault,
-                                    ))
+                                    ])
                                     .await
                                     .unwrap_or("check commit error".to_string()),
 

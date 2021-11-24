@@ -9,8 +9,10 @@ use std::path::Path;
 use tracing::info;
 
 use super::App;
+use super::AppInput;
 
 pub struct GithubCommitCheck;
+
 pub struct GithubCommitCheckInput<'a> {
     username: String,
     vault: &'a String,
@@ -23,18 +25,15 @@ impl<'a> GithubCommitCheckInput<'a> {
 }
 
 #[async_trait]
-impl<'a> App<'a> for GithubCommitCheck {
-    type Input = GithubCommitCheckInput<'a>;
-    type Output = Result<String, String>;
-
-    async fn run(&self, GithubCommitCheckInput { username, vault }: Self::Input) -> Self::Output
-    where
-        'a: 'async_trait,
-    {
-        my_github_commits(username, vault).await
+impl App for GithubCommitCheck {
+    async fn run(&self, input: &[&str]) -> Result<String, String> {
+        match input {
+            [username, vault, ..] => my_github_commits(*username, *vault).await,
+            _ => return Err("input pattern match failed".to_string()),
+        }
     }
 
-    fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>> {
+    fn match_str(&self, msg: &str) -> Option<Vec<&str>> {
         if msg == "commit" {
             Some(vec![])
         } else {
@@ -109,8 +108,8 @@ pub(super) async fn does_this_user_have_commit_today(
     if_repo_has_commit_since(&client, username, since).await
 }
 
-pub async fn my_github_commits(username: String, vault: &String) -> Result<String, String> {
-    let f = BufReader::new(File::open(vault.clone() + "/myname").map_err(|e| e.to_string())?);
+pub async fn my_github_commits(username: &str, vault: &str) -> Result<String, String> {
+    let f = BufReader::new(File::open(vault.to_string() + "/myname").map_err(|e| e.to_string())?);
     let myname = f
         .lines()
         .next()
@@ -118,7 +117,8 @@ pub async fn my_github_commits(username: String, vault: &String) -> Result<Strin
         .map_err(|e| e.to_string())?;
 
     if username == myname {
-        if does_this_user_have_commit_today("ccqpein", Some(vault.clone() + "/githubtoken")).await?
+        if does_this_user_have_commit_today("ccqpein", Some(vault.to_string() + "/githubtoken"))
+            .await?
         {
             Ok(format!("You have commit today"))
         } else {

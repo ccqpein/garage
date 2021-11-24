@@ -1,5 +1,6 @@
 #![feature(associated_type_defaults)]
 #![feature(generic_associated_types)]
+#![feature(box_syntax)]
 
 pub mod app;
 
