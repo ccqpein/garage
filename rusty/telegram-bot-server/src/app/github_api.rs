@@ -9,31 +9,18 @@ use std::path::Path;
 use tracing::info;
 
 use super::App;
-use super::AppInput;
 
 pub struct GithubCommitCheck;
 
-pub struct GithubCommitCheckInput<'a> {
-    username: String,
-    vault: &'a String,
-}
-
-impl<'a> GithubCommitCheckInput<'a> {
-    pub fn new(username: String, vault: &'a String) -> Self {
-        Self { username, vault }
-    }
-}
-
-#[async_trait]
-impl App for GithubCommitCheck {
-    async fn run(&self, input: &[&str]) -> Result<String, String> {
+impl GithubCommitCheck {
+    pub async fn run(&self, input: &[String]) -> Result<String, String> {
         match input {
-            [username, vault, ..] => my_github_commits(*username, *vault).await,
+            [username, vault, ..] => my_github_commits(username, vault).await,
             _ => return Err("input pattern match failed".to_string()),
         }
     }
 
-    fn match_str(&self, msg: &str) -> Option<Vec<&str>> {
+    pub fn match_str(&self, msg: &str) -> Option<Vec<String>> {
         if msg == "commit" {
             Some(vec![])
         } else {
@@ -41,6 +28,24 @@ impl App for GithubCommitCheck {
         }
     }
 }
+
+// #[async_trait]
+// impl App for GithubCommitCheck {
+//     async fn run(&self, input: &[String]) -> Result<String, String> {
+//         match input {
+//             [username, vault, ..] => my_github_commits(username, vault).await,
+//             _ => return Err("input pattern match failed".to_string()),
+//         }
+//     }
+
+//     fn match_str(&self, msg: &str) -> Option<Vec<String>> {
+//         if msg == "commit" {
+//             Some(vec![])
+//         } else {
+//             None
+//         }
+//     }
+// }
 
 async fn get_users_recently_repos(
     client: &Octocrab,

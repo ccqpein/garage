@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
+use async_trait::async_trait;
 use telegram_bot::ChatId;
 use tokio::sync::oneshot;
+use tracing::{debug, info};
 
 use super::App;
 
@@ -30,28 +32,33 @@ impl Reminder {
     }
 }
 
-// #[async_trait]
-// impl<'a> App<'a> for Reminder {
-//     type Input;
+#[cfg(test)]
+mod tests {
 
-//     type Output;
+    #[test]
+    fn test_slice_pattern() {
+        let testcase = ["a", "b"];
+        let [a, b, ..] = testcase;
+        assert_eq!(a, "a");
+        assert_eq!(b, "b");
 
-//     fn match_str(&self, msg: &'a str) -> Option<Vec<&'a str>> {
-//         // let mut pre_msg = msg.to_lowercase().split_whitespace();
-//         // match (pre_msg.next(), pre_msg.next()) {
-//         //     (Some(), Some()) => {}
-//         //     (Some(comm), None) => if comm = "remind" {},
-//         // }
+        let testcase = ["a", ""];
+        let [a, b, ..] = testcase;
+        assert_eq!(a, "a");
+        assert_eq!(b, "");
 
-//         // None
-
-//         todo!()
-//     }
-
-//     async fn run(&self, input: Self::Input) -> Self::Output
-//     where
-//         'a: 'async_trait,
-//     {
-//         todo!()
-//     }
-// }
+        let testcase = "a".split_whitespace();
+        match testcase.clone().collect::<Vec<_>>()[..] {
+            [_a, _b, ..] => {
+                panic!();
+            }
+            [_a, _b] => {
+                panic!();
+            }
+            [a] => {
+                assert_eq!(a, "a");
+            }
+            _ => panic!("wrong"),
+        }
+    }
+}

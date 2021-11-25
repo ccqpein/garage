@@ -15,7 +15,7 @@ use tokio::{
 use tracing::{debug, info};
 
 use crate::{
-    app::{my_github_commits, App, GithubCommitCheck, GithubCommitCheckInput, Opts},
+    app::{my_github_commits, App, GithubCommitCheck, Opts},
     deliver::Msg2Deliver,
     reminder::{Msg2Reminder, ReminderComm},
 };
@@ -316,8 +316,8 @@ impl Watcher {
                             let reply = match gc.match_str(&m) {
                                 Some(_) => gc
                                     .run(&[
-                                        &msg.from.username.unwrap_or(String::new()),
-                                        &self.opts.vault,
+                                        msg.from.username.unwrap_or(String::new()),
+                                        self.opts.vault.clone(),
                                     ])
                                     .await
                                     .unwrap_or("check commit error".to_string()),
