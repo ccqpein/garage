@@ -12,6 +12,7 @@ use telegram_bot::{
     types::{requests::SendMessage, MessageChat, MessageKind, Update, UpdateKind},
     Api, Message,
 };
+
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::mpsc::Sender;
@@ -58,13 +59,13 @@ pub async fn update_router(update: Update, channel: &Sender<Message>) -> Result<
 }
 
 /// the layer after watcher and manage registering app
-struct AppLayer<'app> {
-    registers_match: HashMap<String, Box<dyn Fn(&Message) -> Option<Vec<String>> + 'app>>,
-    registers_app: HashMap<String, Sender<Vec<String>>>,
+struct AppLayer {
+    registers_match: HashMap<String, Box<dyn Fn(&Message) -> Option<Box<dyn AppInput>>>>,
+    registers_app: HashMap<String, Sender<Box<dyn AppInput>>>,
     message_rec: Receiver<Message>,
 }
 
-impl<'app> AppLayer<'app> {
+impl AppLayer {
     fn new() -> (Self, Sender<Message>) {
         let (snd, rev) = mpsc::channel(10);
         (
@@ -77,7 +78,7 @@ impl<'app> AppLayer<'app> {
         )
     }
 
-    fn register_app(&mut self, app: impl App + 'app) -> Result<(), String> {
+    fn register_app(&mut self, app: impl App) -> Result<(), String> {
         self.registers_match
             .insert(app.name(), Register::message_match(&app));
         self.registers_app.insert(app.name(), app.sender());
@@ -105,12 +106,15 @@ impl<'app> AppLayer<'app> {
     }
 }
 
+pub trait AppInput {
+    fn from_msg(&mut self, msg: &Message) -> Result<(), String>;
+}
+
 /// this message_match function gives the function that message parser of this app
 pub trait Register {
     /// return function which match the message of this register
-    fn message_match<F>(&self) -> F
+    fn message_match(&self) -> Box<dyn Fn(&Message) -> Option<Box<dyn AppInput>>>
     where
-        F: Fn(&Message) -> Option<Vec<String>>,
         Self: Sized;
 }
 
@@ -118,7 +122,7 @@ pub trait App: Register {
     fn name(&self) -> String;
 
     /// this app's sender channel
-    fn sender(&self) -> Sender<Vec<String>>;
+    fn sender(&self) -> Sender<Box<dyn AppInput>>;
 }
 
 #[cfg(test)]
