@@ -2,12 +2,15 @@ use clap::Clap;
 use futures::Future;
 use futures::TryFutureExt;
 use rustls::StoresClientSessions;
+use std::any::Any;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::pin::Pin;
+use telegram_bot::ChatAction;
+use telegram_bot::ChatId;
 use telegram_bot::{
     types::{requests::SendMessage, MessageChat, MessageKind, Update, UpdateKind},
     Api, Message,
@@ -106,8 +109,10 @@ impl AppLayer {
     }
 }
 
-pub trait AppInput {
+pub trait AppInput: Any {
     fn from_msg(&mut self, msg: &Message) -> Result<(), String>;
+    // https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=288a134fecaa31f1576e74d5f0316812
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
 }
 
 /// this message_match function gives the function that message parser of this app

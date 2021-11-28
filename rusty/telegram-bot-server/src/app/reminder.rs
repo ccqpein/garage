@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use std::{any::Any, collections::HashMap};
 
 use async_trait::async_trait;
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
-    oneshot,
+    oneshot, Mutex,
 };
 
 use tracing::{debug, info};
@@ -12,6 +12,14 @@ use tracing::{debug, info};
 use crate::deliver::Msg2Deliver;
 
 use super::{App, AppInput, Register};
+use lazy_static::*;
+
+lazy_static! {
+    static ref REMIND_PENDING_TABLE: Mutex<HashMap<ChatId, (ReminderStatus, oneshot::Sender<bool>)>> = {
+        let m = HashMap::new();
+        Mutex::new(m)
+    };
+}
 
 enum ReminderStatus {
     /// make new reminder
@@ -19,26 +27,26 @@ enum ReminderStatus {
     ReminderPending,
 
     /// cancel the reminder
-    CancelReminder(String),
+    CancelReminder(ChatId),
     CancelReminderPending,
 }
 
-// impl TryFrom<&[String]> for ReminderStatus {
-//     type Error = String;
+impl TryFrom<&ReminderInput> for ReminderStatus {
+    type Error = String;
 
-//     fn try_from(msgs: &[String]) -> Result<Self, Self::Error> {
-//         match msgs {
-//             ["reminder"] => Ok(Self::Reminder(30)),
-//             ["reminder", t] => match t.parse::<u64>() {
-//                 Ok(u) => Ok(Self::Reminder(u)),
-//                 Err(e) => Err(e.to_string()),
-//             },
-//             ["cancelreminder"] => Ok(Self::CancelReminderPending),
-//             ["cancelreminder", msgid] => Ok(Self::CancelReminder(msgid)),
-//             _ => Err("pattern match has issue in reminder try from".to_string()),
-//         }
-//     }
-// }
+    fn try_from(msgs: &ReminderInput) -> Result<Self, Self::Error> {
+        match &msgs.msg.iter().map(|s| s.as_str()).collect::<Vec<_>>()[..] {
+            ["reminder"] => Ok(Self::Reminder(30)),
+            ["reminder", t] => match t.parse::<u64>() {
+                Ok(u) => Ok(Self::Reminder(u)),
+                Err(e) => Err(e.to_string()),
+            },
+            ["cancelreminder"] => Ok(Self::CancelReminderPending),
+            ["cancelreminder", msgid] => Ok(Self::CancelReminder(msgs.chat_id)),
+            _ => Err("pattern match has issue in reminder try from".to_string()),
+        }
+    }
+}
 
 struct ReminderInput {
     chat_id: ChatId,
@@ -90,14 +98,15 @@ impl AppInput for ReminderInput {
         }
         Ok(())
     }
+
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
 }
 
 struct Reminder {
-    // message_rec: Receiver<Vec<String>>,
-    // message_snd: Sender<Vec<String>>,
     message_rec: Receiver<Box<dyn AppInput>>,
     message_snd: Sender<Box<dyn AppInput>>,
-    status_table: HashMap<ChatId, (ReminderStatus, oneshot::Sender<bool>)>,
 
     deliver_sender: Sender<Msg2Deliver>,
 }
@@ -108,7 +117,7 @@ impl Reminder {
         Self {
             message_rec: rev,
             message_snd: snd,
-            status_table: HashMap::new(),
+
             deliver_sender,
         }
     }
@@ -120,14 +129,25 @@ impl Reminder {
 
     pub async fn run(&mut self) {
         while let Some(msg) = self.message_rec.recv().await {
-            todo!()
-            // match ReminderStatus::try_from(msg) {
-            //     Ok(_) => todo!(),
-            //     Err(e) => {
-            // self.deliver_sender.send(
-
-            //     Msg2Deliver::new("send", chatid, msg)
-            // )
+            // https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=288a134fecaa31f1576e74d5f0316812
+            let remind_input = msg.into_any();
+            if let Ok(input) = remind_input.downcast::<ReminderInput>() {
+                let cid = input.chat_id.clone();
+                if let Ok(_) = ReminderStatus::try_from(&Box::into_inner(input)) {
+                    todo!()
+                } else {
+                    debug!("status parsing failed in reminder");
+                    self.deliver_sender
+                        .send(Msg2Deliver::new(
+                            "send".into(),
+                            cid,
+                            "inner service problem".into(),
+                        ))
+                        .await;
+                }
+            } else {
+                debug!("downcast failed in reminder");
+            };
         }
     }
 }
