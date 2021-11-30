@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	//"os"
 	"fmt"
 	"strings"
@@ -14,6 +15,18 @@ func main() {
 	funcMap := template.FuncMap{
 		// The name "title" is what the function will be called in the template text.
 		"title": strings.Title,
+		"a": func(a int) int {
+			return a + 1
+		},
+		"add": func(a int) int {
+			return a + 1
+		},
+		"filter": func() int {
+			return 1
+		},
+		"any": func() int {
+			return 0
+		},
 	}
 
 	// A simple template definition to test our function.
@@ -24,9 +37,12 @@ func main() {
 	// - printed with %q and then title-cased.
 	const templateText = `
 Input: {{printf "%q" .}}
-Output 0: {{title 10 1}}
+Output 0: {{title .}}
 Output 1: {{title . | printf "%q"}}
 Output 2: {{printf "%q" . | title}}
+Output 3: {{ $a := (add 10) }}
+Output 4: {{ $result := (filter "{{ and (eq .a 5) (eq .b 5) }}" .somewraper) | any }}
+Output 5: {{ $result := filter "{{ and (eq .a 5) (eq .b 5) }}" .somewraper }}
 `
 
 	// Create a template, add the function map, and parse the text.
@@ -46,9 +62,14 @@ Output 2: {{printf "%q" . | title}}
 			nn := n.(*parse.ActionNode)
 			fmt.Printf("action node pipe: %+v, decl: %+v, cmds: %+v\n", nn.Pipe, nn.Pipe.Decl, nn.Pipe.Cmds)
 			for i, c := range nn.Pipe.Cmds {
-				fmt.Printf("%dth command: %+v\n", i, c)
+				fmt.Printf("%dth command: %+v and arg: %+v\n", i, c, c.Args)
 			}
+		default:
+			fmt.Print("it is not action node\n")
+			nn := n.(*parse.TextNode)
+			fmt.Println(string(nn.Text))
 		}
+
 		println()
 	}
 
