@@ -133,8 +133,13 @@ impl Reminder {
             let remind_input = msg.into_any();
             if let Ok(input) = remind_input.downcast::<ReminderInput>() {
                 let cid = input.chat_id.clone();
-                if let Ok(_) = ReminderStatus::try_from(&Box::into_inner(input)) {
-                    todo!()
+                if let Ok(status) = ReminderStatus::try_from(&Box::into_inner(input)) {
+                    match status {
+                        ReminderStatus::Reminder(_) => todo!(),
+                        ReminderStatus::ReminderPending => todo!(),
+                        ReminderStatus::CancelReminder(_) => todo!(),
+                        ReminderStatus::CancelReminderPending => todo!(),
+                    }
                 } else {
                     debug!("status parsing failed in reminder");
                     self.deliver_sender
