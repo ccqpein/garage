@@ -26,13 +26,13 @@
 ;;         do (print l)
 ;;         finally (setf l v)))
 
-(defun set-nth-nest (l coorp v)
+(defun %set-nth-nest (l coorp v)
   (cond
     ((not coorp) nil) ;; error
     ((= 1 (length coorp)) (setf (nth (car coorp) l) v))
     (t (set-nth-nest (nth (car coorp) l) (cdr coorp) v))))
 
-(defsetf nth-nest set-nth-nest)
+(defsetf nth-nest %set-nth-nest)
 
 ;; (defmacro nth-nest-test (l coorp)
 ;;   (alexandria:with-gensyms (a b)
