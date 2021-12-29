@@ -6,6 +6,7 @@ use tokio::sync::{
     mpsc::{self, Receiver, Sender},
     oneshot, Mutex,
 };
+use tokio::time::{sleep, Duration};
 
 use tracing::{debug, info};
 
@@ -135,8 +136,137 @@ impl Reminder {
                 let cid = input.chat_id.clone();
                 if let Ok(status) = ReminderStatus::try_from(&Box::into_inner(input)) {
                     match status {
-                        ReminderStatus::Reminder(_) => todo!(),
-                        ReminderStatus::ReminderPending => todo!(),
+                        //:= start from here
+                        ReminderStatus::Reminder(time) => {
+                            // let id = cid;
+                            // let (snd, mut rec) = oneshot::channel();
+
+                            // // register sender to global status
+                            // REMIND_PENDING_TABLE
+                            //     .lock()
+                            //     .await
+                            //     .insert(id, (ReminderStatus::RemindPending, snd));
+
+                            // // send to deliver channel
+                            // let deliver_send = self.send.clone();
+
+                            // // bye bye async
+                            // tokio::spawn(async move {
+                            //     sleep(Duration::from_secs(5)).await;
+                            //     if rec.try_recv().is_ok() {
+                            //         return;
+                            //     }
+
+                            //     match deliver_send
+                            //         .send(Msg2Deliver::new(
+                            //             "send".into(),
+                            //             id,
+                            //             "Go ahead, I am listenning".into(),
+                            //         ))
+                            //         .await
+                            //     {
+                            //         Ok(_) => {}
+                            //         Err(e) => {
+                            //             debug!(
+                            //                 "Error {} happens in pending watcher",
+                            //                 e.to_string()
+                            //             );
+                            //             return;
+                            //         }
+                            //     }
+
+                            //     sleep(Duration::from_secs(10)).await;
+
+                            //     if rec.try_recv().is_ok() {
+                            //         return;
+                            //     }
+
+                            //     match deliver_send
+                            //         .send(Msg2Deliver::new(
+                            //             "send".into(),
+                            //             id,
+                            //             "Run out remind waiting time".into(),
+                            //         ))
+                            //         .await
+                            //     {
+                            //         Ok(_) => {}
+                            //         Err(e) => {
+                            //             debug!(
+                            //                 "Error {} happens in pending watcher",
+                            //                 e.to_string()
+                            //             );
+                            //             return;
+                            //         }
+                            //     }
+
+                            //     REMIND_PENDING_TABLE.lock().await.remove(&id);
+                            // });
+                        }
+                        ReminderStatus::ReminderPending => {
+                            // let id = cid;
+                            // let (snd, mut rec) = oneshot::channel();
+
+                            // // register sender to global status
+                            // REMIND_PENDING_TABLE
+                            //     .lock()
+                            //     .await
+                            //     .insert(id, (ReminderStatus::CancelReminderPending, snd));
+
+                            // // send to deliver channel
+                            // let deliver_send = self.message_snd.clone();
+
+                            // // bye bye async
+                            // tokio::spawn(async move {
+                            //     sleep(Duration::from_secs(5)).await;
+                            //     if rec.try_recv().is_ok() {
+                            //         return;
+                            //     }
+
+                            //     match deliver_send
+                            //         .send(Msg2Deliver::new(
+                            //             "send".into(),
+                            //             id,
+                            //             "Go ahead, I am listenning".into(),
+                            //         ))
+                            //         .await
+                            //     {
+                            //         Ok(_) => {}
+                            //         Err(e) => {
+                            //             debug!(
+                            //                 "Error {} happens in cancel pending watcher",
+                            //                 e.to_string()
+                            //             );
+                            //             return;
+                            //         }
+                            //     }
+
+                            //     sleep(Duration::from_secs(10)).await;
+
+                            //     if rec.try_recv().is_ok() {
+                            //         return;
+                            //     }
+
+                            //     match deliver_send
+                            //         .send(Msg2Deliver::new(
+                            //             "send".into(),
+                            //             id,
+                            //             "Run out remind cancel waiting time".into(),
+                            //         ))
+                            //         .await
+                            //     {
+                            //         Ok(_) => {}
+                            //         Err(e) => {
+                            //             debug!(
+                            //                 "Error {} happens in pending watcher",
+                            //                 e.to_string()
+                            //             );
+                            //             return;
+                            //         }
+                            //     }
+
+                            //     REMIND_PENDING_TABLE.lock().unwrap().remove(&id);
+                            // });
+                        }
                         ReminderStatus::CancelReminder(_) => todo!(),
                         ReminderStatus::CancelReminderPending => todo!(),
                     }
