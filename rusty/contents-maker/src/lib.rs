@@ -16,15 +16,29 @@ pub fn handle_file(filepath: &str) -> Result<Vec<String>> {
         match buf.read_line(&mut cache) {
             Ok(0) | Err(_) => break,
             Ok(_) => {
-                match line_handler(&cache, &mut result) {
-                    Ok(_) => cache.clear(),
-                    Err(_) => (),
-                };
+                if let Some(ccache) = clean_line_content(&cache) {
+                    match line_handler(ccache, &mut result) {
+                        Ok(_) => (),
+                        Err(_s) => (), //return Err(Error::new(ErrorKind::InvalidData, s)),
+                    };
+                } else {
+                    continue;
+                }
+                cache.clear()
             }
         }
     }
 
     Ok(result)
+}
+
+fn clean_line_content(s: &str) -> Option<&str> {
+    let ss = s.trim_start_matches(['\n', ' ']);
+    if ss.len() == 0 {
+        None
+    } else {
+        Some(ss)
+    }
 }
 
 fn line_handler(s: &str, bucket: &mut Vec<String>) -> std::result::Result<(), String> {
@@ -33,12 +47,20 @@ fn line_handler(s: &str, bucket: &mut Vec<String>) -> std::result::Result<(), St
             let m = pick_the_head(&cap)?;
             let space_len = head_count(&m) - 1;
             let content = pick_the_head_content(&cap)?;
-            let content = content.trim_end_matches(" ");
+            let content = content.trim_end_matches([' ', '\n']);
             let line = format!(
                 "{}-[{}](#{})",
                 std::iter::repeat("  ").take(space_len).collect::<String>(),
                 content,
-                content.split(" ").collect::<Vec<_>>().join("-")
+                String::from_iter(
+                    content
+                        .to_lowercase()
+                        .chars()
+                        .filter(|&c| c.is_alphanumeric() || c.is_whitespace())
+                )
+                .split(" ")
+                .collect::<Vec<_>>()
+                .join("-")
             );
             bucket.push(line);
             Ok(())
