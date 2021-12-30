@@ -98,5 +98,8 @@ mod tests {
         // last space
         let title = capture_title("# README ##").unwrap();
         assert_eq!(pick_the_head_content(&title), Ok("README ".to_string()));
+
+        let title = capture_title("## level ,2 ##").unwrap();
+        assert_eq!(pick_the_head_content(&title), Ok("level ,2 ".to_string()));
     }
 }

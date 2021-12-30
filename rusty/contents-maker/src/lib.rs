@@ -71,7 +71,7 @@ fn line_handler(s: &str, bucket: &mut Vec<String>) -> std::result::Result<(), St
 
 #[cfg(test)]
 mod tests {
-    use crate::line_handler;
+    use crate::{clean_line_content, line_handler};
 
     #[test]
     fn test_line_handler() -> Result<(), String> {
@@ -81,9 +81,24 @@ mod tests {
         line_handler(case, &mut bucket)?;
         assert_eq!(bucket[0], "  -[level 2](#level-2)".to_string());
 
-        let case = "# level 1  ";
+        let case = "# Level 1  ";
         line_handler(case, &mut bucket)?;
-        assert_eq!(bucket[1], "-[level 1](#level-1)".to_string());
+        assert_eq!(bucket[1], "-[Level 1](#level-1)".to_string());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_line_handler_special_char() -> Result<(), String> {
+        let mut bucket = vec![];
+
+        let case = clean_line_content(" ## level ,2 ##").unwrap();
+        line_handler(case, &mut bucket)?;
+        assert_eq!(bucket[0], "  -[level ,2](#level-2)".to_string());
+
+        let case = "# level 1 & c ";
+        line_handler(case, &mut bucket)?;
+        assert_eq!(bucket[1], "-[level 1 & c](#level-1--c)".to_string());
 
         Ok(())
     }
