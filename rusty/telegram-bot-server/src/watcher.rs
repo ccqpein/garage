@@ -12,7 +12,7 @@ use tokio::{
     time::Duration,
 };
 
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
     app::{my_github_commits, App, GithubCommitCheck, Opts},
@@ -312,7 +312,7 @@ impl Watcher {
                         SpecialMsg::UnSpportMsg(m) => {
                             debug!("unsupport {}", data);
                             //:= commit command here
-                            let gc = GithubCommitCheck;
+                            let gc = GithubCommitCheck::new();
                             let reply = match gc.match_str(&m) {
                                 Some(_) => gc
                                     .run(&[
@@ -434,6 +434,37 @@ impl Watcher {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// watcher2
+struct Watcher2 {
+    opts: Opts,
+
+    /// the channel receive message
+    ch: Receiver<Message>,
+
+    /// app channel
+    send_2_app: Sender<Message>,
+}
+
+impl Watcher2 {
+    pub fn new(_api: Api, opts: Opts, ch: Receiver<Message>, send_2_app: Sender<Message>) -> Self {
+        Self {
+            opts,
+            ch,
+            send_2_app,
+        }
+    }
+
+    pub async fn run(&mut self) {
+        info!("Watcher is running");
+        while let Some(msg) = self.ch.recv().await {
+            match self.send_2_app.send(msg).await {
+                Ok(_) => (),
+                Err(_) => error!("send to app layer has issue"),
             }
         }
     }

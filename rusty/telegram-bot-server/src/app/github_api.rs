@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use chrono_tz::America::New_York;
 use octocrab::{initialise, instance, Octocrab, OctocrabBuilder, Result};
@@ -6,19 +5,60 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
+use telegram_bot::MessageChat;
+use telegram_bot::MessageKind;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::Sender;
 use tracing::info;
 
-use super::App;
+use super::Register;
+use super::{App, AppInput};
 
-pub struct GithubCommitCheck;
+pub struct GithubCommitInput;
+
+impl AppInput for GithubCommitInput {
+    fn from_msg(&mut self, msg: &telegram_bot::Message) -> Result<(), String> {
+        match (&msg.kind, &msg.chat) {
+            (MessageKind::Text { ref data, .. }, MessageChat::Private(_)) => {
+                if data.to_lowercase() == "commit" {
+                    Ok(())
+                } else {
+                    Err("not right github commit app input".to_string())
+                }
+            }
+            _ => Err("not github commit app input".to_string()),
+        }
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self
+    }
+}
+
+pub struct GithubCommitCheck {
+    sender: Sender<Box<dyn AppInput>>,
+    receiver: Receiver<Box<dyn AppInput>>,
+}
 
 impl GithubCommitCheck {
+    pub fn new() -> Self {
+        let (sender, receiver) = mpsc::channel(10);
+        Self { sender, receiver }
+    }
+
     pub async fn run(&self, input: &[String]) -> Result<String, String> {
         match input {
             [username, vault, ..] => my_github_commits(username, vault).await,
             _ => return Err("input pattern match failed".to_string()),
         }
     }
+
+    // pub async fn run_v2(&self) -> Result<String, String> {
+    //     while let Some(msg) = self.receiver.recv().await {
+
+    //     }
+    // }
 
     pub fn match_str(&self, msg: &str) -> Option<Vec<String>> {
         if msg == "commit" {
@@ -29,23 +69,31 @@ impl GithubCommitCheck {
     }
 }
 
-// #[async_trait]
-// impl App for GithubCommitCheck {
-//     async fn run(&self, input: &[String]) -> Result<String, String> {
-//         match input {
-//             [username, vault, ..] => my_github_commits(username, vault).await,
-//             _ => return Err("input pattern match failed".to_string()),
-//         }
-//     }
+impl Register for GithubCommitCheck {
+    fn message_match(&self) -> Box<dyn Fn(&telegram_bot::Message) -> Option<Box<dyn AppInput>>>
+    where
+        Self: Sized,
+    {
+        box |msg: &telegram_bot::Message| -> Option<Box<dyn AppInput>> {
+            let mut input = GithubCommitInput;
+            if input.from_msg(msg).is_ok() {
+                Some(box input)
+            } else {
+                None
+            }
+        }
+    }
+}
 
-//     fn match_str(&self, msg: &str) -> Option<Vec<String>> {
-//         if msg == "commit" {
-//             Some(vec![])
-//         } else {
-//             None
-//         }
-//     }
-// }
+impl App for GithubCommitCheck {
+    fn name(&self) -> String {
+        String::from("githubcommitcheck")
+    }
+
+    fn sender(&self) -> Sender<Box<dyn AppInput>> {
+        self.sender.clone()
+    }
+}
 
 async fn get_users_recently_repos(
     client: &Octocrab,
