@@ -5,8 +5,11 @@ mod mod0 {
 }
 
 mod mod1 {
-    fn hello_mod1() -> String {
-        "hello mod1".to_string()
+    use std::ffi::CString;
+
+    #[no_mangle]
+    pub extern "C" fn hello_mod1() -> CString {
+        CString::new("hello mod1").expect("in mod1 failed")
     }
 }
 
