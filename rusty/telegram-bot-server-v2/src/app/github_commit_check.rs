@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use chrono_tz::America::New_York;
 use octocrab::{initialise, instance, Octocrab, OctocrabBuilder, Result};
@@ -6,12 +7,66 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
 use telegram_bot::Message;
+use telegram_bot::MessageChat;
+use telegram_bot::MessageKind;
 
 use tracing::info;
 
-use super::App;
+use super::*;
 
-pub struct GithubCommitCheck;
+pub struct GithubCommitCheckInput {
+    username: String,
+}
+
+impl TryFrom<Message> for GithubCommitCheckInput {
+    type Error = String;
+
+    fn try_from(msg: Message) -> Result<Self, Self::Error> {
+        let data = if let MessageChat::Private(_) = msg.chat {
+            if let MessageKind::Text { ref data, .. } = msg.kind {
+                data
+            } else {
+                return Err(String::from(
+                    "cannot from this message to GithubCommitCheckInput",
+                ));
+            }
+        } else {
+            return Err(String::from(
+                "cannot from this message to GithubCommitCheckInput",
+            ));
+        };
+
+        if data == "commit" {
+            return Ok(Self {
+                username: msg.from.username.unwrap_or(String::new()),
+            });
+        }
+        return Err(String::from(
+            "cannot from this message to GithubCommitCheckInput",
+        ));
+    }
+}
+
+pub struct GithubCommitCheck {
+    //:= need add deliver sender
+}
+
+#[async_trait]
+impl App for GithubCommitCheck {
+    type Input = GithubCommitCheckInput;
+
+    async fn run(
+        &mut self,
+        GithubCommitCheckInput { username }: Self::Input,
+    ) -> Result<(), String> {
+        //:= valut need to change in future
+        match GithubCommitCheck::run(&self, &[username, "vault".to_string()]).await {
+            //:= todo after deliver sender
+            Ok(_) => todo!(),
+            Err(_) => todo!(),
+        }
+    }
+}
 
 impl GithubCommitCheck {
     pub async fn run(&self, input: &[String]) -> Result<String, String> {
@@ -27,15 +82,6 @@ impl GithubCommitCheck {
         } else {
             None
         }
-    }
-}
-
-impl App<[String; 2]> for GithubCommitCheck {
-    fn parse_msg(&self, msg: &Message) -> [String; 2] {
-        [
-            msg.from.username.as_ref().cloned().unwrap_or(String::new()),
-            String::new(),
-        ]
     }
 }
 
