@@ -9,6 +9,7 @@ use std::path::Path;
 use telegram_bot::Message;
 use telegram_bot::MessageChat;
 use telegram_bot::MessageKind;
+use tokio::sync::mpsc::Sender;
 
 use tracing::info;
 
@@ -18,37 +19,31 @@ pub struct GithubCommitCheckInput {
     username: String,
 }
 
-impl TryFrom<Message> for GithubCommitCheckInput {
-    type Error = String;
-
-    fn try_from(msg: Message) -> Result<Self, Self::Error> {
+impl AppInput for GithubCommitCheckInput {
+    fn parse_input(msg: &Message) -> Result<Option<Self>, String> {
         let data = if let MessageChat::Private(_) = msg.chat {
             if let MessageKind::Text { ref data, .. } = msg.kind {
                 data
             } else {
-                return Err(String::from(
-                    "cannot from this message to GithubCommitCheckInput",
-                ));
+                return Ok(None);
             }
         } else {
             return Err(String::from(
-                "cannot from this message to GithubCommitCheckInput",
+                "cannot parse this message (unprivate) to GithubCommitCheckInput",
             ));
         };
 
         if data == "commit" {
-            return Ok(Self {
-                username: msg.from.username.unwrap_or(String::new()),
-            });
+            return Ok(Some(Self {
+                username: msg.from.username.clone().unwrap_or(String::new()),
+            }));
         }
-        return Err(String::from(
-            "cannot from this message to GithubCommitCheckInput",
-        ));
+        return Ok(None);
     }
 }
 
 pub struct GithubCommitCheck {
-    //:= need add deliver sender
+    sender: Sender<Msg2Deliver>,
 }
 
 #[async_trait]

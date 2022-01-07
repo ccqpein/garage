@@ -1,3 +1,4 @@
+use super::*;
 use async_trait::async_trait;
 use lazy_static::*;
 use std::{collections::HashMap, sync::Arc};
@@ -7,21 +8,9 @@ mod github_commit_check;
 
 trait AppInput {
     /// no status
-    fn parse_input(input: Message) -> Option<Self>
+    fn parse_input(input: &Message) -> Result<Option<Self>, String>
     where
         Self: Sized;
-}
-
-impl<A> AppInput for A
-where
-    A: TryFrom<Message>,
-{
-    fn parse_input(input: Message) -> Option<Self>
-    where
-        Self: Sized,
-    {
-        Self::try_from(input).ok()
-    }
 }
 
 #[async_trait]
