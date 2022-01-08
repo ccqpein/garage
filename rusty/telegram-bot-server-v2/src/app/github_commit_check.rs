@@ -6,10 +6,12 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::Path;
+use telegram_bot::ChatId;
 use telegram_bot::Message;
 use telegram_bot::MessageChat;
 use telegram_bot::MessageKind;
 use tokio::sync::mpsc::Sender;
+use tracing::debug;
 
 use tracing::info;
 
@@ -17,28 +19,28 @@ use super::*;
 
 pub struct GithubCommitCheckInput {
     username: String,
+    chatid: ChatId,
 }
 
 impl AppInput for GithubCommitCheckInput {
-    fn parse_input(msg: &Message) -> Result<Option<Self>, String> {
+    fn parse_input(msg: &Message) -> Option<Self> {
         let data = if let MessageChat::Private(_) = msg.chat {
             if let MessageKind::Text { ref data, .. } = msg.kind {
                 data
             } else {
-                return Ok(None);
+                return None;
             }
         } else {
-            return Err(String::from(
-                "cannot parse this message (unprivate) to GithubCommitCheckInput",
-            ));
+            return None;
         };
 
         if data == "commit" {
-            return Ok(Some(Self {
+            return Some(Self {
                 username: msg.from.username.clone().unwrap_or(String::new()),
-            }));
+                chatid: msg.chat.id(),
+            });
         }
-        return Ok(None);
+        return None;
     }
 }
 
@@ -52,13 +54,23 @@ impl App for GithubCommitCheck {
 
     async fn run(
         &mut self,
-        GithubCommitCheckInput { username }: Self::Input,
+        GithubCommitCheckInput { username, chatid }: Self::Input,
     ) -> Result<(), String> {
-        //:= valut need to change in future
-        match GithubCommitCheck::run(&self, &[username, "vault".to_string()]).await {
-            //:= todo after deliver sender
-            Ok(_) => todo!(),
-            Err(_) => todo!(),
+        let reply = match GithubCommitCheck::run(&self, &[username, "vault".to_string()]).await {
+            Ok(reply) => reply,
+            Err(err_msg) => err_msg.to_string(),
+        };
+
+        match self
+            .sender
+            .send(Msg2Deliver::new("send".into(), chatid, reply))
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                debug!("Error {} happens in sending reply", e.to_string());
+                Err(e.to_string())
+            }
         }
     }
 }
