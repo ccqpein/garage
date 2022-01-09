@@ -50,11 +50,11 @@ pub struct GithubCommitCheck {
 
 #[async_trait]
 impl App for GithubCommitCheck {
-    type Input = GithubCommitCheckInput;
+    //type Input = GithubCommitCheckInput;
 
     async fn run(
         &mut self,
-        GithubCommitCheckInput { username, chatid }: Self::Input,
+        GithubCommitCheckInput { username, chatid }: GithubCommitCheckInput,
     ) -> Result<(), String> {
         let reply = match GithubCommitCheck::run(&self, &[username, "vault".to_string()]).await {
             Ok(reply) => reply,

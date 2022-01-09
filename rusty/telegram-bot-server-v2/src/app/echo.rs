@@ -10,8 +10,8 @@ pub struct EchoInput {
     chatid: ChatId,
 }
 
-impl AppInput for EchoInput {
-    fn parse_input(msg: &telegram_bot::Message) -> Option<Self>
+impl<'m> AppInput<'m> for EchoInput {
+    fn parse_input(msg: &'m telegram_bot::Message) -> Option<Self>
     where
         Self: Sized,
     {
@@ -23,6 +23,10 @@ impl AppInput for EchoInput {
             _ => None,
         }
     }
+
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self
+    }
 }
 
 pub struct Echo {
@@ -31,12 +35,18 @@ pub struct Echo {
 
 #[async_trait]
 impl App for Echo {
-    type Input = EchoInput;
+    //type Input = EchoInput;
 
-    async fn run(&mut self, EchoInput { content, chatid }: Self::Input) -> Result<(), String> {
+    async fn run<'m, 's: 'm>(
+        &'s mut self,
+        //EchoInput { content, chatid }: EchoInput,
+        ei: Box<dyn AppInput + Send + 'm>,
+    ) -> Result<(), String> {
+        let ei: EchoInput = Box::<EchoInput>::into_inner(ei.into_any().downcast().unwrap());
+
         match self
             .sender
-            .send(Msg2Deliver::new("send".into(), chatid, content))
+            .send(Msg2Deliver::new("send".into(), ei.chatid, ei.content))
             .await
         {
             Ok(_) => Ok(()),
