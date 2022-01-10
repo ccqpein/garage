@@ -1,6 +1,6 @@
 use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
 use clap::Parser;
-use rustls::{Certificate, ServerConfig};
+use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::sync::Arc;
 use std::{fs::File, io::BufReader};
@@ -8,7 +8,7 @@ use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
 use telegram_bot_server_v2::*;
 use tokio::sync::{mpsc, Mutex};
-use tracing::info;
+use tracing::{debug, info};
 
 async fn handler(
     web::Json(update): web::Json<Update>,
@@ -26,7 +26,10 @@ async fn handler(
 
     match reply {
         Ok(_) => Ok(HttpResponse::Ok().body("")),
-        Err(_) => Ok(HttpResponse::Ok().body("inner problem")),
+        Err(e) => {
+            debug!("{}", e);
+            Ok(HttpResponse::Ok().body("inner problem"))
+        }
     }
 }
 
@@ -34,7 +37,6 @@ fn main() -> std::io::Result<()> {
     // read token
     let mut lines = include_str!("../vault/telebottoken").lines();
     let token = lines.next().unwrap();
-    let opts: Opts = Opts::parse();
 
     // tokio runtime
     let rt = tokio::runtime::Runtime::new().unwrap();
@@ -59,22 +61,22 @@ fn main() -> std::io::Result<()> {
             let opts: Opts = Opts::parse();
 
             // SSL builder
-            //let mut config = ServerConfig::new(NoClientAuth::new());
             let cert_file =
                 &mut BufReader::new(File::open(opts.vault.clone() + "/certs.pem").unwrap());
             let key_file =
                 &mut BufReader::new(File::open(opts.vault.clone() + "/key.pem").unwrap());
-            let cert_chain = certs(cert_file).unwrap();
+            let cert_chain = certs(cert_file)
+                .unwrap()
+                .into_iter()
+                .map(|c| Certificate(c))
+                .collect();
             let mut keys = pkcs8_private_keys(key_file).unwrap();
             //config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
-            let mut config = ServerConfig::builder()
-                .with_safe_default_cipher_suites()
-                .with_safe_default_kx_groups()
-                .with_safe_default_protocol_versions()
-                .unwrap()
+            let config = ServerConfig::builder()
+                .with_safe_defaults()
                 .with_no_client_auth()
-                .with_single_cert(cert_chain, keys.remove(0))
-                .unwrap();
+                .with_single_cert(cert_chain, PrivateKey(keys.remove(0)))
+                .expect("bad certificate/key");
 
             // declare endpoint
             let endpoint = include_str!("../vault/endpoint");
@@ -99,6 +101,5 @@ fn main() -> std::io::Result<()> {
             .run()
             .await
         },
-    );
-    Ok(())
+    )
 }
