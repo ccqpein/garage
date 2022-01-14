@@ -1,7 +1,7 @@
 use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
 use clap::Parser;
-use rustls::{Certificate, PrivateKey, ServerConfig};
-use rustls_pemfile::{certs, pkcs8_private_keys};
+use rustls::internal::pemfile::{certs, pkcs8_private_keys};
+use rustls::{Certificate, NoClientAuth, PrivateKey, ServerConfig};
 use std::sync::Arc;
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
@@ -56,27 +56,20 @@ fn main() -> std::io::Result<()> {
     let echo = app::Echo::new(deliver_sender);
     applayer.register_app(echo);
 
-    actix_web::rt::System::with_tokio_rt(|| tokio::runtime::Runtime::new().unwrap()).block_on(
-        async move {
+    actix_web::rt::System::builder()
+        .build()
+        .block_on(async move {
             let opts: Opts = Opts::parse();
 
             // SSL builder
+            let mut config = ServerConfig::new(NoClientAuth::new());
             let cert_file =
                 &mut BufReader::new(File::open(opts.vault.clone() + "/certs.pem").unwrap());
             let key_file =
                 &mut BufReader::new(File::open(opts.vault.clone() + "/key.pem").unwrap());
-            let cert_chain = certs(cert_file)
-                .unwrap()
-                .into_iter()
-                .map(|c| Certificate(c))
-                .collect();
+            let cert_chain = certs(cert_file).unwrap();
             let mut keys = pkcs8_private_keys(key_file).unwrap();
-            //config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
-            let config = ServerConfig::builder()
-                .with_safe_defaults()
-                .with_no_client_auth()
-                .with_single_cert(cert_chain, PrivateKey(keys.remove(0)))
-                .expect("bad certificate/key");
+            config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
 
             // declare endpoint
             let endpoint = include_str!("../vault/endpoint");
@@ -92,14 +85,13 @@ fn main() -> std::io::Result<()> {
             // start http server
             HttpServer::new(move || {
                 App::new()
-                    .app_data(Api::new(token))
-                    .app_data(opts.clone())
+                    .data(Api::new(token))
+                    .data(opts.clone())
                     .route(endpoint, web::post().to(handler))
             })
             .bind_rustls("0.0.0.0:8443", config)
             .unwrap()
             .run()
             .await
-        },
-    )
+        })
 }
