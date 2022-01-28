@@ -16,6 +16,7 @@ async fn handler(
     opts: web::Data<Opts>,
     applayer: web::Data<Mutex<app::AppLayer>>,
 ) -> Result<HttpResponse, Error> {
+    info!("receive message: {:?}", update);
     let reply = match update.kind {
         UpdateKind::Message(message) => {
             //:= I dont like this locker here
@@ -59,6 +60,14 @@ fn main() -> std::io::Result<()> {
     actix_web::rt::System::builder()
         .build()
         .block_on(async move {
+            // tracing
+            tracing::subscriber::set_global_default(
+                tracing_subscriber::FmtSubscriber::builder()
+                    .with_env_filter("telegram_bot=trace")
+                    .finish(),
+            )
+            .unwrap();
+
             let opts: Opts = Opts::parse();
 
             // SSL builder
@@ -70,18 +79,12 @@ fn main() -> std::io::Result<()> {
             let cert_chain = certs(cert_file).unwrap();
             let mut keys = pkcs8_private_keys(key_file).unwrap();
             config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
+            info!("done make tls config");
 
             // declare endpoint
             let endpoint = include_str!("../vault/endpoint");
 
-            // tracing
-            tracing::subscriber::set_global_default(
-                tracing_subscriber::FmtSubscriber::builder()
-                    .with_env_filter("telegram_bot=trace")
-                    .finish(),
-            )
-            .unwrap();
-
+            info!("start to run the httpserver");
             // start http server
             HttpServer::new(move || {
                 App::new()
