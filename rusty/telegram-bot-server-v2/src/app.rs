@@ -35,12 +35,21 @@ pub struct AppLayer {
     app_queue: Vec<Box<dyn App + 'static>>,
 }
 
+// impl Clone for AppLayer {
+//     fn clone(&self) -> Self {
+//         Self {
+//             app_queue: self.app_queue.iter().cloned().map(|a| a.clone()).collect(),
+//         }
+//     }
+// }
+
 impl AppLayer {
+    //:= TODO: return a receiver for Clone inside async
     pub fn new() -> Self {
         Self { app_queue: vec![] }
     }
 
-    pub fn register_app(&mut self, a: impl App + 'static) {
+    pub fn register_app(&mut self, a: impl App + Send + 'static) {
         self.app_queue.push(Box::new(a));
     }
 

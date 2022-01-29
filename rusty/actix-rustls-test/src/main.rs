@@ -4,15 +4,15 @@ use rustls::{NoClientAuth, ServerConfig};
 use std::{fs::File, io::BufReader};
 use telegram_bot::{types::Update, Api, Message};
 
-// async fn handler(web::Json(update): web::Json<Update>) -> HttpResponse {
-//     println!("{:?}", update);
-//     HttpResponse::Ok().body("")
-// }
-
-async fn handler(req: HttpRequest) -> HttpResponse {
-    println!("{:?}", req);
+async fn handler(web::Json(update): web::Json<Update>) -> HttpResponse {
+    println!("update: {:?}", update);
     HttpResponse::Ok().body("")
 }
+
+// async fn handler(req: HttpRequest) -> HttpResponse {
+//     println!("{:?}", req);
+//     HttpResponse::Ok().body("")
+// }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

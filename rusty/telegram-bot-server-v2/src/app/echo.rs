@@ -54,6 +54,7 @@ impl EchoInput {
 //     }
 // }
 
+#[derive(Clone)]
 pub struct Echo {
     //sender: Sender<EchoInput>,
     //receiver: Receiver<EchoInput>,
