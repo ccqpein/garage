@@ -2,8 +2,8 @@ use super::*;
 use async_trait::async_trait;
 use std::any::Any;
 use telegram_bot::Message;
-use tokio::sync::mpsc::Sender;
-use tracing::debug;
+use tokio::sync::mpsc::{self, Receiver, Sender};
+use tracing::{debug, error, info};
 
 mod echo;
 pub use echo::*;
@@ -32,21 +32,20 @@ pub trait App {
 }
 
 pub struct AppLayer {
+    rev: Receiver<Message>,
     app_queue: Vec<Box<dyn App + 'static>>,
 }
 
-// impl Clone for AppLayer {
-//     fn clone(&self) -> Self {
-//         Self {
-//             app_queue: self.app_queue.iter().cloned().map(|a| a.clone()).collect(),
-//         }
-//     }
-// }
-
 impl AppLayer {
-    //:= TODO: return a receiver for Clone inside async
-    pub fn new() -> Self {
-        Self { app_queue: vec![] }
+    pub fn new() -> (Self, Sender<Message>) {
+        let (snd, rev) = mpsc::channel(10);
+        (
+            Self {
+                app_queue: vec![],
+                rev,
+            },
+            snd,
+        )
     }
 
     pub fn register_app(&mut self, a: impl App + Send + 'static) {
@@ -60,5 +59,16 @@ impl AppLayer {
             }
         }
         Err("there are no app can consume this message".into())
+    }
+
+    pub async fn run(mut self) {
+        info!("applayer is running");
+        while let Some(msg) = self.rev.recv().await {
+            info!("applayer receive message: {:?}", msg);
+            match self.consume_msg(msg).await {
+                Ok(_) => continue,
+                Err(e) => error!("error: {}", e),
+            }
+        }
     }
 }

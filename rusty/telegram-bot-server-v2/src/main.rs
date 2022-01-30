@@ -2,11 +2,13 @@ use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
 use clap::Parser;
 use rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use rustls::{Certificate, NoClientAuth, PrivateKey, ServerConfig};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
 use telegram_bot_server_v2::*;
+use tokio::runtime;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info};
 use tracing_subscriber::field::debug;
@@ -15,23 +17,18 @@ async fn handler(
     web::Json(update): web::Json<Update>,
     //api: web::Data<Api>,
     opts: web::Data<Opts>,
-    applayer: web::Data<Mutex<app::AppLayer>>,
+    app_sender: web::Data<Sender<Message>>,
 ) -> Result<HttpResponse, Error> {
     info!("receive message: {:?}", update);
-    let reply = match update.kind {
-        UpdateKind::Message(message) => {
-            //:= I dont like this locker here
-            applayer.get_ref().lock().await.consume_msg(message).await
-        }
-        _ => Err("Not support".to_string()),
-    };
-
-    match reply {
-        Ok(_) => Ok(HttpResponse::Ok().body("")),
-        Err(e) => {
-            debug!("{}", e);
-            Ok(HttpResponse::Ok().body("inner problem"))
-        }
+    match update.kind {
+        UpdateKind::Message(message) => match app_sender.send(message) {
+            Ok(_) => Ok(HttpResponse::Ok().body("")),
+            Err(e) => {
+                debug!("{}", e);
+                Ok(HttpResponse::Ok().body("inner problem"))
+            }
+        },
+        _ => Ok(HttpResponse::Ok().body("Not support")),
     }
 }
 
@@ -60,11 +57,24 @@ fn main() -> std::io::Result<()> {
     }
 
     // make applayer
-    let mut applayer = app::AppLayer::new();
+    let (mut applayer, mut app_sender) = app::AppLayer::new();
 
     // make echo
     let echo = app::Echo::new(deliver_sender);
-    applayer.register_app(echo); //:= TODO: return a channel for clone inside httpserver
+    applayer.register_app(echo);
+    // {
+    //     // one thread runtime
+    //     let local_rt = runtime::Builder::new_current_thread()
+    //         .enable_all()
+    //         .worker_threads(2)
+    //         .build()?;
+
+    //     std::thread::spawn(move || {
+    //         let local = tokio::task::LocalSet::new();
+    //         local.spawn_local(async move { applayer.run().await });
+    //         local_rt.block_on(local);
+    //     });
+    // }
 
     actix_web::rt::System::builder()
         .build()
@@ -90,7 +100,7 @@ fn main() -> std::io::Result<()> {
             HttpServer::new(move || {
                 App::new()
                     //.data(Api::new(token))
-                    .data(applayer)
+                    .data(app_sender.clone())
                     .data(opts.clone())
                     .route(endpoint, web::post().to(handler))
             })
