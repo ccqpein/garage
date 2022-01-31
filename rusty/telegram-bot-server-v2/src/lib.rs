@@ -1,4 +1,6 @@
 #![feature(box_into_inner)]
+#![feature(associated_type_defaults)]
+#![feature(box_syntax)]
 
 pub mod app;
 

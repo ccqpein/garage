@@ -62,19 +62,20 @@ fn main() -> std::io::Result<()> {
     // make echo
     let echo = app::Echo::new(deliver_sender);
     applayer.register_app(echo);
-    // {
-    //     // one thread runtime
-    //     let local_rt = runtime::Builder::new_current_thread()
-    //         .enable_all()
-    //         .worker_threads(2)
-    //         .build()?;
 
-    //     std::thread::spawn(move || {
-    //         let local = tokio::task::LocalSet::new();
-    //         local.spawn_local(async move { applayer.run().await });
-    //         local_rt.block_on(local);
-    //     });
-    // }
+    {
+        // one thread runtime
+        let local_rt = runtime::Builder::new_current_thread()
+            .enable_all()
+            .worker_threads(2)
+            .build()?;
+
+        std::thread::spawn(move || {
+            let local = tokio::task::LocalSet::new();
+            local.spawn_local(async move { applayer.run().await });
+            local_rt.block_on(local);
+        });
+    }
 
     actix_web::rt::System::builder()
         .build()
