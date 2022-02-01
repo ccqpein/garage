@@ -17,78 +17,104 @@ use tracing::info;
 
 use super::*;
 
-pub struct GithubCommitCheckInput {
+pub struct GithubCommitInput {
     username: String,
     chatid: ChatId,
 }
 
-impl AppInput for GithubCommitCheckInput {
-    fn parse_input(msg: &Message) -> Option<Self> {
-        let data = if let MessageChat::Private(_) = msg.chat {
-            if let MessageKind::Text { ref data, .. } = msg.kind {
-                data
-            } else {
-                return None;
-            }
-        } else {
-            return None;
+impl GithubCommitInput {
+    fn check_msg(msg: &Message) -> Option<Self> {
+        let data = match (&msg.chat, &msg.kind) {
+            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
+            _ => None,
         };
 
-        if data == "commit" {
-            return Some(Self {
+        match data.map(|s| s.as_str()) {
+            Some("commit") | Some("Commit") => Some(Self {
                 username: msg.from.username.clone().unwrap_or(String::new()),
                 chatid: msg.chat.id(),
-            });
+            }),
+            _ => None,
         }
-        return None;
+    }
+}
+
+pub struct GithubCommitInputCheck {
+    sender: Sender<GithubCommitInput>,
+}
+
+#[async_trait]
+impl AppConsumer for GithubCommitInputCheck {
+    async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
+        match GithubCommitInput::check_msg(msg) {
+            Some(input) => match self.sender.send(input).await {
+                Ok(_) => return Ok(ConsumeStatus::Taken),
+                Err(e) => return Err(e.to_string()),
+            },
+            None => Ok(ConsumeStatus::NotMine),
+        }
     }
 }
 
 pub struct GithubCommitCheck {
-    sender: Sender<Msg2Deliver>,
+    vault_path: String,
+
+    sender: Sender<GithubCommitInput>,
+    receiver: Receiver<GithubCommitInput>,
+
+    deliver_sender: Sender<Msg2Deliver>,
 }
 
-#[async_trait]
-impl App for GithubCommitCheck {
-    //type Input = GithubCommitCheckInput;
+impl GithubCommitCheck {
+    pub fn new(deliver_sender: Sender<Msg2Deliver>, vault_path: String) -> Self {
+        let (sender, receiver) = mpsc::channel(10);
+        Self {
+            deliver_sender,
+            sender,
+            receiver,
+            vault_path,
+        }
+    }
 
-    async fn run(
+    async fn check(
         &mut self,
-        GithubCommitCheckInput { username, chatid }: GithubCommitCheckInput,
+        GithubCommitInput { username, chatid }: GithubCommitInput,
     ) -> Result<(), String> {
-        let reply = match GithubCommitCheck::run(&self, &[username, "vault".to_string()]).await {
-            Ok(reply) => reply,
-            Err(err_msg) => err_msg.to_string(),
-        };
-
-        match self
-            .sender
-            .send(Msg2Deliver::new("send".into(), chatid, reply))
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                debug!("Error {} happens in sending reply", e.to_string());
-                Err(e.to_string())
+        match my_github_commits(&username, &self.vault_path).await {
+            Ok(reply) | Err(reply) => {
+                match self
+                    .deliver_sender
+                    .send(Msg2Deliver::new("send".to_string(), chatid, reply))
+                    .await
+                {
+                    //:= maybe todo here
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e.to_string()),
+                }
             }
         }
     }
 }
 
-impl GithubCommitCheck {
-    pub async fn run(&self, input: &[String]) -> Result<String, String> {
-        match input {
-            [username, vault, ..] => my_github_commits(username, vault).await,
-            _ => return Err("input pattern match failed".to_string()),
+#[async_trait]
+impl App for GithubCommitCheck {
+    type Consumer = GithubCommitInputCheck;
+
+    fn consumer(&self) -> Self::Consumer {
+        GithubCommitInputCheck {
+            sender: self.sender.clone(),
         }
     }
 
-    pub fn match_str(&self, msg: &str) -> Option<Vec<String>> {
-        if msg == "commit" {
-            Some(vec![])
-        } else {
-            None
+    async fn run(mut self) -> Result<(), String> {
+        info!("GithubCommitCheck is running");
+        while let Some(msg) = self.receiver.recv().await {
+            match self.check(msg).await {
+                Ok(_) => continue,
+                Err(e) => error!("error: {}", e),
+            };
         }
+        Ok(())
     }
 }
 
@@ -101,7 +127,7 @@ async fn get_users_recently_repos(
             format!("/users/{}/repos", username),
             Some(&[
                 ("type", "owner"),
-                ("sort", "updated"),
+                ("sort", "pushed"),
                 ("per_page", "5"),
                 ("page", "1"),
             ]),
@@ -118,7 +144,8 @@ async fn if_repo_has_commit_since(
         .await
         .map_err(|e| e.to_string())?;
     for repo in repos {
-        if repo.updated_at.ok_or("no update_at value")? - since > Duration::seconds(0) {
+        //debug!("repo {} pushed_at: {:?}", repo.name, repo.updated_at);
+        if repo.pushed_at.ok_or("no pushed_at value")? - since > Duration::seconds(0) {
             return Ok(true);
         }
     }

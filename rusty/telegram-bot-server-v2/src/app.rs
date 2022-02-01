@@ -9,33 +9,21 @@ use tracing::{debug, error, info};
 mod echo;
 pub use echo::*;
 
-//mod github_commit_check;
-//pub use github_commit_check::*;
+mod github_commit_check;
+pub use github_commit_check::*;
 
-// trait AppInput {
-//     /// no status
-//     fn parse_input(input: &Message) -> Option<Self>
-//     where
-//         Self: Sized;
-//     //fn into_any(self: Box<Self>) -> Box<dyn Any>;
-// }
-
-// pub trait AppInput: Debug {}
-
-// pub trait AppInputBuilder {
-//     //type AppInput;
-//     fn parse_input<'a>(&self, msg: &'a Message) -> Option<Box<dyn AppInput>>;
-// }
-
+/// consume this message or not
 pub enum ConsumeStatus {
     Taken,
     NotMine,
 }
 
-pub trait App {
+/// App async trait
+#[async_trait]
+pub trait App: Send {
     type Consumer: AppConsumer;
     fn consumer(&self) -> Self::Consumer;
-    //fn run(self)
+    async fn run(mut self) -> Result<(), String>;
 }
 
 #[async_trait]
@@ -60,20 +48,21 @@ impl AppLayer {
         )
     }
 
-    pub fn register_app<A, C>(&mut self, a: A)
+    pub fn register_app<A, C>(&mut self, a: &A)
     where
         C: AppConsumer + 'static,
         A: App<Consumer = C> + 'static,
     {
         self.app_queue.push(box a.consumer());
-        tokio::spawn(async { a.run().await })
+        //tokio::spawn(async { a.run().await });
     }
 
-    pub async fn consume_msg(&mut self, msg: Message) -> Result<(), String> {
+    async fn consume_msg(&mut self, msg: Message) -> Result<(), String> {
         for ap in &mut self.app_queue {
             match ap.as_mut().consume_msg(&msg).await {
-                Ok(_) => todo!(),
-                Err(_) => todo!(),
+                Ok(ConsumeStatus::NotMine) => continue,
+                Ok(ConsumeStatus::Taken) => return Ok(()),
+                Err(_) => return Err("AppConsumer consume message wrong".into()),
             }
         }
         Err("no app can consume this msg".into())
@@ -82,7 +71,7 @@ impl AppLayer {
     pub async fn run(mut self) {
         info!("applayer is running");
         while let Some(msg) = self.rev.recv().await {
-            info!("applayer receive message: {:?}", msg);
+            debug!("applayer receive message: {:?}", msg);
             match self.consume_msg(msg).await {
                 Ok(_) => continue,
                 Err(e) => error!("error: {}", e),

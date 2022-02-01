@@ -56,29 +56,23 @@ impl Echo {
         }
     }
 
-    async fn consume(&mut self, msg: &Message) -> Option<()> {
-        let (chatid, content) =
-            if let Some(EchoInput { chatid, content }) = EchoInput::check_msg(msg) {
-                (chatid, content)
-            } else {
-                return None;
-            };
-
+    async fn consume(&mut self, EchoInput { chatid, content }: EchoInput) -> Result<(), String> {
         match self
             .deliver_sender
             .send(Msg2Deliver::new("send".into(), chatid, content))
             .await
         {
-            Ok(_) => Some(()),
+            Ok(_) => Ok(()),
             Err(e) => {
                 debug!("Error {} happens in sending reply", e.to_string());
-                Some(())
+                Ok(())
                 //Err(e.to_string())
             }
         }
     }
 }
 
+#[async_trait]
 impl App for Echo {
     type Consumer = EchoInputCheck;
 
@@ -87,61 +81,16 @@ impl App for Echo {
             sender: self.sender.clone(),
         }
     }
+
+    async fn run(mut self) -> Result<(), String> {
+        info!("app echo is running");
+        while let Some(msg) = self.receiver.recv().await {
+            //info!("echo receive message: {:?}", msg);
+            match self.consume(msg).await {
+                Ok(_) => continue,
+                Err(e) => error!("error: {}", e),
+            }
+        }
+        Ok(())
+    }
 }
-
-// #[async_trait]
-// impl App for Echo {
-//     type Checker;
-
-//     fn checker(&self) -> Box<Self::Checker> {
-//         checker
-//     }
-
-// async fn consume(&mut self, msg: &Message) -> Option<()> {
-//     let (chatid, content) =
-//         if let Some(EchoInput { chatid, content }) = EchoInput::check_msg(msg) {
-//             (chatid, content)
-//         } else {
-//             return None;
-//         };
-
-//     match self
-//         .deliver_sender
-//         .send(Msg2Deliver::new("send".into(), chatid, content))
-//         .await
-//     {
-//         Ok(_) => Some(()),
-//         Err(e) => {
-//             debug!("Error {} happens in sending reply", e.to_string());
-//             Some(())
-//             //Err(e.to_string())
-//         }
-//     }
-// }
-
-//type Input = EchoInput;
-
-// async fn run<'m, 's: 'm>(
-//     &'s mut self,
-//     //EchoInput { content, chatid }: EchoInput,
-//     ei: Box<dyn AppInput + Send + 'm>,
-// ) -> Result<(), String> {
-//     let ei: EchoInput = Box::<EchoInput>::into_inner(ei.into_any().downcast().unwrap());
-
-//     match self
-//         .sender
-//         .send(Msg2Deliver::new("send".into(), ei.chatid, ei.content))
-//         .await
-//     {
-//         Ok(_) => Ok(()),
-//         Err(e) => {
-//             debug!("Error {} happens in sending reply", e.to_string());
-//             Err(e.to_string())
-//         }
-//     }
-// }
-
-// fn sender(&self) -> Sender<Self::Input> {
-//     self.sender.clone()
-// }
-//}
