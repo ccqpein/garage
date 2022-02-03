@@ -6,9 +6,9 @@ use std::sync::Arc;
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
-use telegram_bot_server_v2::app::App as botApp;
+use telegram_bot_server_v2::app::{App as botApp, AppConsumer as botAppConsumer, AppLayer};
 use telegram_bot_server_v2::*;
-use tokio::runtime;
+use tokio::runtime::{self, Runtime};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info};
@@ -30,6 +30,31 @@ async fn handler(
         _ => Ok(HttpResponse::Ok().body("Not support")),
     }
 }
+
+// fn making_app_layer<A, C>(al: &mut AppLayer, rt: &Runtime, a: &[&'static mut A])
+// where
+//     C: botAppConsumer + 'static,
+//     A: botApp<Consumer = C> + 'static,
+// {
+//     for aa in &mut a {
+//         al.register_app(aa);
+//         rt.spawn(async move {
+//             aa.run().await;
+//         });
+//     }
+// }
+
+// fn making_app_layer(al: &mut AppLayer, rt: &Runtime, deliver_sender: &Sender<Msg2Deliver>) {
+//     let mut gc = app::GithubCommitCheck::new(deliver_sender.clone(), opts.vault.clone());
+//     al.register_app(&gc);
+//     rt.spawn(async move { gc.run().await });
+
+//     let mut echo = app::Echo::new(deliver_sender.clone());
+//     al.register_app(&echo);
+//     rt.spawn(async move { echo.run().await });
+// }
+
+//:= trying to make the app layer maker
 
 fn main() -> std::io::Result<()> {
     // tracing
@@ -61,7 +86,6 @@ fn main() -> std::io::Result<()> {
     let (mut applayer, mut app_sender) = app::AppLayer::new();
 
     //:= app register needs some order
-
     // make github commit check app
     // before echo
     let mut gc = app::GithubCommitCheck::new(deliver_sender.clone(), opts.vault.clone());
@@ -72,6 +96,8 @@ fn main() -> std::io::Result<()> {
     let mut echo = app::Echo::new(deliver_sender.clone());
     applayer.register_app(&echo);
     rt.spawn(async move { echo.run().await });
+
+    //making_app_layer(&mut applayer, &rt, &deliver_sender);
 
     {
         // one thread runtime
