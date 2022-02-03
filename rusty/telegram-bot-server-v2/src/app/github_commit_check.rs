@@ -87,7 +87,6 @@ impl GithubCommitCheck {
                     .send(Msg2Deliver::new("send".to_string(), chatid, reply))
                     .await
                 {
-                    //:= maybe todo here
                     Ok(_) => Ok(()),
                     Err(e) => Err(e.to_string()),
                 }
