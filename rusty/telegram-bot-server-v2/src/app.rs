@@ -12,9 +12,8 @@ pub use echo::*;
 mod github_commit_check;
 pub use github_commit_check::*;
 
-//:= TODO: reminder
-//mod reminder;
-//pub use reminder::*;
+mod reminder;
+pub use reminder::*;
 
 /// consume this message or not
 pub enum ConsumeStatus {
