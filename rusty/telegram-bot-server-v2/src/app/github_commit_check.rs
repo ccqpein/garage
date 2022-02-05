@@ -1,3 +1,4 @@
+use super::*;
 use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use chrono_tz::America::New_York;
@@ -12,10 +13,7 @@ use telegram_bot::MessageChat;
 use telegram_bot::MessageKind;
 use tokio::sync::mpsc::Sender;
 use tracing::debug;
-
 use tracing::info;
-
-use super::*;
 
 pub struct GithubCommitInput {
     username: String,

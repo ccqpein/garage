@@ -1,7 +1,7 @@
 use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
 use clap::Parser;
-use rustls::internal::pemfile::{certs, pkcs8_private_keys};
-use rustls::{Certificate, NoClientAuth, PrivateKey, ServerConfig};
+use rustls::{Certificate, PrivateKey, ServerConfig};
+use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::sync::Arc;
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
@@ -13,6 +13,11 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info};
 use tracing_subscriber::field::debug;
+
+async fn default(web::Json(update): web::Json<Update>) -> HttpResponse {
+    println!("update: {:?}", update);
+    HttpResponse::Ok().body("")
+}
 
 async fn handler(
     web::Json(update): web::Json<Update>,
@@ -102,43 +107,43 @@ fn main() -> std::io::Result<()> {
         });
     }
 
-    actix_web::rt::System::builder()
-        .build()
-        .block_on(async move {
-            // SSL builder
-            let mut config = ServerConfig::new(NoClientAuth::new());
-            let cert_file =
-                &mut BufReader::new(File::open(opts.vault.clone() + "/certs.pem").unwrap());
-            let key_file =
-                &mut BufReader::new(File::open(opts.vault.clone() + "/key.key").unwrap());
-            let cert_chain = certs(cert_file).unwrap();
-            let mut keys = pkcs8_private_keys(key_file).unwrap();
-            config.set_single_cert(cert_chain, keys.remove(0)).unwrap();
-            info!("done make tls config");
-
-            // declare endpoint
-            let endpoint = include_str!("../vault/endpoint");
-
-            info!("start to run the httpserver on {}", endpoint);
-            // start http server
-            HttpServer::new(move || {
-                App::new()
-                    //.data(Api::new(token))
-                    .data(app_sender.clone())
-                    .data(opts.clone())
-                    .route(endpoint, web::post().to(handler))
-                    .route(
-                        // default
-                        endpoint,
-                        web::post().to(|web::Json(update): web::Json<Update>| {
-                            println!("update: {:?}", update);
-                            HttpResponse::Ok().body("")
-                        }),
-                    )
-            })
-            .bind_rustls("0.0.0.0:8443", config)
+    actix_web::rt::System::new().block_on(async move {
+        // SSL builder
+        let cert_file = &mut BufReader::new(File::open(opts.vault.clone() + "/certs.pem").unwrap());
+        let key_file = &mut BufReader::new(File::open(opts.vault.clone() + "/key.key").unwrap());
+        let cert_chain = certs(cert_file)
             .unwrap()
-            .run()
-            .await
+            .into_iter()
+            .map(|c| Certificate(c))
+            .collect();
+        let mut keys = pkcs8_private_keys(key_file).unwrap();
+        let config = ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(cert_chain, PrivateKey(keys.remove(0)))
+            .expect("bad certificate/key");
+        info!("done make tls config");
+
+        // declare endpoint
+        let endpoint = include_str!("../vault/endpoint");
+
+        info!("start to run the httpserver on {}", endpoint);
+        // start http server
+        HttpServer::new(move || {
+            App::new()
+                //.data(Api::new(token))
+                .app_data(web::Data::new(app_sender.clone()))
+                .app_data(web::Data::new(opts.clone()))
+                .route(endpoint, web::post().to(handler))
+                .route(
+                    // default
+                    endpoint,
+                    web::post().to(default),
+                )
         })
+        .bind_rustls("0.0.0.0:8443", config)
+        .unwrap()
+        .run()
+        .await
+    })
 }

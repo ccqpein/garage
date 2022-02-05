@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use super::*;
 use lazy_static::*;
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::sync::{
@@ -26,8 +29,35 @@ enum ReminderStatus {
 }
 
 struct ReminderInput {
-    //:= TODO: input from message
+    chat_id: ChatId,
+    msg: Vec<String>,
+}
+
+impl ReminderInput {
+    //:= From here
+    // fn from_msg(msg: &Message) -> Option<Self> {
+    //     let data = match (&msg.chat, &msg.kind) {
+    //         (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
+    //         _ => None,
+    //     };
+
+    //     match data.map(|s| s.to_lowercase().as_str()) {
+    //         Some("reminder") => {}
+    //         _ => None,
+    //     }
+    // }
 }
 
 /// Reminder app
-struct Reminder {}
+struct Reminder {
+    sender: Sender<ReminderInput>,
+    receiver: Receiver<ReminderInput>,
+
+    deliver_sender: Sender<Msg2Deliver>,
+}
+
+impl Reminder {
+    pub async fn run(&mut self) {
+        while let Some(rem_input) = self.receiver.recv().await {}
+    }
+}
