@@ -66,7 +66,6 @@ impl Echo {
             Err(e) => {
                 debug!("Error {} happens in sending reply", e.to_string());
                 Ok(())
-                //Err(e.to_string())
             }
         }
     }
@@ -85,7 +84,7 @@ impl App for Echo {
     async fn run(mut self) -> Result<(), String> {
         info!("app echo is running");
         while let Some(msg) = self.receiver.recv().await {
-            //info!("echo receive message: {:?}", msg);
+            info!("echo receive message: {:?}", msg);
             match self.consume(msg).await {
                 Ok(_) => continue,
                 Err(e) => error!("error: {}", e),

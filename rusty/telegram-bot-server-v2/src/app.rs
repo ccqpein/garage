@@ -15,6 +15,9 @@ pub use github_commit_check::*;
 mod reminder;
 pub use reminder::*;
 
+mod status_keeper;
+pub use status_keeper::*;
+
 /// consume this message or not
 pub enum ConsumeStatus {
     Taken,
