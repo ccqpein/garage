@@ -53,6 +53,7 @@ impl StatusChecker {
     pub async fn run(&mut self) {
         while let Some((check_input, send_back)) = self.receiver.recv().await {
             match check_input.ops {
+                //:= Update and Delete can return msg to send_back if up stream support
                 Operate::Update => {
                     let mut tb = CHAT_STATUS_TABLE.lock().await;
                     let en = tb.entry(check_input.chat_id).or_insert(ChatStatus::None);
