@@ -1,15 +1,14 @@
+use super::*;
+use lazy_static::*;
+use serde_json::to_string;
 use std::{
     collections::{BinaryHeap, HashMap, HashSet},
     sync::Mutex,
 };
-
-use super::*;
-use lazy_static::*;
-use serde_json::to_string;
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
-    oneshot,
+    oneshot::{self, error::TryRecvError},
 };
 use tokio::time::{sleep, Duration};
 use tracing::{debug, info};
@@ -21,9 +20,14 @@ lazy_static! {
     };
 }
 
-pub(super) async fn add_reminder(chatid: &ChatId, content: &String) {
+async fn add_reminder(
+    chatid: ChatId,
+    time: u64,
+    content: String,
+    deliver_sender: Sender<Msg2Deliver>,
+) {
     let mut table = REMINDERS_TABLE.lock().unwrap();
-    let reminders = table.entry(*chatid).or_insert(HashMap::new());
+    let reminders = table.entry(chatid).or_insert(HashMap::new());
 
     let mut keys = reminders.keys().collect::<Vec<_>>();
     keys.sort();
@@ -32,77 +36,90 @@ pub(super) async fn add_reminder(chatid: &ChatId, content: &String) {
     let (snd, mut rev) = oneshot::channel();
     reminders.insert(largest + 1, snd);
 
-    //tokio::spawn(async move {})
+    tokio::spawn(async move {
+        let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
+        loop {
+            sleep(Duration::from_secs(time)).await;
+            match rev.try_recv() {
+                Ok(_) => return,
+                Err(TryRecvError::Empty) => continue,
+                Err(TryRecvError::Closed) => return,
+            }
+            deliver_sender.send(dlvr_msg.clone()).await;
+        }
+    });
 }
 
-pub(super) fn delete_reminder(chatid: &ChatId, ind: usize) {
+pub(super) fn delete_reminder(chatid: &ChatId, ind: &usize) {
     let mut table = REMINDERS_TABLE.lock().unwrap();
     let reminders = table.entry(*chatid).or_insert(HashMap::new());
 
-    reminders.remove(&ind);
-    //:= need to return something
+    match reminders.remove(ind) {
+        Some(sig) => {
+            sig.send(true);
+        }
+        None => {
+            //:= tracing here maybe
+        }
+    };
 }
 
 type ReminderTime = u64;
 
 #[derive(Clone)]
 pub enum ReminderStatus {
-    Reminder(ReminderTime),
     ReminderPending,
-
-    /// cancel the reminder
-    CancelReminder(ChatId),
-    CancelReminderPending,
+    //CancelReminderPending,
 }
 
-// impl
-
-// impl From<&'_ ReminderInput> for ReminderStatus {
-//     fn from(input: &'_ ReminderInput) -> Self {
-//         match input.msg[0].as_str() {
-//             "reminder" => {
-//                 if let Some(Ok(minutes)) = input.msg.get(1).map(|s| s.parse::<u64>()) {
-//                     ReminderStatus::Reminder(minutes)
-//                 } else {
-//                     ReminderStatus::Reminder(30)
-//                 }
-//             }
-//             "cancelreminder" => ReminderStatus::CancelReminder(input.chat_id),
-//             _ => unreachable!(),
-//         }
-//     }
-// }
+#[derive(Clone)]
+pub enum ReminderComm {
+    InitReminder(ReminderTime),
+    MakeReminder(String, ReminderTime),
+    /// cancel the reminder
+    CancelReminder(usize),
+}
 
 /// input generated from message
 struct ReminderInput {
     chat_id: ChatId,
-    msg: Vec<String>,
-
-    current_status: ReminderStatus,
+    command: ReminderComm,
 }
 
-// impl ReminderInput {
-//     fn from_msg(msg: &Message) -> Option<Self> {
-//         let data = match (&msg.chat, &msg.kind) {
-//             (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
-//             _ => None,
-//         };
+impl ReminderInput {
+    fn from_msg(msg: &Message) -> Option<Self> {
+        let data = match (&msg.chat, &msg.kind) {
+            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
+            _ => None,
+        };
 
-//         let data: Vec<_> = if let Some(line) = data {
-//             line.split_whitespace().map(|s| s.to_lowercase()).collect()
-//         } else {
-//             return None;
-//         };
+        let data: Vec<_> = if let Some(line) = data {
+            line.split_whitespace().map(|s| s.to_lowercase()).collect()
+        } else {
+            return None;
+        };
 
-//         match data.get(0).map(|s| s.as_str()) {
-//             Some("reminder") | Some("cancelreminder") => Some(Self {
-//                 chat_id: msg.chat.id(),
-//                 msg: data,
-//             }),
-//             _ => None,
-//         }
-//     }
-// }
+        match data.get(0).map(|s| s.as_str()) {
+            Some("reminder") => Some(Self {
+                chat_id: msg.chat.id(),
+                command: if let Some(Ok(minutes)) = data.get(1).map(|s| s.parse::<u64>()) {
+                    ReminderComm::InitReminder(minutes)
+                } else {
+                    ReminderComm::InitReminder(30)
+                },
+            }),
+            Some("cancelreminder") => Some(Self {
+                chat_id: msg.chat.id(),
+                command: if let Some(Ok(ind)) = data.get(1).map(|s| s.parse::<usize>()) {
+                    ReminderComm::CancelReminder(ind)
+                } else {
+                    return None;
+                },
+            }),
+            _ => None,
+        }
+    }
+}
 
 /// Reminder app
 struct Reminder {
@@ -114,101 +131,112 @@ struct Reminder {
     deliver_sender: Sender<Msg2Deliver>,
 }
 
-// impl Reminder {
-//     pub async fn run(&mut self) {
-//         while let Some(ref rem_input) = self.receiver.recv().await {
-//             let re_status: ReminderStatus = rem_input.current_status;
-//             match re_status {
-//                 ReminderStatus::Reminder(time) => {
-//                     // let status of this chat updated
-//                     self.status_checker_sender
-//                         .send((
-//                             StatusCheckerInput::new(
-//                                 rem_input.chat_id,
-//                                 ChatStatus::ReminderApp(ReminderStatus::ReminderPending),
-//                                 Operate::Update,
-//                             ),
-//                             None,
-//                         ))
-//                         .await;
+impl Reminder {
+    pub async fn run(&mut self) {
+        while let Some(ref rem_input) = self.receiver.recv().await {
+            match &rem_input.command {
+                ReminderComm::InitReminder(time) => {
+                    // let status of this chat updated
+                    self.status_checker_sender
+                        .send((
+                            StatusCheckerInput::new(
+                                rem_input.chat_id,
+                                ChatStatus::ReminderApp(ReminderStatus::ReminderPending),
+                                Operate::Update,
+                            ),
+                            None,
+                        ))
+                        .await;
 
-//                     // make something put to tokio
-//                     let status_snd = self.status_checker_sender.clone();
-//                     let chat_id = rem_input.chat_id;
-//                     let deliver_sender = self.deliver_sender.clone();
-//                     tokio::spawn(async move {
-//                         sleep(Duration::from_secs(5)).await;
-//                         let (snd, mut rev) = oneshot::channel();
-//                         // get the status of this chat
-//                         status_snd.send((
-//                             StatusCheckerInput::new(
-//                                 chat_id,
-//                                 ChatStatus::None, // just for placeholder
-//                                 Operate::Query,
-//                             ),
-//                             Some(snd),
-//                         )); //:= check result maybe
+                    // make something put to tokio
+                    let status_snd = self.status_checker_sender.clone();
+                    let chat_id = rem_input.chat_id;
+                    let deliver_sender = self.deliver_sender.clone();
+                    // awaiting guard
+                    tokio::spawn(awaiting_reminder(status_snd, chat_id, deliver_sender));
+                }
+                ReminderComm::MakeReminder(msg, time) => {
+                    add_reminder(
+                        rem_input.chat_id,
+                        *time,
+                        msg.to_string(),
+                        self.deliver_sender.clone(),
+                    )
+                    .await
+                }
+                ReminderComm::CancelReminder(ind) => delete_reminder(&rem_input.chat_id, ind),
+            }
+        }
+    }
+}
 
-//                         match rev.await {
-//                             Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending)) => {
-//                                 deliver_sender.send(Msg2Deliver::new(
-//                                     "send".to_string(),
-//                                     chat_id,
-//                                     "Go ahead, I am listening".to_string(),
-//                                 ));
-//                             }
-//                             Ok(ChatStatus::None) => {
-//                                 //:= after reminder created, status is none
-//                                 ()
-//                             }
-//                             Err(_) => todo!(),
-//                             _ => todo!(),
-//                         };
+async fn awaiting_reminder(
+    status_snd: Sender<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)>,
+    chat_id: ChatId,
+    deliver_sender: Sender<Msg2Deliver>,
+) {
+    sleep(Duration::from_secs(5)).await;
+    let (snd, mut rev) = oneshot::channel();
+    // get the status of this chat
+    status_snd.send((
+        StatusCheckerInput::new(
+            chat_id,
+            ChatStatus::None, // just for placeholder
+            Operate::Query,
+        ),
+        Some(snd),
+    )); //:= check result maybe
 
-//                         sleep(Duration::from_secs(10)).await;
+    match rev.await {
+        Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending)) => {
+            deliver_sender.send(Msg2Deliver::new(
+                "send".to_string(),
+                chat_id,
+                "Go ahead, I am listening".to_string(),
+            ));
+        }
+        Ok(ChatStatus::None) => {
+            //:= after reminder created, status is none
+            return;
+        }
+        Err(_) => todo!(),
+        _ => todo!(),
+    };
 
-//                         let (snd, mut rev) = oneshot::channel();
-//                         status_snd.send((
-//                             StatusCheckerInput::new(
-//                                 chat_id,
-//                                 ChatStatus::None, // just for placeholder
-//                                 Operate::Query,
-//                             ),
-//                             Some(snd),
-//                         )); //:= check result maybe
+    sleep(Duration::from_secs(10)).await;
 
-//                         match rev.await {
-//                             Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending)) => {
-//                                 deliver_sender.send(Msg2Deliver::new(
-//                                     "send".to_string(),
-//                                     chat_id,
-//                                     "Run out remind waiting time".to_string(),
-//                                 ));
-//                             }
-//                             Ok(ChatStatus::None) => {
-//                                 //:= after reminder created, status is none
-//                             }
-//                             Err(_) => todo!(),
-//                             _ => todo!(),
-//                         };
+    let (snd, mut rev) = oneshot::channel();
+    status_snd.send((
+        StatusCheckerInput::new(
+            chat_id,
+            ChatStatus::None, // just for placeholder
+            Operate::Query,
+        ),
+        Some(snd),
+    )); //:= check result maybe
 
-//                         status_snd.send((
-//                             StatusCheckerInput::new(
-//                                 chat_id,
-//                                 ChatStatus::None, // just for placeholder
-//                                 Operate::Delete,
-//                             ),
-//                             None,
-//                         ));
-//                     });
-//                 }
-//                 // should check in inside status checker
-//                 //ReminderStatus::ReminderPending => todo!(),
-//                 ReminderStatus::CancelReminder(_) => todo!(),
-//                 // should check in inside status checker
-//                 ReminderStatus::CancelReminderPending => todo!(),
-//                 _ => unreachable!(),
-//             }
-//         }
-//     }
-// }
+    match rev.await {
+        Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending)) => {
+            deliver_sender.send(Msg2Deliver::new(
+                "send".to_string(),
+                chat_id,
+                "Run out remind waiting time".to_string(),
+            ));
+        }
+        Ok(ChatStatus::None) => {
+            //:= after reminder created, status is none
+            return;
+        }
+        Err(_) => todo!(),
+        _ => todo!(),
+    };
+
+    status_snd.send((
+        StatusCheckerInput::new(
+            chat_id,
+            ChatStatus::None, // just for placeholder
+            Operate::Delete,
+        ),
+        None,
+    ));
+}

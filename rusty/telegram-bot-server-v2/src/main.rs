@@ -102,7 +102,8 @@ fn main() -> std::io::Result<()> {
 
         std::thread::spawn(move || {
             let local = tokio::task::LocalSet::new();
-            local.spawn_local(async move { applayer.run().await });
+            //local.spawn_local(async move { applayer.run().await }); //:= delete this line
+            local.spawn_local(applayer.run());
             local_rt.block_on(local);
         });
     }

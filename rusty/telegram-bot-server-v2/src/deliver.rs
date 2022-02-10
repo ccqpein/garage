@@ -3,7 +3,7 @@ use tokio::sync::mpsc::Receiver;
 
 use tracing::{debug, info};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Msg2Deliver {
     command: String,
     chatid: ChatId,

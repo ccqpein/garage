@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::*;
 use lazy_static::*;
-use telegram_bot::ChatId;
+use telegram_bot::{ChatId, MessageChat, MessageKind};
 use tokio::sync::{oneshot, Mutex};
 
 lazy_static! {
@@ -41,6 +41,26 @@ impl StatusCheckerInput {
             update_status,
             ops,
         }
+    }
+
+    async fn from_msg(msg: &Message) -> Option<Self> {
+        let data = match (&msg.chat, &msg.kind) {
+            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
+            _ => None,
+        };
+
+        let mut tb = CHAT_STATUS_TABLE.lock().await;
+        match tb.get(&msg.chat.id()) {
+            Some(status) => match status {
+                ChatStatus::None => todo!(),
+                ChatStatus::ReminderApp(reminder_status) => {
+                    //:= send reminder_status
+                    tb.remove(&msg.chat.id())
+                }
+            },
+            None => return None,
+        };
+        None
     }
 }
 
