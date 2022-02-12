@@ -50,7 +50,7 @@ async fn add_reminder(
     });
 }
 
-pub(super) fn delete_reminder(chatid: &ChatId, ind: &usize) {
+fn delete_reminder(chatid: &ChatId, ind: &usize) {
     let mut table = REMINDERS_TABLE.lock().unwrap();
     let reminders = table.entry(*chatid).or_insert(HashMap::new());
 
@@ -68,7 +68,7 @@ type ReminderTime = u64;
 
 #[derive(Clone)]
 pub enum ReminderStatus {
-    ReminderPending,
+    ReminderPending(ReminderTime),
     //CancelReminderPending,
 }
 
@@ -81,12 +81,16 @@ pub enum ReminderComm {
 }
 
 /// input generated from message
-struct ReminderInput {
+pub(super) struct ReminderInput {
     chat_id: ChatId,
     command: ReminderComm,
 }
 
 impl ReminderInput {
+    pub(super) fn new(chat_id: ChatId, command: ReminderComm) -> Self {
+        Self { chat_id, command }
+    }
+
     fn from_msg(msg: &Message) -> Option<Self> {
         let data = match (&msg.chat, &msg.kind) {
             (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
@@ -141,7 +145,7 @@ impl Reminder {
                         .send((
                             StatusCheckerInput::new(
                                 rem_input.chat_id,
-                                ChatStatus::ReminderApp(ReminderStatus::ReminderPending),
+                                ChatStatus::ReminderApp(ReminderStatus::ReminderPending(*time)),
                                 Operate::Update,
                             ),
                             None,
@@ -188,7 +192,7 @@ async fn awaiting_reminder(
     )); //:= check result maybe
 
     match rev.await {
-        Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending)) => {
+        Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
             deliver_sender.send(Msg2Deliver::new(
                 "send".to_string(),
                 chat_id,
@@ -216,7 +220,7 @@ async fn awaiting_reminder(
     )); //:= check result maybe
 
     match rev.await {
-        Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending)) => {
+        Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
             deliver_sender.send(Msg2Deliver::new(
                 "send".to_string(),
                 chat_id,

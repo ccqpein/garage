@@ -24,6 +24,47 @@ pub enum Operate {
     Delete,
 }
 
+/// catch message first check if this chat has
+/// status inside or not
+pub struct StatusCheckerCatcher {
+    reminder_sender: Sender<ReminderInput>,
+}
+
+impl StatusCheckerCatcher {
+    /// check msg if there is status of this chat
+    /// return Some(_) means it truly has, None is not
+    async fn check_from_msg(&self, msg: &Message) -> Option<()> {
+        let data = match (&msg.chat, &msg.kind) {
+            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
+            _ => None,
+        };
+
+        let mut tb = CHAT_STATUS_TABLE.lock().await;
+        match tb.get(&msg.chat.id()) {
+            Some(status) => match status {
+                ChatStatus::None => None,
+                ChatStatus::ReminderApp(reminder_status) => {
+                    match (reminder_status, data) {
+                        (ReminderStatus::ReminderPending(time), Some(dd)) => {
+                            self.reminder_sender
+                                .send(ReminderInput::new(
+                                    msg.chat.id(),
+                                    ReminderComm::MakeReminder(dd.to_string(), *time),
+                                ))
+                                .await;
+                        }
+                        (ReminderStatus::ReminderPending(_), None) => (), //:= TODO: need to tell chat empty isn't accept
+                    }
+                    //:= send reminder_status
+                    tb.remove(&msg.chat.id());
+                    Some(())
+                }
+            },
+            None => None,
+        }
+    }
+}
+
 // The input for status checker use for recording the status
 pub struct StatusCheckerInput {
     /// this chatid
@@ -41,26 +82,6 @@ impl StatusCheckerInput {
             update_status,
             ops,
         }
-    }
-
-    async fn from_msg(msg: &Message) -> Option<Self> {
-        let data = match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
-            _ => None,
-        };
-
-        let mut tb = CHAT_STATUS_TABLE.lock().await;
-        match tb.get(&msg.chat.id()) {
-            Some(status) => match status {
-                ChatStatus::None => todo!(),
-                ChatStatus::ReminderApp(reminder_status) => {
-                    //:= send reminder_status
-                    tb.remove(&msg.chat.id())
-                }
-            },
-            None => return None,
-        };
-        None
     }
 }
 
@@ -80,6 +101,7 @@ impl StatusChecker {
                     *en = check_input.update_status;
                 }
                 Operate::Query => {
+                    // Query has to send back something or awaiting_reminder will block forever
                     let send_back_result = if let Some(record) =
                         CHAT_STATUS_TABLE.lock().await.get(&check_input.chat_id)
                     {
