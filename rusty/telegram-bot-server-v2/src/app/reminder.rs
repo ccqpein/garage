@@ -81,7 +81,7 @@ pub enum ReminderComm {
 }
 
 /// input generated from message
-pub(super) struct ReminderInput {
+pub struct ReminderInput {
     chat_id: ChatId,
     command: ReminderComm,
 }
@@ -136,6 +136,10 @@ struct Reminder {
 }
 
 impl Reminder {
+    pub fn sender(&self) -> Sender<ReminderInput> {
+        self.sender.clone()
+    }
+
     pub async fn run(&mut self) {
         while let Some(ref rem_input) = self.receiver.recv().await {
             match &rem_input.command {

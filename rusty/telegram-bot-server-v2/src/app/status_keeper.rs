@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-
 use super::*;
+use async_trait::async_trait;
 use lazy_static::*;
+use std::collections::HashMap;
 use telegram_bot::{ChatId, MessageChat, MessageKind};
 use tokio::sync::{oneshot, Mutex};
 
@@ -26,11 +26,16 @@ pub enum Operate {
 
 /// catch message first check if this chat has
 /// status inside or not
+#[derive(Clone)]
 pub struct StatusCheckerCatcher {
     reminder_sender: Sender<ReminderInput>,
 }
 
 impl StatusCheckerCatcher {
+    pub fn new(reminder_sender: Sender<ReminderInput>) -> Self {
+        Self { reminder_sender }
+    }
+
     /// check msg if there is status of this chat
     /// return Some(_) means it truly has, None is not
     async fn check_from_msg(&self, msg: &Message) -> Option<()> {
@@ -65,7 +70,8 @@ impl StatusCheckerCatcher {
     }
 }
 
-// The input for status checker use for recording the status
+/// The input for status checker use for recording the status
+/// sent from other app
 pub struct StatusCheckerInput {
     /// this chatid
     chat_id: ChatId,
@@ -86,11 +92,29 @@ impl StatusCheckerInput {
 }
 
 struct StatusChecker {
+    // keep this clone inside for AppConsumer trait
+    checker_catcher_clone: StatusCheckerCatcher,
+
     sender: Sender<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)>,
     receiver: Receiver<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)>,
 }
 
 impl StatusChecker {
+    pub fn new(catcher: StatusCheckerCatcher) -> Self {
+        let (snd, rev) = mpsc::channel(10);
+        Self {
+            checker_catcher_clone: catcher,
+            sender: snd,
+            receiver: rev,
+        }
+    }
+
+    /// give clone of sender
+    /// used by other app which want to check the status
+    pub fn sender(&self) -> Sender<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)> {
+        self.sender.clone()
+    }
+
     pub async fn run(&mut self) {
         while let Some((check_input, send_back)) = self.receiver.recv().await {
             match check_input.ops {
@@ -126,5 +150,32 @@ impl StatusChecker {
                 }
             }
         }
+    }
+}
+
+/// Apply app traits below
+
+#[async_trait]
+impl AppConsumer for StatusCheckerCatcher {
+    async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
+        match self.check_from_msg(msg).await {
+            Some(_) => Ok(ConsumeStatus::Taken),
+            None => Ok(ConsumeStatus::NotMine),
+        }
+    }
+}
+
+#[async_trait]
+impl App for StatusChecker {
+    type Consumer = StatusCheckerCatcher;
+
+    fn consumer(&self) -> Self::Consumer {
+        self.checker_catcher_clone.clone()
+    }
+
+    async fn run(mut self) -> Result<(), String> {
+        info!("app echo is running");
+        self.run().await;
+        Ok(())
     }
 }
