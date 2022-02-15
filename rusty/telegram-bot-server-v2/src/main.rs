@@ -2,7 +2,6 @@ use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
 use clap::Parser;
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
-use std::sync::Arc;
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
@@ -12,7 +11,6 @@ use tokio::runtime::{self, Runtime};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info};
-use tracing_subscriber::field::debug;
 
 async fn default(web::Json(update): web::Json<Update>) -> HttpResponse {
     println!("update: {:?}", update);
@@ -42,10 +40,13 @@ fn making_app_layer(
     deliver_sender: &Sender<Msg2Deliver>,
     opts: &Opts,
 ) {
+    // make github commit check app
+    // before echo
     let mut gc = app::GithubCommitCheck::new(deliver_sender.clone(), opts.vault.clone());
     al.register_app(&gc);
     rt.spawn(async move { gc.run().await });
 
+    // make echo
     let mut echo = app::Echo::new(deliver_sender.clone());
     al.register_app(&echo);
     rt.spawn(async move { echo.run().await });
@@ -80,17 +81,6 @@ fn main() -> std::io::Result<()> {
     // make applayer
     let (mut applayer, mut app_sender) = app::AppLayer::new();
 
-    // make github commit check app
-    // before echo
-    // let mut gc = app::GithubCommitCheck::new(deliver_sender.clone(), opts.vault.clone());
-    // applayer.register_app(&gc);
-    // rt.spawn(async move { gc.run().await });
-
-    // make echo
-    // let mut echo = app::Echo::new(deliver_sender.clone());
-    // applayer.register_app(&echo);
-    // rt.spawn(async move { echo.run().await });
-
     making_app_layer(&mut applayer, &rt, &deliver_sender, &opts);
 
     {
@@ -102,7 +92,6 @@ fn main() -> std::io::Result<()> {
 
         std::thread::spawn(move || {
             let local = tokio::task::LocalSet::new();
-            //local.spawn_local(async move { applayer.run().await }); //:= delete this line
             local.spawn_local(applayer.run());
             local_rt.block_on(local);
         });

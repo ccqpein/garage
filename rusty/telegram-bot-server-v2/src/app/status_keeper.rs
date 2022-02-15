@@ -18,10 +18,20 @@ pub enum ChatStatus {
     ReminderApp(ReminderStatus),
 }
 
+/// operate of status checker
 pub enum Operate {
     Update,
     Query,
     Delete,
+}
+
+impl Operate {
+    fn is_query(&self) -> bool {
+        match self {
+            Operate::Query => true,
+            _ => false,
+        }
+    }
 }
 
 /// catch message first check if this chat has
@@ -79,15 +89,29 @@ pub struct StatusCheckerInput {
     update_status: ChatStatus,
     /// operation
     ops: Operate,
+    /// for this check send back
+    snd_back: Option<oneshot::Sender<ChatStatus>>,
 }
 
 impl StatusCheckerInput {
-    pub fn new(chat_id: ChatId, update_status: ChatStatus, ops: Operate) -> Self {
-        Self {
+    pub fn new(
+        chat_id: ChatId,
+        update_status: ChatStatus,
+        ops: Operate,
+        snd_back: Option<oneshot::Sender<ChatStatus>>,
+    ) -> Result<Self, String> {
+        if ops.is_query() && snd_back.is_none() {
+            return Err(
+                "make input failed. cannot give None snd_back when operate is query".to_string(),
+            );
+        }
+
+        Ok(Self {
             chat_id,
             update_status,
             ops,
-        }
+            snd_back,
+        })
     }
 }
 
@@ -95,8 +119,8 @@ struct StatusChecker {
     // keep this clone inside for AppConsumer trait
     checker_catcher_clone: StatusCheckerCatcher,
 
-    sender: Sender<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)>,
-    receiver: Receiver<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)>,
+    sender: Sender<StatusCheckerInput>,
+    receiver: Receiver<StatusCheckerInput>,
 }
 
 impl StatusChecker {
@@ -111,14 +135,13 @@ impl StatusChecker {
 
     /// give clone of sender
     /// used by other app which want to check the status
-    pub fn sender(&self) -> Sender<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)> {
+    pub fn sender(&self) -> Sender<StatusCheckerInput> {
         self.sender.clone()
     }
 
-    pub async fn run(&mut self) {
-        while let Some((check_input, send_back)) = self.receiver.recv().await {
+    pub async fn run(&mut self) -> Result<(), String> {
+        while let Some(check_input) = self.receiver.recv().await {
             match check_input.ops {
-                //:= Update and Delete can return msg to send_back if up stream support
                 Operate::Update => {
                     let mut tb = CHAT_STATUS_TABLE.lock().await;
                     let en = tb.entry(check_input.chat_id).or_insert(ChatStatus::None);
@@ -134,14 +157,10 @@ impl StatusChecker {
                         ChatStatus::None
                     };
 
-                    if let Some(snd) = send_back {
-                        match snd.send(send_back_result.clone()) {
-                            //:= fix todo!()
-                            Ok(_) => todo!(),
-                            Err(_) => todo!(),
-                        }
-                    } else {
-                        //:= TODO: finish this
+                    let snd = check_input.snd_back.unwrap();
+                    match snd.send(send_back_result) {
+                        Ok(_) => (),
+                        Err(_) => return Err("send back failed".to_string()),
                     }
                 }
                 Operate::Delete => {
@@ -150,6 +169,7 @@ impl StatusChecker {
                 }
             }
         }
+        Ok(())
     }
 }
 
@@ -175,7 +195,6 @@ impl App for StatusChecker {
 
     async fn run(mut self) -> Result<(), String> {
         info!("app echo is running");
-        self.run().await;
-        Ok(())
+        self.run().await
     }
 }

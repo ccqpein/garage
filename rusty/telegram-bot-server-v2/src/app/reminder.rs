@@ -130,7 +130,7 @@ struct Reminder {
     sender: Sender<ReminderInput>,
     receiver: Receiver<ReminderInput>,
 
-    status_checker_sender: Sender<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)>,
+    status_checker_sender: Sender<StatusCheckerInput>,
 
     deliver_sender: Sender<Msg2Deliver>,
 }
@@ -146,14 +146,15 @@ impl Reminder {
                 ReminderComm::InitReminder(time) => {
                     // let status of this chat updated
                     self.status_checker_sender
-                        .send((
+                        .send(
                             StatusCheckerInput::new(
                                 rem_input.chat_id,
                                 ChatStatus::ReminderApp(ReminderStatus::ReminderPending(*time)),
                                 Operate::Update,
-                            ),
-                            None,
-                        ))
+                                None,
+                            )
+                            .unwrap(),
+                        )
                         .await;
 
                     // make something put to tokio
@@ -179,21 +180,22 @@ impl Reminder {
 }
 
 async fn awaiting_reminder(
-    status_snd: Sender<(StatusCheckerInput, Option<oneshot::Sender<ChatStatus>>)>,
+    status_snd: Sender<StatusCheckerInput>,
     chat_id: ChatId,
     deliver_sender: Sender<Msg2Deliver>,
 ) {
     sleep(Duration::from_secs(5)).await;
     let (snd, mut rev) = oneshot::channel();
     // get the status of this chat
-    status_snd.send((
+    status_snd.send(
         StatusCheckerInput::new(
             chat_id,
             ChatStatus::None, // just for placeholder
             Operate::Query,
-        ),
-        Some(snd),
-    )); //:= check result maybe
+            Some(snd),
+        )
+        .unwrap(),
+    ); //:= check result maybe
 
     match rev.await {
         Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
@@ -214,14 +216,15 @@ async fn awaiting_reminder(
     sleep(Duration::from_secs(10)).await;
 
     let (snd, mut rev) = oneshot::channel();
-    status_snd.send((
+    status_snd.send(
         StatusCheckerInput::new(
             chat_id,
             ChatStatus::None, // just for placeholder
             Operate::Query,
-        ),
-        Some(snd),
-    )); //:= check result maybe
+            Some(snd),
+        )
+        .unwrap(),
+    ); //:= check result maybe
 
     match rev.await {
         Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
@@ -239,12 +242,13 @@ async fn awaiting_reminder(
         _ => todo!(),
     };
 
-    status_snd.send((
+    status_snd.send(
         StatusCheckerInput::new(
             chat_id,
             ChatStatus::None, // just for placeholder
             Operate::Delete,
-        ),
-        None,
-    ));
+            None,
+        )
+        .unwrap(),
+    );
 }
