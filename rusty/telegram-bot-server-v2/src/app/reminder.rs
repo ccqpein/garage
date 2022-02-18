@@ -70,7 +70,7 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
 
 type ReminderTime = u64;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ReminderStatus {
     ReminderPending(ReminderTime),
     //CancelReminderPending,
@@ -217,30 +217,37 @@ async fn awaiting_reminder(
     sleep(Duration::from_secs(5)).await;
     let (snd, mut rev) = oneshot::channel();
     // get the status of this chat
-    status_snd.send(
-        StatusCheckerInput::new(
-            chat_id,
-            ChatStatus::None, // just for placeholder
-            Operate::Query,
-            Some(snd),
+    status_snd
+        .send(
+            StatusCheckerInput::new(
+                chat_id,
+                ChatStatus::None, // just for placeholder
+                Operate::Query,
+                Some(snd),
+            )
+            .unwrap(),
         )
-        .unwrap(),
-    ); //:= check result maybe
+        .await; //:= check result maybe
 
     match rev.await {
         Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
-            deliver_sender.send(Msg2Deliver::new(
-                "send".to_string(),
-                chat_id,
-                "Go ahead, I am listening".to_string(),
-            ));
+            deliver_sender
+                .send(Msg2Deliver::new(
+                    "send".to_string(),
+                    chat_id,
+                    "Go ahead, I am listening".to_string(),
+                ))
+                .await;
         }
         Ok(ChatStatus::None) => {
             //:= after reminder created, status is none
             return;
         }
         Err(e) => {
-            debug!("awaiting reminder checking status has issue {:?}", e);
+            debug!(
+                "awaiting reminder checking status has issue {}",
+                e.to_string()
+            );
             return;
         }
         _ => {
@@ -252,33 +259,39 @@ async fn awaiting_reminder(
     sleep(Duration::from_secs(10)).await;
 
     let (snd, mut rev) = oneshot::channel();
-    status_snd.send(
-        StatusCheckerInput::new(
-            chat_id,
-            ChatStatus::None, // just for placeholder
-            Operate::Query,
-            Some(snd),
+    status_snd
+        .send(
+            StatusCheckerInput::new(
+                chat_id,
+                ChatStatus::None, // just for placeholder
+                Operate::Query,
+                Some(snd),
+            )
+            .unwrap(),
         )
-        .unwrap(),
-    ); //:= check result maybe
+        .await; //:= check result maybe
 
     match rev.await {
         Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
-            deliver_sender.send(Msg2Deliver::new(
-                "send".to_string(),
-                chat_id,
-                "Run out remind waiting time".to_string(),
-            ));
-
-            status_snd.send(
-                StatusCheckerInput::new(
+            deliver_sender
+                .send(Msg2Deliver::new(
+                    "send".to_string(),
                     chat_id,
-                    ChatStatus::None, // just for placeholder
-                    Operate::Delete,
-                    None,
+                    "Run out remind waiting time".to_string(),
+                ))
+                .await;
+
+            status_snd
+                .send(
+                    StatusCheckerInput::new(
+                        chat_id,
+                        ChatStatus::None, // just for placeholder
+                        Operate::Delete,
+                        None,
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            );
+                .await;
         }
         Ok(ChatStatus::None) => {
             //after reminder created, status is none

@@ -55,6 +55,7 @@ impl StatusCheckerCatcher {
             (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
             _ => None,
         };
+        debug!("check status for {}", msg.chat.id());
 
         let mut tb = CHAT_STATUS_TABLE.lock().await;
         match tb.get(&msg.chat.id()) {
@@ -158,6 +159,7 @@ impl StatusChecker {
                     *en = check_input.update_status;
                 }
                 Operate::Query => {
+                    info!("receive query command for chat {}", check_input.chat_id);
                     // Query has to send back something or awaiting_reminder will block forever
                     let send_back_result = if let Some(record) =
                         CHAT_STATUS_TABLE.lock().await.get(&check_input.chat_id)
@@ -169,7 +171,7 @@ impl StatusChecker {
 
                     let snd = check_input.snd_back.unwrap();
                     match snd.send(send_back_result) {
-                        Ok(_) => (),
+                        Ok(_) => {}
                         Err(_) => return Err("send back failed".to_string()),
                     }
                 }
@@ -204,7 +206,7 @@ impl App for StatusChecker {
     }
 
     async fn run(mut self) -> Result<(), String> {
-        info!("app echo is running");
-        self.run().await
+        info!("app status checker is running");
+        StatusChecker::run(&mut self).await
     }
 }
