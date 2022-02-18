@@ -5,7 +5,9 @@ use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
-use telegram_bot_server_v2::app::{App as botApp, AppConsumer as botAppConsumer, AppLayer};
+use telegram_bot_server_v2::app::{
+    App as botApp, AppConsumer as botAppConsumer, AppLayer, StatusCheckerCatcher,
+};
 use telegram_bot_server_v2::*;
 use tokio::runtime::{self, Runtime};
 use tokio::sync::mpsc::Sender;
@@ -40,16 +42,27 @@ fn making_app_layer(
     deliver_sender: &Sender<Msg2Deliver>,
     opts: &Opts,
 ) {
+    // need make status checker first
+    let mut status_checker = app::StatusChecker::new();
+
     // make github commit check app
     // before echo
     let mut gc = app::GithubCommitCheck::new(deliver_sender.clone(), opts.vault.clone());
     al.register_app(&gc);
-    rt.spawn(async move { gc.run().await });
+    rt.spawn(gc.run());
+
+    let reminder_app = app::Reminder::new(deliver_sender.clone(), status_checker.sender());
+    status_checker.reminder_catcher(reminder_app.sender());
+    al.register_app(&reminder_app);
+    rt.spawn(reminder_app.run());
 
     // make echo
     let mut echo = app::Echo::new(deliver_sender.clone());
     al.register_app(&echo);
-    rt.spawn(async move { echo.run().await });
+    rt.spawn(echo.run());
+
+    al.register_app(&status_checker);
+    rt.spawn(status_checker.run());
 }
 
 fn main() -> std::io::Result<()> {

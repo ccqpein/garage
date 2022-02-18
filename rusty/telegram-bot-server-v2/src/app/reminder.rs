@@ -1,14 +1,12 @@
 use super::*;
 use lazy_static::*;
 use serde_json::to_string;
-use std::{
-    collections::{BinaryHeap, HashMap, HashSet},
-    sync::Mutex,
-};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
     oneshot::{self, error::TryRecvError},
+    Mutex,
 };
 use tokio::time::{sleep, Duration};
 use tracing::{debug, info};
@@ -27,12 +25,12 @@ async fn add_reminder(
     content: String,
     deliver_sender: Sender<Msg2Deliver>,
 ) {
-    let mut table = REMINDERS_TABLE.lock().unwrap();
+    let mut table = REMINDERS_TABLE.lock().await;
     let reminders = table.entry(chatid).or_insert(HashMap::new());
 
-    let mut keys = reminders.keys().collect::<Vec<_>>();
+    let mut keys = reminders.keys().cloned().collect::<Vec<_>>();
     keys.sort();
-    let largest = keys.last().cloned().unwrap_or(&0);
+    let largest = keys.last().cloned().unwrap_or(0);
 
     let (snd, mut rev) = oneshot::channel();
     reminders.insert(largest + 1, snd);
@@ -52,22 +50,22 @@ async fn add_reminder(
 }
 
 async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Msg2Deliver>) {
-    let mut table = REMINDERS_TABLE.lock().unwrap();
+    let mut table = REMINDERS_TABLE.lock().await;
     let reminders = table.entry(*chatid).or_insert(HashMap::new());
 
-    match reminders.remove(ind) {
+    let dlvr_msg = match reminders.remove(ind) {
         Some(sig) => {
             sig.send(true);
+            return;
         }
-        None => {
-            let dlvr_msg = Msg2Deliver::new(
-                "send".to_string(),
-                *chatid,
-                format!("cannot find number {} reminder", ind),
-            );
-            deliver_sender.send(dlvr_msg).await;
-        }
+        None => Msg2Deliver::new(
+            "send".to_string(),
+            *chatid,
+            format!("cannot find number {} reminder", ind),
+        ),
     };
+
+    deliver_sender.send(dlvr_msg).await;
 }
 
 type ReminderTime = u64;
@@ -142,7 +140,7 @@ impl ReminderInput {
 }
 
 /// Reminder app
-struct Reminder {
+pub struct Reminder {
     sender: Sender<ReminderInput>,
     receiver: Receiver<ReminderInput>,
 
@@ -152,6 +150,19 @@ struct Reminder {
 }
 
 impl Reminder {
+    pub fn new(
+        deliver_sender: Sender<Msg2Deliver>,
+        status_checker_sender: Sender<StatusCheckerInput>,
+    ) -> Self {
+        let (snd, rev) = mpsc::channel(10);
+        Self {
+            sender: snd,
+            receiver: rev,
+            status_checker_sender,
+            deliver_sender,
+        }
+    }
+
     pub fn sender(&self) -> Sender<ReminderInput> {
         self.sender.clone()
     }
@@ -308,7 +319,7 @@ impl App for Reminder {
     }
 
     async fn run(mut self) -> Result<(), String> {
-        self.run().await;
+        Reminder::run(&mut self).await;
         Ok(())
     }
 }

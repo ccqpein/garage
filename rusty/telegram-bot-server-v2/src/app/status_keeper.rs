@@ -38,12 +38,14 @@ impl Operate {
 /// status inside or not
 #[derive(Clone)]
 pub struct StatusCheckerCatcher {
-    reminder_sender: Sender<ReminderInput>,
+    reminder_sender: Option<Sender<ReminderInput>>,
 }
 
 impl StatusCheckerCatcher {
-    pub fn new(reminder_sender: Sender<ReminderInput>) -> Self {
-        Self { reminder_sender }
+    fn init() -> Self {
+        Self {
+            reminder_sender: None,
+        }
     }
 
     /// check msg if there is status of this chat
@@ -61,12 +63,15 @@ impl StatusCheckerCatcher {
                 ChatStatus::ReminderApp(reminder_status) => {
                     match (reminder_status, data) {
                         (ReminderStatus::ReminderPending(time), Some(dd)) => {
-                            self.reminder_sender
-                                .send(ReminderInput::new(
+                            if let Some(ss) = &self.reminder_sender {
+                                ss.send(ReminderInput::new(
                                     msg.chat.id(),
                                     ReminderComm::MakeReminder(dd.to_string(), *time),
                                 ))
                                 .await;
+                            } else {
+                                debug!("should make reminder, but no sender inside")
+                            }
                         }
                         (ReminderStatus::ReminderPending(_), None) => (), //:= TODO: need to tell chat empty isn't accept
                     }
@@ -115,7 +120,7 @@ impl StatusCheckerInput {
     }
 }
 
-struct StatusChecker {
+pub struct StatusChecker {
     // keep this clone inside for AppConsumer trait
     checker_catcher_clone: StatusCheckerCatcher,
 
@@ -124,13 +129,18 @@ struct StatusChecker {
 }
 
 impl StatusChecker {
-    pub fn new(catcher: StatusCheckerCatcher) -> Self {
+    pub fn new() -> Self {
         let (snd, rev) = mpsc::channel(10);
         Self {
-            checker_catcher_clone: catcher,
+            checker_catcher_clone: StatusCheckerCatcher::init(),
             sender: snd,
             receiver: rev,
         }
+    }
+
+    pub fn reminder_catcher(&mut self, snd: Sender<ReminderInput>) -> Result<(), String> {
+        self.checker_catcher_clone.reminder_sender = Some(snd);
+        Ok(())
     }
 
     /// give clone of sender
