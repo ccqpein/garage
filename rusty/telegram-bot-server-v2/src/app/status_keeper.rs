@@ -1,7 +1,7 @@
 use super::*;
 use async_trait::async_trait;
 use lazy_static::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 use telegram_bot::{ChatId, MessageChat, MessageKind};
 use tokio::sync::{oneshot, Mutex};
 
@@ -123,7 +123,7 @@ impl StatusCheckerInput {
 
 pub struct StatusChecker {
     // keep this clone inside for AppConsumer trait
-    checker_catcher_clone: StatusCheckerCatcher,
+    checker_catcher_clone: Arc<StatusCheckerCatcher>,
 
     sender: Sender<StatusCheckerInput>,
     receiver: Receiver<StatusCheckerInput>,
@@ -133,14 +133,21 @@ impl StatusChecker {
     pub fn new() -> Self {
         let (snd, rev) = mpsc::channel(10);
         Self {
-            checker_catcher_clone: StatusCheckerCatcher::init(),
+            checker_catcher_clone: Arc::new(StatusCheckerCatcher::init()),
             sender: snd,
             receiver: rev,
         }
     }
 
     pub fn reminder_catcher(&mut self, snd: Sender<ReminderInput>) -> Result<(), String> {
-        self.checker_catcher_clone.reminder_sender = Some(snd);
+        match Arc::get_mut(&mut self.checker_catcher_clone) {
+            Some(inner) => inner.reminder_sender = Some(snd),
+            None => return Err("cannot get_mut inside arc in reminder_catcher".into()),
+        }
+        debug!(
+            "after put in reminder, checker_catcher address is {:?}",
+            Arc::as_ptr(&self.checker_catcher_clone)
+        );
         Ok(())
     }
 
@@ -188,7 +195,7 @@ impl StatusChecker {
 /// Apply app traits below
 
 #[async_trait]
-impl AppConsumer for StatusCheckerCatcher {
+impl AppConsumer for Arc<StatusCheckerCatcher> {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
         match self.check_from_msg(msg).await {
             Some(_) => Ok(ConsumeStatus::Taken),
@@ -199,10 +206,14 @@ impl AppConsumer for StatusCheckerCatcher {
 
 #[async_trait]
 impl App for StatusChecker {
-    type Consumer = StatusCheckerCatcher;
+    type Consumer = Arc<StatusCheckerCatcher>;
 
     fn consumer(&self) -> Self::Consumer {
-        self.checker_catcher_clone.clone()
+        debug!(
+            "checker_catcher address is {:?}",
+            Arc::as_ptr(&self.checker_catcher_clone)
+        );
+        Arc::clone(&self.checker_catcher_clone)
     }
 
     async fn run(mut self) -> Result<(), String> {

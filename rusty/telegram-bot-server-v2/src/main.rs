@@ -44,6 +44,7 @@ fn making_app_layer(
 ) {
     // need make status checker first
     let mut status_checker = app::StatusChecker::new();
+    al.register_app(&status_checker); //:= it should register first
 
     // make github commit check app
     // before echo
@@ -52,7 +53,9 @@ fn making_app_layer(
     rt.spawn(gc.run());
 
     let reminder_app = app::Reminder::new(deliver_sender.clone(), status_checker.sender());
-    status_checker.reminder_catcher(reminder_app.sender());
+    status_checker
+        .reminder_catcher(reminder_app.sender())
+        .unwrap(); //:+ need know if this works well
     al.register_app(&reminder_app);
     rt.spawn(reminder_app.run());
 
@@ -61,7 +64,6 @@ fn making_app_layer(
     al.register_app(&echo);
     rt.spawn(echo.run());
 
-    al.register_app(&status_checker);
     rt.spawn(status_checker.run());
 }
 
