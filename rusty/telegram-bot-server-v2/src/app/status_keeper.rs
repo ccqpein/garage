@@ -123,7 +123,7 @@ impl StatusCheckerInput {
 
 pub struct StatusChecker {
     // keep this clone inside for AppConsumer trait
-    checker_catcher_clone: Arc<StatusCheckerCatcher>,
+    checker_catcher_clone: Arc<Mutex<StatusCheckerCatcher>>,
 
     sender: Sender<StatusCheckerInput>,
     receiver: Receiver<StatusCheckerInput>,
@@ -133,21 +133,14 @@ impl StatusChecker {
     pub fn new() -> Self {
         let (snd, rev) = mpsc::channel(10);
         Self {
-            checker_catcher_clone: Arc::new(StatusCheckerCatcher::init()),
+            checker_catcher_clone: Arc::new(Mutex::new(StatusCheckerCatcher::init())),
             sender: snd,
             receiver: rev,
         }
     }
 
-    pub fn reminder_catcher(&mut self, snd: Sender<ReminderInput>) -> Result<(), String> {
-        match Arc::get_mut(&mut self.checker_catcher_clone) {
-            Some(inner) => inner.reminder_sender = Some(snd),
-            None => return Err("cannot get_mut inside arc in reminder_catcher".into()),
-        }
-        debug!(
-            "after put in reminder, checker_catcher address is {:?}",
-            Arc::as_ptr(&self.checker_catcher_clone)
-        );
+    pub async fn reminder_catcher(&mut self, snd: Sender<ReminderInput>) -> Result<(), String> {
+        self.checker_catcher_clone.lock().await.reminder_sender = Some(snd);
         Ok(())
     }
 
@@ -195,9 +188,9 @@ impl StatusChecker {
 /// Apply app traits below
 
 #[async_trait]
-impl AppConsumer for Arc<StatusCheckerCatcher> {
+impl AppConsumer for Arc<Mutex<StatusCheckerCatcher>> {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
-        match self.check_from_msg(msg).await {
+        match self.lock().await.check_from_msg(msg).await {
             Some(_) => Ok(ConsumeStatus::Taken),
             None => Ok(ConsumeStatus::NotMine),
         }
@@ -206,13 +199,9 @@ impl AppConsumer for Arc<StatusCheckerCatcher> {
 
 #[async_trait]
 impl App for StatusChecker {
-    type Consumer = Arc<StatusCheckerCatcher>;
+    type Consumer = Arc<Mutex<StatusCheckerCatcher>>;
 
     fn consumer(&self) -> Self::Consumer {
-        debug!(
-            "checker_catcher address is {:?}",
-            Arc::as_ptr(&self.checker_catcher_clone)
-        );
         Arc::clone(&self.checker_catcher_clone)
     }
 

@@ -36,7 +36,7 @@ async fn handler(
     }
 }
 
-fn making_app_layer(
+async fn making_app_layer(
     al: &mut AppLayer,
     rt: &Runtime,
     deliver_sender: &Sender<Msg2Deliver>,
@@ -53,9 +53,7 @@ fn making_app_layer(
     rt.spawn(gc.run());
 
     let reminder_app = app::Reminder::new(deliver_sender.clone(), status_checker.sender());
-    status_checker
-        .reminder_catcher(reminder_app.sender())
-        .unwrap(); //:+ need know if this works well
+    status_checker.reminder_catcher(reminder_app.sender()).await; //:+ need know if this works well
     al.register_app(&reminder_app);
     rt.spawn(reminder_app.run());
 
@@ -96,7 +94,7 @@ fn main() -> std::io::Result<()> {
     // make applayer
     let (mut applayer, mut app_sender) = app::AppLayer::new();
 
-    making_app_layer(&mut applayer, &rt, &deliver_sender, &opts);
+    rt.block_on(making_app_layer(&mut applayer, &rt, &deliver_sender, &opts));
 
     {
         // one thread runtime
