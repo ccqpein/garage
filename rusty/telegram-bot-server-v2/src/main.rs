@@ -44,7 +44,8 @@ async fn making_app_layer(
 ) {
     // need make status checker first
     let mut status_checker = app::StatusChecker::new();
-    al.register_app(&status_checker); //:= it should register first
+    // register first because status checker should be the first
+    al.register_app(&status_checker);
 
     // make github commit check app
     // before echo

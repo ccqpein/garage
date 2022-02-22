@@ -35,6 +35,18 @@ async fn add_reminder(
     let (snd, mut rev) = oneshot::channel();
     reminders.insert(largest + 1, snd);
 
+    deliver_sender
+        .send(Msg2Deliver::new(
+            "send".to_string(),
+            chatid,
+            format!(
+                "reminder {} created, remind you every {} seconds",
+                largest + 1,
+                time
+            ),
+        ))
+        .await;
+
     tokio::spawn(async move {
         let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
         loop {
@@ -56,7 +68,11 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
     let dlvr_msg = match reminders.remove(ind) {
         Some(sig) => {
             sig.send(true);
-            return;
+            Msg2Deliver::new(
+                "send".to_string(),
+                *chatid,
+                format!("reminder {} cancelled", ind),
+            )
         }
         None => Msg2Deliver::new(
             "send".to_string(),
@@ -72,8 +88,8 @@ type ReminderTime = u64;
 
 #[derive(Clone, Debug)]
 pub enum ReminderStatus {
+    /// awaiting reminder content
     ReminderPending(ReminderTime),
-    //CancelReminderPending,
 }
 
 #[derive(Clone)]
@@ -81,7 +97,7 @@ pub enum ReminderComm {
     InitReminder(ReminderTime),
     MakeReminder(String, ReminderTime),
     /// cancel the reminder
-    CancelReminder(usize),
+    CancelReminder(usize), //:= need finish this
 }
 
 pub struct ReminderInputConsumer {
@@ -192,13 +208,14 @@ impl Reminder {
                     tokio::spawn(awaiting_reminder(status_snd, chat_id, deliver_sender));
                 }
                 ReminderComm::MakeReminder(msg, time) => {
-                    add_reminder(
+                    // make reminder
+                    let new_reminder_id = add_reminder(
                         rem_input.chat_id,
                         *time,
                         msg.to_string(),
                         self.deliver_sender.clone(),
                     )
-                    .await
+                    .await;
                 }
                 ReminderComm::CancelReminder(ind) => {
                     delete_reminder(&rem_input.chat_id, ind, self.deliver_sender.clone()).await
@@ -217,7 +234,7 @@ async fn awaiting_reminder(
     sleep(Duration::from_secs(5)).await;
     let (snd, mut rev) = oneshot::channel();
     // get the status of this chat
-    status_snd
+    if let Err(e) = status_snd
         .send(
             StatusCheckerInput::new(
                 chat_id,
@@ -227,7 +244,11 @@ async fn awaiting_reminder(
             )
             .unwrap(),
         )
-        .await; //:= check result maybe
+        .await
+    {
+        debug!("error {} happens when query status for chat {}", e, chat_id);
+        return;
+    }
 
     match rev.await {
         Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
@@ -240,7 +261,7 @@ async fn awaiting_reminder(
                 .await;
         }
         Ok(ChatStatus::None) => {
-            //:= after reminder created, status is none
+            // after reminder created, status is none
             return;
         }
         Err(e) => {
@@ -259,7 +280,7 @@ async fn awaiting_reminder(
     sleep(Duration::from_secs(10)).await;
 
     let (snd, mut rev) = oneshot::channel();
-    status_snd
+    if let Err(e) = status_snd
         .send(
             StatusCheckerInput::new(
                 chat_id,
@@ -269,7 +290,11 @@ async fn awaiting_reminder(
             )
             .unwrap(),
         )
-        .await; //:= check result maybe
+        .await
+    {
+        debug!("error {} happens when query status for chat {}", e, chat_id);
+        return;
+    }
 
     match rev.await {
         Ok(ChatStatus::ReminderApp(ReminderStatus::ReminderPending(_))) => {
@@ -315,7 +340,7 @@ impl AppConsumer for ReminderInputConsumer {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
         match ReminderInput::from_msg(msg) {
             Some(input) => {
-                self.snd.send(input).await; //:= handle the error?
+                self.snd.send(input).await.map_err(|e| e.to_string())?;
                 Ok(ConsumeStatus::Taken)
             }
             None => Ok(ConsumeStatus::NotMine),

@@ -74,9 +74,13 @@ impl StatusCheckerCatcher {
                                 debug!("should make reminder, but no sender inside")
                             }
                         }
-                        (ReminderStatus::ReminderPending(_), None) => (), //:= TODO: need to tell chat empty isn't accept
+                        (ReminderStatus::ReminderPending(_), None) => {
+                            info!(
+                                "receive empty data body from chat {}, ignored",
+                                msg.chat.id()
+                            )
+                        }
                     }
-                    //:= send reminder_status
                     tb.remove(&msg.chat.id());
                     Some(())
                 }
