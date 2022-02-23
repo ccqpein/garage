@@ -67,7 +67,7 @@ impl StatusCheckerCatcher {
                             if let Some(ss) = &self.reminder_sender {
                                 ss.send(ReminderInput::new(
                                     msg.chat.id(),
-                                    ReminderComm::MakeReminder(dd.to_string(), *time),
+                                    ReminderComm::MakeReminder(dd.to_string(), time.clone()),
                                 ))
                                 .await;
                             } else {
@@ -93,6 +93,8 @@ impl StatusCheckerCatcher {
 /// The input for status checker use for recording the status
 /// sent from other app
 pub struct StatusCheckerInput {
+    //:= need know which app send this input for logging...
+    //:= in statuschecker run method
     /// this chatid
     chat_id: ChatId,
     /// the status want to update
@@ -176,12 +178,24 @@ impl StatusChecker {
                     let snd = check_input.snd_back.unwrap();
                     match snd.send(send_back_result) {
                         Ok(_) => {}
-                        Err(_) => return Err("send back failed".to_string()),
+                        Err(_) => debug!(
+                            "status query result send back failed, chatid {}",
+                            check_input.chat_id
+                        ),
                     }
                 }
                 Operate::Delete => {
-                    //:= maybe check this option
-                    CHAT_STATUS_TABLE.lock().await.remove(&check_input.chat_id);
+                    if CHAT_STATUS_TABLE
+                        .lock()
+                        .await
+                        .remove(&check_input.chat_id)
+                        .is_none()
+                    {
+                        debug!(
+                            "try to delete, but nothing for chatid {}",
+                            check_input.chat_id
+                        )
+                    };
                 }
             }
         }

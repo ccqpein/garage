@@ -21,7 +21,7 @@ lazy_static! {
 /// add reminder to this chat window
 async fn add_reminder(
     chatid: ChatId,
-    time: u64,
+    time: ReminderTime,
     content: String,
     deliver_sender: Sender<Msg2Deliver>,
 ) {
@@ -40,9 +40,10 @@ async fn add_reminder(
             "send".to_string(),
             chatid,
             format!(
-                "reminder {} created, remind you every {} seconds",
+                "reminder {} created, remind you every {} {}",
                 largest + 1,
-                time
+                time.to_sec(),
+                time.unit
             ),
         ))
         .await;
@@ -50,7 +51,7 @@ async fn add_reminder(
     tokio::spawn(async move {
         let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
         loop {
-            sleep(Duration::from_secs(time)).await;
+            sleep(Duration::from_secs(time.to_sec())).await;
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
                     deliver_sender.send(dlvr_msg.clone()).await;
@@ -84,7 +85,87 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
     deliver_sender.send(dlvr_msg).await;
 }
 
-type ReminderTime = u64;
+#[derive(Clone, Debug)]
+pub struct ReminderTime {
+    unit: String,
+    seconds: u64,
+}
+
+impl ReminderTime {
+    fn to_sec(&self) -> u64 {
+        self.seconds
+    }
+
+    fn from_minutes(m: u64) -> Self {
+        Self {
+            seconds: m * 64,
+            unit: String::from("minutes"),
+        }
+    }
+
+    fn from_sec(s: u64) -> Self {
+        Self {
+            seconds: s,
+            unit: String::from("seconds"),
+        }
+    }
+
+    /// parse reminder string like 11m/23s/1h/2d
+    /// only accept s, m, h, d
+    fn parse(s: &str) -> Result<Self, String> {
+        // if give number directly, it should be seconds
+        if let Ok(ss) = s.parse::<u64>() {
+            return Ok(Self::from_sec(ss));
+        }
+
+        let (time, unit) = s.split_at(s.len() - 1);
+        match time.parse::<u64>() {
+            Ok(tt) => {
+                let (result, overflow) = match unit {
+                    "m" => {
+                        let (a, f) = tt.overflowing_mul(60);
+                        (
+                            Self {
+                                unit: String::from("minutes"),
+                                seconds: a,
+                            },
+                            f,
+                        )
+                    }
+                    "s" => (Self::from_sec(tt), false),
+                    "h" => {
+                        let (a, f) = tt.overflowing_mul(3600);
+                        (
+                            Self {
+                                unit: String::from("hours"),
+                                seconds: a,
+                            },
+                            f,
+                        )
+                    }
+                    "d" => {
+                        let (a, f) = tt.overflowing_mul(24 * 3600);
+                        (
+                            Self {
+                                unit: String::from("days"),
+                                seconds: a,
+                            },
+                            f,
+                        )
+                    }
+                    _ => return Err("unsupported unit, has to be s, m, h, d".to_string()),
+                };
+
+                if overflow {
+                    return Err(format!("reminder time {}{} overflow", time, unit));
+                }
+
+                Ok(result)
+            }
+            Err(e) => Err(format!("this time {} parsed failed", time)),
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub enum ReminderStatus {
@@ -97,7 +178,7 @@ pub enum ReminderComm {
     InitReminder(ReminderTime),
     MakeReminder(String, ReminderTime),
     /// cancel the reminder
-    CancelReminder(usize), //:= need finish this
+    CancelReminder(usize),
 }
 
 pub struct ReminderInputConsumer {
@@ -136,10 +217,11 @@ impl ReminderInput {
         match data.get(0).map(|s| s.as_str()) {
             Some("reminder") => Some(Self {
                 chat_id: msg.chat.id(),
-                command: if let Some(Ok(minutes)) = data.get(1).map(|s| s.parse::<u64>()) {
-                    ReminderComm::InitReminder(minutes)
+                command: if let Some(time) = data.get(1) {
+                    ReminderComm::InitReminder(ReminderTime::parse(time).unwrap())
+                //:= need new remindercomm::error type
                 } else {
-                    ReminderComm::InitReminder(30)
+                    ReminderComm::InitReminder(ReminderTime::parse("30m").unwrap())
                 },
             }),
             Some("cancelreminder") => Some(Self {
@@ -192,7 +274,9 @@ impl Reminder {
                         .send(
                             StatusCheckerInput::new(
                                 rem_input.chat_id,
-                                ChatStatus::ReminderApp(ReminderStatus::ReminderPending(*time)),
+                                ChatStatus::ReminderApp(ReminderStatus::ReminderPending(
+                                    time.clone(),
+                                )),
                                 Operate::Update,
                                 None,
                             )
@@ -209,16 +293,16 @@ impl Reminder {
                 }
                 ReminderComm::MakeReminder(msg, time) => {
                     // make reminder
-                    let new_reminder_id = add_reminder(
+                    add_reminder(
                         rem_input.chat_id,
-                        *time,
+                        time.clone(),
                         msg.to_string(),
                         self.deliver_sender.clone(),
                     )
                     .await;
                 }
                 ReminderComm::CancelReminder(ind) => {
-                    delete_reminder(&rem_input.chat_id, ind, self.deliver_sender.clone()).await
+                    delete_reminder(&rem_input.chat_id, &ind, self.deliver_sender.clone()).await
                 }
             }
         }
