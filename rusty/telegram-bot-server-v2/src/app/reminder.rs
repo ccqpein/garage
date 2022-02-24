@@ -40,9 +40,9 @@ async fn add_reminder(
             "send".to_string(),
             chatid,
             format!(
-                "reminder {} created, remind you every {} {}",
+                "reminder {} created, remind you every {} {}", //:= bug here, second time with wrong unit
                 largest + 1,
-                time.to_sec(),
+                time.num,
                 time.unit
             ),
         ))
@@ -50,8 +50,15 @@ async fn add_reminder(
 
     tokio::spawn(async move {
         let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
+        let dd = match time.to_duration() {
+            Ok(dd) => dd,
+            Err(e) => {
+                debug!("{}", e);
+                return;
+            }
+        };
         loop {
-            sleep(Duration::from_secs(time.to_sec())).await;
+            sleep(dd).await;
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
                     deliver_sender.send(dlvr_msg.clone()).await;
@@ -88,25 +95,54 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
 #[derive(Clone, Debug)]
 pub struct ReminderTime {
     unit: String,
-    seconds: u64,
+    num: u64,
 }
 
+//:= format has bug, need re-write to return some kind of...
+//:= tokio Duration
 impl ReminderTime {
-    fn to_sec(&self) -> u64 {
-        self.seconds
-    }
-
     fn from_minutes(m: u64) -> Self {
         Self {
-            seconds: m * 64,
+            num: m,
             unit: String::from("minutes"),
         }
     }
 
     fn from_sec(s: u64) -> Self {
         Self {
-            seconds: s,
+            num: s,
             unit: String::from("seconds"),
+        }
+    }
+
+    fn to_duration(&self) -> Result<Duration, String> {
+        match self.unit.as_str() {
+            "minutes" => {
+                let (s, flag) = self.num.overflowing_mul(60);
+                if !flag {
+                    Ok(Duration::from_secs(s))
+                } else {
+                    Err(String::from("to duration overflow"))
+                }
+            }
+            "seconds" => Ok(Duration::from_secs(self.num)),
+            "hours" => {
+                let (s, flag) = self.num.overflowing_mul(3600);
+                if !flag {
+                    Ok(Duration::from_secs(s))
+                } else {
+                    Err(String::from("to duration overflow"))
+                }
+            }
+            "days" => {
+                let (s, flag) = self.num.overflowing_mul(3600 * 24);
+                if !flag {
+                    Ok(Duration::from_secs(s))
+                } else {
+                    Err(String::from("to duration overflow"))
+                }
+            }
+            _ => unreachable!(),
         }
     }
 
@@ -120,48 +156,25 @@ impl ReminderTime {
 
         let (time, unit) = s.split_at(s.len() - 1);
         match time.parse::<u64>() {
-            Ok(tt) => {
-                let (result, overflow) = match unit {
-                    "m" => {
-                        let (a, f) = tt.overflowing_mul(60);
-                        (
-                            Self {
-                                unit: String::from("minutes"),
-                                seconds: a,
-                            },
-                            f,
-                        )
-                    }
-                    "s" => (Self::from_sec(tt), false),
-                    "h" => {
-                        let (a, f) = tt.overflowing_mul(3600);
-                        (
-                            Self {
-                                unit: String::from("hours"),
-                                seconds: a,
-                            },
-                            f,
-                        )
-                    }
-                    "d" => {
-                        let (a, f) = tt.overflowing_mul(24 * 3600);
-                        (
-                            Self {
-                                unit: String::from("days"),
-                                seconds: a,
-                            },
-                            f,
-                        )
-                    }
-                    _ => return Err("unsupported unit, has to be s, m, h, d".to_string()),
-                };
-
-                if overflow {
-                    return Err(format!("reminder time {}{} overflow", time, unit));
-                }
-
-                Ok(result)
-            }
+            Ok(tt) => match unit {
+                "m" => Ok(Self {
+                    unit: String::from("minutes"),
+                    num: tt,
+                }),
+                "s" => Ok(Self {
+                    unit: String::from("seconds"),
+                    num: tt,
+                }),
+                "h" => Ok(Self {
+                    unit: String::from("hours"),
+                    num: tt,
+                }),
+                "d" => Ok(Self {
+                    unit: String::from("days"),
+                    num: tt,
+                }),
+                _ => return Err("unsupported unit, has to be s, m, h, d".to_string()),
+            },
             Err(e) => Err(format!("this time {} parsed failed", time)),
         }
     }
