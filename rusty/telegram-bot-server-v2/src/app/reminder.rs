@@ -192,6 +192,10 @@ pub enum ReminderComm {
     MakeReminder(String, ReminderTime),
     /// cancel the reminder
     CancelReminder(usize),
+
+    /// for from_msg using when parsing message to command has
+    /// error
+    ErrorCommand,
 }
 
 pub struct ReminderInputConsumer {
