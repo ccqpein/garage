@@ -195,7 +195,7 @@ pub enum ReminderComm {
 
     /// for from_msg using when parsing message to command has
     /// error
-    ErrorCommand,
+    ErrorCommand(String),
 }
 
 pub struct ReminderInputConsumer {
@@ -232,23 +232,38 @@ impl ReminderInput {
         };
 
         match data.get(0).map(|s| s.as_str()) {
-            Some("reminder") => Some(Self {
-                chat_id: msg.chat.id(),
-                command: if let Some(time) = data.get(1) {
-                    ReminderComm::InitReminder(ReminderTime::parse(time).unwrap())
-                //:= need new remindercomm::error type
-                } else {
-                    ReminderComm::InitReminder(ReminderTime::parse("30m").unwrap())
-                },
-            }),
-            Some("cancelreminder") => Some(Self {
-                chat_id: msg.chat.id(),
-                command: if let Some(Ok(ind)) = data.get(1).map(|s| s.parse::<usize>()) {
-                    ReminderComm::CancelReminder(ind)
-                } else {
-                    return None;
-                },
-            }),
+            Some("reminder") => {
+                let comm = data.get(1).map_or(
+                    ReminderComm::InitReminder(ReminderTime::parse("30m").unwrap()),
+                    |time| {
+                        ReminderTime::parse(time).map_or_else(
+                            |e| ReminderComm::ErrorCommand(e.to_string()),
+                            |r_time| ReminderComm::InitReminder(r_time),
+                        )
+                    },
+                );
+                Some(Self {
+                    chat_id: msg.chat.id(),
+                    command: comm,
+                })
+            }
+            Some("cancelreminder") => {
+                let comm = data.get(1).map_or(
+                    ReminderComm::ErrorCommand(
+                        "cancelreminder command should has followed reminder id",
+                    ),
+                    |s| {
+                        s.parse::<usize>()
+                            .map_or(ReminderComm::ErrorCommand("id parse failed", |id| {
+                                ReminderComm::CancelReminder(id)
+                            }))
+                    },
+                );
+                Some(Self {
+                    chat_id: msg.chat.id(),
+                    command: comm,
+                })
+            }
             _ => None,
         }
     }
@@ -321,6 +336,7 @@ impl Reminder {
                 ReminderComm::CancelReminder(ind) => {
                     delete_reminder(&rem_input.chat_id, &ind, self.deliver_sender.clone()).await
                 }
+                ReminderComm::ErrorCommand(_) => todo!(),
             }
         }
     }
