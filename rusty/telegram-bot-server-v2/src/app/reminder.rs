@@ -250,13 +250,13 @@ impl ReminderInput {
             Some("cancelreminder") => {
                 let comm = data.get(1).map_or(
                     ReminderComm::ErrorCommand(
-                        "cancelreminder command should has followed reminder id",
+                        "cancelreminder command should has followed reminder id".into(),
                     ),
                     |s| {
                         s.parse::<usize>()
-                            .map_or(ReminderComm::ErrorCommand("id parse failed", |id| {
+                            .map_or(ReminderComm::ErrorCommand("id parse failed".into()), |id| {
                                 ReminderComm::CancelReminder(id)
-                            }))
+                            })
                     },
                 );
                 Some(Self {
@@ -336,7 +336,15 @@ impl Reminder {
                 ReminderComm::CancelReminder(ind) => {
                     delete_reminder(&rem_input.chat_id, &ind, self.deliver_sender.clone()).await
                 }
-                ReminderComm::ErrorCommand(_) => todo!(),
+                ReminderComm::ErrorCommand(err_msg) => {
+                    self.deliver_sender
+                        .send(Msg2Deliver::new(
+                            "send".to_string(),
+                            rem_input.chat_id,
+                            err_msg.to_owned(),
+                        ))
+                        .await;
+                }
             }
         }
     }
