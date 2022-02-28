@@ -18,6 +18,8 @@ lazy_static! {
     };
 }
 
+const REMINDER_APP_NAME: AppName = AppName("Reminder");
+
 /// add reminder to this chat window
 async fn add_reminder(
     chatid: ChatId,
@@ -40,7 +42,7 @@ async fn add_reminder(
             "send".to_string(),
             chatid,
             format!(
-                "reminder {} created, remind you every {} {}", //:= bug here, second time with wrong unit
+                "reminder {} created, remind you every {} {}",
                 largest + 1,
                 time.num,
                 time.unit
@@ -98,8 +100,6 @@ pub struct ReminderTime {
     num: u64,
 }
 
-//:= format has bug, need re-write to return some kind of...
-//:= tokio Duration
 impl ReminderTime {
     fn from_minutes(m: u64) -> Self {
         Self {
@@ -280,6 +280,10 @@ pub struct Reminder {
 }
 
 impl Reminder {
+    fn app_name() -> AppName {
+        AppName("Reminder".into())
+    }
+
     pub fn new(
         deliver_sender: Sender<Msg2Deliver>,
         status_checker_sender: Sender<StatusCheckerInput>,
@@ -305,6 +309,7 @@ impl Reminder {
                     self.status_checker_sender
                         .send(
                             StatusCheckerInput::new(
+                                REMINDER_APP_NAME,
                                 rem_input.chat_id,
                                 ChatStatus::ReminderApp(ReminderStatus::ReminderPending(
                                     time.clone(),
@@ -362,6 +367,7 @@ async fn awaiting_reminder(
     if let Err(e) = status_snd
         .send(
             StatusCheckerInput::new(
+                REMINDER_APP_NAME,
                 chat_id,
                 ChatStatus::None, // just for placeholder
                 Operate::Query,
@@ -408,6 +414,7 @@ async fn awaiting_reminder(
     if let Err(e) = status_snd
         .send(
             StatusCheckerInput::new(
+                REMINDER_APP_NAME,
                 chat_id,
                 ChatStatus::None, // just for placeholder
                 Operate::Query,
@@ -434,6 +441,7 @@ async fn awaiting_reminder(
             status_snd
                 .send(
                     StatusCheckerInput::new(
+                        REMINDER_APP_NAME,
                         chat_id,
                         ChatStatus::None, // just for placeholder
                         Operate::Delete,

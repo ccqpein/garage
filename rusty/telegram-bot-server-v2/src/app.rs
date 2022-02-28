@@ -18,6 +18,15 @@ pub use reminder::*;
 mod status_keeper;
 pub use status_keeper::*;
 
+/// App name
+pub struct AppName(&'static str);
+
+impl std::fmt::Display for AppName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 /// consume this message or not
 pub enum ConsumeStatus {
     Taken,

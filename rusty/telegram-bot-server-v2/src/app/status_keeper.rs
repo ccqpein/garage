@@ -93,8 +93,8 @@ impl StatusCheckerCatcher {
 /// The input for status checker use for recording the status
 /// sent from other app
 pub struct StatusCheckerInput {
-    //:= need know which app send this input for logging...
-    //:= in statuschecker run method
+    /// from which app
+    app_source: AppName,
     /// this chatid
     chat_id: ChatId,
     /// the status want to update
@@ -107,6 +107,7 @@ pub struct StatusCheckerInput {
 
 impl StatusCheckerInput {
     pub fn new(
+        app_source: AppName,
         chat_id: ChatId,
         update_status: ChatStatus,
         ops: Operate,
@@ -119,6 +120,7 @@ impl StatusCheckerInput {
         }
 
         Ok(Self {
+            app_source,
             chat_id,
             update_status,
             ops,
@@ -165,7 +167,10 @@ impl StatusChecker {
                     *en = check_input.update_status;
                 }
                 Operate::Query => {
-                    info!("receive query command for chat {}", check_input.chat_id);
+                    info!(
+                        "receive query command for chat {} from app {}",
+                        check_input.chat_id, check_input.app_source
+                    );
                     // Query has to send back something or awaiting_reminder will block forever
                     let send_back_result = if let Some(record) =
                         CHAT_STATUS_TABLE.lock().await.get(&check_input.chat_id)
@@ -179,8 +184,8 @@ impl StatusChecker {
                     match snd.send(send_back_result) {
                         Ok(_) => {}
                         Err(_) => debug!(
-                            "status query result send back failed, chatid {}",
-                            check_input.chat_id
+                            "status query result send back failed, chatid {} from app {}",
+                            check_input.chat_id, check_input.app_source
                         ),
                     }
                 }
@@ -192,8 +197,8 @@ impl StatusChecker {
                         .is_none()
                     {
                         debug!(
-                            "try to delete, but nothing for chatid {}",
-                            check_input.chat_id
+                            "try to delete status, but nothing for chatid {}, request from app {}",
+                            check_input.chat_id, check_input.app_source
                         )
                     };
                 }
