@@ -1,7 +1,6 @@
 use super::*;
 use lazy_static::*;
-use serde_json::to_string;
-use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::{collections::HashMap, sync::mpsc::SendError};
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::sync::{
     mpsc::{self, Receiver, Sender},
@@ -9,7 +8,7 @@ use tokio::sync::{
     Mutex,
 };
 use tokio::time::{sleep, Duration};
-use tracing::{debug, info};
+use tracing::debug;
 
 lazy_static! {
     static ref REMINDERS_TABLE: Mutex<HashMap<ChatId, HashMap<usize, oneshot::Sender<bool>>>> = {
@@ -26,7 +25,7 @@ async fn add_reminder(
     time: ReminderTime,
     content: String,
     deliver_sender: Sender<Msg2Deliver>,
-) {
+) -> Result<(), SendError<Msg2Deliver>> {
     let mut table = REMINDERS_TABLE.lock().await;
     let reminders = table.entry(chatid).or_insert(HashMap::new());
 
@@ -69,6 +68,7 @@ async fn add_reminder(
             }
         }
     });
+    Ok(())
 }
 
 async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Msg2Deliver>) {
@@ -101,13 +101,6 @@ pub struct ReminderTime {
 }
 
 impl ReminderTime {
-    fn from_minutes(m: u64) -> Self {
-        Self {
-            num: m,
-            unit: String::from("minutes"),
-        }
-    }
-
     fn from_sec(s: u64) -> Self {
         Self {
             num: s,
@@ -175,7 +168,7 @@ impl ReminderTime {
                 }),
                 _ => return Err("unsupported unit, has to be s, m, h, d".to_string()),
             },
-            Err(e) => Err(format!("this time {} parsed failed", time)),
+            Err(_e) => Err(format!("this time {} parsed failed", time)),
         }
     }
 }
@@ -280,10 +273,6 @@ pub struct Reminder {
 }
 
 impl Reminder {
-    fn app_name() -> AppName {
-        AppName("Reminder".into())
-    }
-
     pub fn new(
         deliver_sender: Sender<Msg2Deliver>,
         status_checker_sender: Sender<StatusCheckerInput>,
@@ -336,7 +325,11 @@ impl Reminder {
                         msg.to_string(),
                         self.deliver_sender.clone(),
                     )
-                    .await;
+                    .await
+                    .map_err(|e| {
+                        debug!("error in making reminder {}", e);
+                    })
+                    .unwrap();
                 }
                 ReminderComm::CancelReminder(ind) => {
                     delete_reminder(&rem_input.chat_id, &ind, self.deliver_sender.clone()).await
@@ -362,7 +355,7 @@ async fn awaiting_reminder(
     deliver_sender: Sender<Msg2Deliver>,
 ) {
     sleep(Duration::from_secs(5)).await;
-    let (snd, mut rev) = oneshot::channel();
+    let (snd, rev) = oneshot::channel();
     // get the status of this chat
     if let Err(e) = status_snd
         .send(
@@ -402,15 +395,11 @@ async fn awaiting_reminder(
             );
             return;
         }
-        _ => {
-            debug!("awaiting reminder checking status has issue: unsupport reply");
-            return;
-        }
     };
 
     sleep(Duration::from_secs(10)).await;
 
-    let (snd, mut rev) = oneshot::channel();
+    let (snd, rev) = oneshot::channel();
     if let Err(e) = status_snd
         .send(
             StatusCheckerInput::new(
@@ -457,10 +446,6 @@ async fn awaiting_reminder(
         }
         Err(e) => {
             debug!("awaiting reminder checking status has issue {:?}", e);
-            return;
-        }
-        _ => {
-            debug!("awaiting reminder checking status has issue: unsupport reply");
             return;
         }
     };

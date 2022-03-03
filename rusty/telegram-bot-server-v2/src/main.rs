@@ -1,13 +1,11 @@
-use actix_web::{error, web, App, Error, HttpResponse, HttpServer};
+use actix_web::{web, App, Error, HttpResponse, HttpServer};
 use clap::Parser;
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
-use telegram_bot_server_v2::app::{
-    App as botApp, AppConsumer as botAppConsumer, AppLayer, StatusCheckerCatcher,
-};
+use telegram_bot_server_v2::app::{App as botApp, AppLayer};
 use telegram_bot_server_v2::*;
 use tokio::runtime::{self, Runtime};
 use tokio::sync::mpsc::Sender;

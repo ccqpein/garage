@@ -12,7 +12,6 @@ use telegram_bot::Message;
 use telegram_bot::MessageChat;
 use telegram_bot::MessageKind;
 use tokio::sync::mpsc::Sender;
-use tracing::debug;
 use tracing::info;
 
 pub struct GithubCommitInput {
