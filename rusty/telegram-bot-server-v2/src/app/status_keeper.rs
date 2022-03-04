@@ -69,7 +69,11 @@ impl StatusCheckerCatcher {
                                     msg.chat.id(),
                                     ReminderComm::MakeReminder(dd.to_string(), time.clone()),
                                 ))
-                                .await;
+                                .await
+                                .map_err(|e| {
+                                    debug!("{}", e);
+                                })
+                                .unwrap();
                             } else {
                                 debug!("should make reminder, but no sender inside")
                             }

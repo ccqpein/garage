@@ -1,13 +1,15 @@
 use super::*;
 use lazy_static::*;
-use std::{collections::HashMap, sync::mpsc::SendError};
+use std::collections::HashMap;
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
-use tokio::sync::{
-    mpsc::{self, Receiver, Sender},
-    oneshot::{self, error::TryRecvError},
-    Mutex,
+use tokio::{
+    sync::{
+        mpsc::{self, error::SendError, Receiver, Sender},
+        oneshot::{self, error::TryRecvError},
+        Mutex,
+    },
+    time::{sleep, Duration},
 };
-use tokio::time::{sleep, Duration};
 use tracing::debug;
 
 lazy_static! {
@@ -47,7 +49,7 @@ async fn add_reminder(
                 time.unit
             ),
         ))
-        .await;
+        .await?;
 
     tokio::spawn(async move {
         let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
@@ -62,7 +64,11 @@ async fn add_reminder(
             sleep(dd).await;
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
-                    deliver_sender.send(dlvr_msg.clone()).await;
+                    deliver_sender
+                        .send(dlvr_msg.clone())
+                        .await
+                        .map_err(|e| debug!("error in sending reminder {}", e))
+                        .unwrap();
                 }
                 _ => return,
             }
@@ -77,7 +83,9 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
 
     let dlvr_msg = match reminders.remove(ind) {
         Some(sig) => {
-            sig.send(true);
+            sig.send(true)
+                .map_err(|e| debug!("send back for deleting reminder has error {}", e))
+                .unwrap();
             Msg2Deliver::new(
                 "send".to_string(),
                 *chatid,
@@ -91,7 +99,11 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
         ),
     };
 
-    deliver_sender.send(dlvr_msg).await;
+    deliver_sender
+        .send(dlvr_msg)
+        .await
+        .map_err(|e| debug!("error in sending reminder {}", e))
+        .unwrap();
 }
 
 #[derive(Clone, Debug)]
@@ -308,7 +320,9 @@ impl Reminder {
                             )
                             .unwrap(),
                         )
-                        .await;
+                        .await
+                        .map_err(|e| debug!("status_checker_sender send error {}", e))
+                        .unwrap();
 
                     // make something put to tokio
                     let status_snd = self.status_checker_sender.clone();
@@ -327,7 +341,7 @@ impl Reminder {
                     )
                     .await
                     .map_err(|e| {
-                        debug!("error in making reminder {}", e);
+                        debug!("{}", e);
                     })
                     .unwrap();
                 }
@@ -341,7 +355,11 @@ impl Reminder {
                             rem_input.chat_id,
                             err_msg.to_owned(),
                         ))
-                        .await;
+                        .await
+                        .map_err(|e| {
+                            debug!("{}", e);
+                        })
+                        .unwrap();
                 }
             }
         }
@@ -382,7 +400,11 @@ async fn awaiting_reminder(
                     chat_id,
                     "Go ahead, I am listening".to_string(),
                 ))
-                .await;
+                .await
+                .map_err(|e| {
+                    debug!("{}", e);
+                })
+                .unwrap();
         }
         Ok(ChatStatus::None) => {
             // after reminder created, status is none
@@ -425,7 +447,11 @@ async fn awaiting_reminder(
                     chat_id,
                     "Run out remind waiting time".to_string(),
                 ))
-                .await;
+                .await
+                .map_err(|e| {
+                    debug!("{}", e);
+                })
+                .unwrap();
 
             status_snd
                 .send(
@@ -438,7 +464,11 @@ async fn awaiting_reminder(
                     )
                     .unwrap(),
                 )
-                .await;
+                .await
+                .map_err(|e| {
+                    debug!("{}", e);
+                })
+                .unwrap();
         }
         Ok(ChatStatus::None) => {
             //after reminder created, status is none

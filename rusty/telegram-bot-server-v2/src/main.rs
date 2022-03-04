@@ -8,8 +8,8 @@ use telegram_bot::{types::Update, Api, Message};
 use telegram_bot_server_v2::app::{App as botApp, AppLayer};
 use telegram_bot_server_v2::*;
 use tokio::runtime::{self, Runtime};
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::{mpsc, Mutex};
 use tracing::{debug, info};
 
 async fn default(web::Json(update): web::Json<Update>) -> HttpResponse {
@@ -19,7 +19,7 @@ async fn default(web::Json(update): web::Json<Update>) -> HttpResponse {
 
 async fn handler(
     web::Json(update): web::Json<Update>,
-    opts: web::Data<Opts>,
+    _opts: web::Data<Opts>,
     app_sender: web::Data<Sender<Message>>,
 ) -> Result<HttpResponse, Error> {
     match update.kind {
@@ -47,17 +47,20 @@ async fn making_app_layer(
 
     // make github commit check app
     // before echo
-    let mut gc = app::GithubCommitCheck::new(deliver_sender.clone(), opts.vault.clone());
+    let gc = app::GithubCommitCheck::new(deliver_sender.clone(), opts.vault.clone());
     al.register_app(&gc);
     rt.spawn(gc.run());
 
     let reminder_app = app::Reminder::new(deliver_sender.clone(), status_checker.sender());
-    status_checker.reminder_catcher(reminder_app.sender()).await; //:+ need know if this works well
+    status_checker
+        .reminder_catcher(reminder_app.sender())
+        .await
+        .unwrap();
     al.register_app(&reminder_app);
     rt.spawn(reminder_app.run());
 
     // make echo
-    let mut echo = app::Echo::new(deliver_sender.clone());
+    let echo = app::Echo::new(deliver_sender.clone());
     al.register_app(&echo);
     rt.spawn(echo.run());
 
@@ -91,7 +94,7 @@ fn main() -> std::io::Result<()> {
     }
 
     // make applayer
-    let (mut applayer, mut app_sender) = app::AppLayer::new();
+    let (mut applayer, app_sender) = app::AppLayer::new();
 
     rt.block_on(making_app_layer(&mut applayer, &rt, &deliver_sender, &opts));
 
