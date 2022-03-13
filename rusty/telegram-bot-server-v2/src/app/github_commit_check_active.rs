@@ -1,39 +1,86 @@
 use super::*;
+use chrono::{Timelike, Utc};
+use chrono_tz::America::New_York;
+use lazy_static::*;
+use telegram_bot::ChatId;
+use tokio::sync::Mutex;
+use tracing::debug;
+
+lazy_static! {
+    pub static ref MY_CHATID: Mutex<Option<ChatId>> = Mutex::new(None);
+}
 
 pub struct GithubCommitCheckActive {
+    vault_path: String,
     deliver_sender: Sender<Msg2Deliver>,
 }
 
 impl GithubCommitCheckActive {
-    async fn check() -> Result<(), String> {
-        let f =
-            BufReader::new(File::open(vault.to_string() + "/myname").map_err(|e| e.to_string())?);
-
-        let myname = f
-            .lines()
-            .next()
-            .ok_or("Read 'myname' failed".to_string())?
-            .map_err(|e| e.to_string())?;
-
-        let reply = if does_this_user_have_commit_today(
-            "ccqpein",
-            Some(vault.to_string() + "/githubtoken"),
-        )
-        .await?
-        {
-            format!("You have commit today")
-        } else {
-            format!("You haven't commit today yet")
-        };
-
-        match self
-            .deliver_sender
-            .send(Msg2Deliver::new("send".to_string(), chatid, reply))
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e.to_string()),
+    pub fn new(deliver_sender: Sender<Msg2Deliver>, vault_path: String) -> Self {
+        Self {
+            deliver_sender,
+            vault_path,
         }
+    }
+
+    async fn check(self) -> Result<(), String> {
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+
+            let saved_id = MY_CHATID.lock().await;
+            if let Some(chatid) = *saved_id {
+                info!("find chatid in record, make daily checker");
+                let vault = self.vault_path.to_string();
+                tokio::spawn(async move {
+                    loop {
+                        // wait
+                        wait_until().await;
+
+                        let reply = match does_this_user_have_commit_today(
+                            "ccqpein",
+                            Some(vault.clone() + "/githubtoken"),
+                        )
+                        .await
+                        {
+                            Ok(true) => {
+                                format!("You have commit today")
+                            }
+                            Ok(false) => {
+                                format!("You haven't commit today yet")
+                            }
+                            Err(e) => format!("check error {}", e.to_string()),
+                        };
+
+                        match self
+                            .deliver_sender
+                            .send(Msg2Deliver::new("send".to_string(), chatid, reply))
+                            .await
+                        {
+                            Ok(_) => (),
+                            Err(e) => debug!("error in sending reminder {}", e),
+                        };
+                    }
+                });
+                break;
+            }
+        }
+        Ok(())
+    }
+}
+
+async fn wait_until() {
+    loop {
+        let now_utc = Utc::now();
+        let now_eastern = now_utc.with_timezone(&New_York);
+
+        let (h, m) = (now_eastern.hour(), now_eastern.minute());
+
+        if h == 22 && m == 40 {
+            info!("timeup, break waiting");
+            break;
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 }
 
@@ -46,6 +93,6 @@ impl App for GithubCommitCheckActive {
     }
 
     async fn run(mut self) -> Result<(), String> {
-        todo!()
+        self.check().await
     }
 }

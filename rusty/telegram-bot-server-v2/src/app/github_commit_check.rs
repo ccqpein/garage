@@ -77,7 +77,7 @@ impl GithubCommitCheck {
         &mut self,
         GithubCommitInput { username, chatid }: GithubCommitInput,
     ) -> Result<(), String> {
-        match my_github_commits(&username, &self.vault_path).await {
+        match my_github_commits(&username, &self.vault_path, chatid).await {
             Ok(reply) | Err(reply) => {
                 match self
                     .deliver_sender
@@ -181,7 +181,11 @@ pub(super) async fn does_this_user_have_commit_today(
     if_repo_has_commit_since(&client, username, since).await
 }
 
-pub async fn my_github_commits(username: &str, vault: &str) -> Result<String, String> {
+pub async fn my_github_commits(
+    username: &str,
+    vault: &str,
+    chatid: ChatId,
+) -> Result<String, String> {
     let f = BufReader::new(File::open(vault.to_string() + "/myname").map_err(|e| e.to_string())?);
     let myname = f
         .lines()
@@ -190,6 +194,14 @@ pub async fn my_github_commits(username: &str, vault: &str) -> Result<String, St
         .map_err(|e| e.to_string())?;
 
     if username == myname {
+        // after first time reach here
+        // update daily normal check here
+        let mut saved_id = MY_CHATID.lock().await;
+        if saved_id.is_none() {
+            info!("write chatid in record");
+            *saved_id = Some(chatid);
+        }
+
         if does_this_user_have_commit_today("ccqpein", Some(vault.to_string() + "/githubtoken"))
             .await?
         {

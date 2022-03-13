@@ -49,8 +49,9 @@ pub trait AppConsumer: Send + Sync {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String>;
 }
 
+#[async_trait]
 impl AppConsumer for () {
-    async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
+    async fn consume_msg<'a>(&mut self, _msg: &'a Message) -> Result<ConsumeStatus, String> {
         Ok(ConsumeStatus::NotMine)
     }
 }

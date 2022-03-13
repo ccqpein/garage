@@ -51,6 +51,7 @@ async fn making_app_layer(
     al.register_app(&gc);
     rt.spawn(gc.run());
 
+    // reminder app
     let reminder_app = app::Reminder::new(deliver_sender.clone(), status_checker.sender());
     status_checker
         .reminder_catcher(reminder_app.sender())
@@ -63,6 +64,11 @@ async fn making_app_layer(
     let echo = app::Echo::new(deliver_sender.clone());
     al.register_app(&echo);
     rt.spawn(echo.run());
+
+    // make github commit check active
+    let gca = app::GithubCommitCheckActive::new(deliver_sender.clone(), opts.vault.clone());
+    al.register_app(&gca);
+    rt.spawn(gca.run());
 
     rt.spawn(status_checker.run());
 }
