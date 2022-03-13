@@ -18,6 +18,9 @@ pub use reminder::*;
 mod status_keeper;
 pub use status_keeper::*;
 
+mod github_commit_check_active;
+pub use github_commit_check_active::*;
+
 /// App name
 pub struct AppName(&'static str);
 
@@ -44,6 +47,12 @@ pub trait App: Send {
 #[async_trait]
 pub trait AppConsumer: Send + Sync {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String>;
+}
+
+impl AppConsumer for () {
+    async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
+        Ok(ConsumeStatus::NotMine)
+    }
 }
 
 pub struct AppLayer {
