@@ -143,3 +143,21 @@
                                    (functionpoint :pointer)
                                    (off-t :long)))))
        ',type-name)))
+
+;; https://cffi.common-lisp.dev/manual/html_node/Tutorial_002dMemory.html
+
+(set-curl-option-url *easy-handle* "http://www.cliki.net/CFFI")
+
+;;:= note this one has problem “undefined behavior”
+;; (with-foreign-string (url "http://www.cliki.net/CFFI")
+;;        (foreign-funcall "curl_easy_setopt" easy-handle *easy-handle*
+;;                         curl-option :url :pointer url curl-code))
+
+ (let (easy-handle)
+    (unwind-protect
+      (with-foreign-string (url "http://www.cliki.net/CFFI")
+        (setf easy-handle (curl-easy-init))
+        (set-curl-option-url easy-handle url)
+        #|do more with the easy-handle, like actually get the URL|#)
+      (when easy-handle
+        (curl-easy-cleanup easy-handle))))
