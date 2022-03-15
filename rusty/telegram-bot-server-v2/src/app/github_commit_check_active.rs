@@ -59,6 +59,9 @@ impl GithubCommitCheckActive {
                             Ok(_) => (),
                             Err(e) => debug!("error in sending reminder {}", e),
                         };
+
+                        // wait until next minute
+                        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
                     }
                 });
                 break;
@@ -80,6 +83,7 @@ async fn wait_until() {
             break;
         }
 
+        // check until next minute
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 }
