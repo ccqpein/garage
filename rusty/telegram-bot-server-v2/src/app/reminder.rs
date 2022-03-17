@@ -52,6 +52,11 @@ async fn add_reminder(
         .await?;
 
     tokio::spawn(async move {
+        let reminder_detail = Msg2Deliver::new(
+            "send".to_string(),
+            chatid,
+            format!("reminder {}:", largest + 1),
+        );
         let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
         let dd = match time.to_duration() {
             Ok(dd) => dd,
@@ -64,6 +69,12 @@ async fn add_reminder(
             sleep(dd).await;
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
+                    deliver_sender
+                        .send(reminder_detail.clone())
+                        .await
+                        .map_err(|e| debug!("error in sending reminder {}", e))
+                        .unwrap();
+
                     deliver_sender
                         .send(dlvr_msg.clone())
                         .await
