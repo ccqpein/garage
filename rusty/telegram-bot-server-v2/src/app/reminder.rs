@@ -1,4 +1,6 @@
 use super::*;
+use chrono::{DateTime, Timelike, Utc};
+use chrono_tz::America::New_York;
 use lazy_static::*;
 use std::collections::HashMap;
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
@@ -20,6 +22,12 @@ lazy_static! {
 }
 
 const REMINDER_APP_NAME: AppName = AppName("Reminder");
+
+//:= delete this part when the new reminder time done
+enum WaitUntil {
+    D(Duration),
+    T((u32, u32)),
+}
 
 /// add reminder to this chat window
 async fn add_reminder(
@@ -59,6 +67,7 @@ async fn add_reminder(
         );
         let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
         let dd = match time.to_duration() {
+            //:= re-write this part to wait_until
             Ok(dd) => dd,
             Err(e) => {
                 debug!("{}", e);
@@ -66,7 +75,7 @@ async fn add_reminder(
             }
         };
         loop {
-            sleep(dd).await;
+            wait_until(WaitUntil::D(dd)).await;
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
                     deliver_sender
@@ -86,6 +95,24 @@ async fn add_reminder(
         }
     });
     Ok(())
+}
+
+async fn wait_until(wu: WaitUntil) {
+    match wu {
+        WaitUntil::D(dd) => sleep(dd).await,
+        WaitUntil::T((hh, mm)) => loop {
+            let now_utc = Utc::now();
+            let now_eastern = now_utc.with_timezone(&New_York);
+
+            let (h, m) = (now_eastern.hour(), now_eastern.minute());
+
+            if hh == h && mm == m {
+                break;
+            }
+
+            sleep(tokio::time::Duration::from_secs(60)).await;
+        },
+    }
 }
 
 async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Msg2Deliver>) {
@@ -117,13 +144,21 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
         .unwrap();
 }
 
+//:= need parse to waitunitl
 #[derive(Clone, Debug)]
 pub struct ReminderTime {
     unit: String,
     num: u64,
 }
 
+// enum ReminderTime {
+//     D { unit: String, num: u64 },//:= can be duration directly maybe
+//     T((u32, u32)),
+// }
+
 impl ReminderTime {
+    //:= fn new_duration(unit:&str, num:u64) {}
+
     fn from_sec(s: u64) -> Self {
         Self {
             num: s,
