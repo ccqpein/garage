@@ -1,5 +1,5 @@
 use super::*;
-use chrono::{DateTime, Timelike, Utc};
+use chrono::{Timelike, Utc};
 use chrono_tz::America::New_York;
 use lazy_static::*;
 use std::collections::HashMap;
@@ -23,12 +23,6 @@ lazy_static! {
 
 const REMINDER_APP_NAME: AppName = AppName("Reminder");
 
-//:= delete this part when the new reminder time done
-enum WaitUntil {
-    D(Duration),
-    T((u32, u32)),
-}
-
 /// add reminder to this chat window
 async fn add_reminder(
     chatid: ChatId,
@@ -51,10 +45,9 @@ async fn add_reminder(
             "send".to_string(),
             chatid,
             format!(
-                "reminder {} created, remind you every {} {}",
+                "reminder {} created, remind you {}",
                 largest + 1,
-                time.num,
-                time.unit
+                time.reminder_notification()
             ),
         ))
         .await?;
@@ -66,16 +59,10 @@ async fn add_reminder(
             format!("reminder {}:", largest + 1),
         );
         let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
-        let dd = match time.to_duration() {
-            //:= re-write this part to wait_until
-            Ok(dd) => dd,
-            Err(e) => {
-                debug!("{}", e);
-                return;
-            }
-        };
+        let mut brk;
+
         loop {
-            wait_until(WaitUntil::D(dd)).await;
+            brk = wait_until(&time).await.unwrap();
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
                     deliver_sender
@@ -92,27 +79,34 @@ async fn add_reminder(
                 }
                 _ => return,
             }
+
+            if brk {
+                delete_reminder(&chatid, &(largest + 1), deliver_sender).await;
+                break;
+            }
         }
     });
     Ok(())
 }
 
-async fn wait_until(wu: WaitUntil) {
-    match wu {
-        WaitUntil::D(dd) => sleep(dd).await,
-        WaitUntil::T((hh, mm)) => loop {
+async fn wait_until(rt: &ReminderTime) -> Result<bool, String> {
+    match rt {
+        a @ ReminderTime::D { .. } => sleep(a.to_duration()?).await,
+        ReminderTime::T((hh, mm)) => loop {
             let now_utc = Utc::now();
             let now_eastern = now_utc.with_timezone(&New_York);
 
             let (h, m) = (now_eastern.hour(), now_eastern.minute());
 
-            if hh == h && mm == m {
+            if *hh == h && *mm == m {
                 break;
             }
 
             sleep(tokio::time::Duration::from_secs(60)).await;
+            return Ok(true);
         },
     }
+    Ok(false)
 }
 
 async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Msg2Deliver>) {
@@ -121,9 +115,15 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
 
     let dlvr_msg = match reminders.remove(ind) {
         Some(sig) => {
-            sig.send(true)
-                .map_err(|e| debug!("send back for deleting reminder has error {}", e))
-                .unwrap();
+            match sig.send(true) {
+                Ok(_) => {
+                    info!("send back for deleting reminder successfully")
+                }
+                Err(_e) => {
+                    debug!("send back for deleting reminder {} has error", ind)
+                }
+            }
+
             Msg2Deliver::new(
                 "send".to_string(),
                 *chatid,
@@ -144,89 +144,101 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
         .unwrap();
 }
 
-//:= need parse to waitunitl
 #[derive(Clone, Debug)]
-pub struct ReminderTime {
-    unit: String,
-    num: u64,
+pub enum ReminderTime {
+    D { unit: String, num: u64 },
+    T((u32, u32)),
 }
 
-// enum ReminderTime {
-//     D { unit: String, num: u64 },//:= can be duration directly maybe
-//     T((u32, u32)),
-// }
-
 impl ReminderTime {
-    //:= fn new_duration(unit:&str, num:u64) {}
-
     fn from_sec(s: u64) -> Self {
-        Self {
+        Self::D {
             num: s,
             unit: String::from("seconds"),
         }
     }
 
     fn to_duration(&self) -> Result<Duration, String> {
-        match self.unit.as_str() {
-            "minutes" => {
-                let (s, flag) = self.num.overflowing_mul(60);
-                if !flag {
-                    Ok(Duration::from_secs(s))
-                } else {
-                    Err(String::from("to duration overflow"))
+        match self {
+            ReminderTime::D { unit, num } => match unit.as_str() {
+                "minutes" => {
+                    let (s, flag) = num.overflowing_mul(60);
+                    if !flag {
+                        Ok(Duration::from_secs(s))
+                    } else {
+                        Err(String::from("to duration overflow"))
+                    }
                 }
-            }
-            "seconds" => Ok(Duration::from_secs(self.num)),
-            "hours" => {
-                let (s, flag) = self.num.overflowing_mul(3600);
-                if !flag {
-                    Ok(Duration::from_secs(s))
-                } else {
-                    Err(String::from("to duration overflow"))
+                "seconds" => Ok(Duration::from_secs(*num)),
+                "hours" => {
+                    let (s, flag) = num.overflowing_mul(3600);
+                    if !flag {
+                        Ok(Duration::from_secs(s))
+                    } else {
+                        Err(String::from("to duration overflow"))
+                    }
                 }
-            }
-            "days" => {
-                let (s, flag) = self.num.overflowing_mul(3600 * 24);
-                if !flag {
-                    Ok(Duration::from_secs(s))
-                } else {
-                    Err(String::from("to duration overflow"))
+                "days" => {
+                    let (s, flag) = num.overflowing_mul(3600 * 24);
+                    if !flag {
+                        Ok(Duration::from_secs(s))
+                    } else {
+                        Err(String::from("to duration overflow"))
+                    }
                 }
-            }
-            _ => unreachable!(),
+                _ => unreachable!(),
+            },
+            ReminderTime::T(_) => Err(String::from("specifically time cannot make duration")),
         }
     }
 
     /// parse reminder string like 11m/23s/1h/2d
     /// only accept s, m, h, d
+    /// or specifically time like 12:45
     fn parse(s: &str) -> Result<Self, String> {
         // if give number directly, it should be seconds
         if let Ok(ss) = s.parse::<u64>() {
             return Ok(Self::from_sec(ss));
         }
 
+        match s
+            .split(':')
+            .filter_map(|a| a.parse::<u32>().ok())
+            .collect::<Vec<u32>>()[..]
+        {
+            [h, m] => return Ok(Self::T((h, m))),
+            _ => (),
+        }
+
         let (time, unit) = s.split_at(s.len() - 1);
         match time.parse::<u64>() {
             Ok(tt) => match unit {
-                "m" => Ok(Self {
+                "m" => Ok(Self::D {
                     unit: String::from("minutes"),
                     num: tt,
                 }),
-                "s" => Ok(Self {
+                "s" => Ok(Self::D {
                     unit: String::from("seconds"),
                     num: tt,
                 }),
-                "h" => Ok(Self {
+                "h" => Ok(Self::D {
                     unit: String::from("hours"),
                     num: tt,
                 }),
-                "d" => Ok(Self {
+                "d" => Ok(Self::D {
                     unit: String::from("days"),
                     num: tt,
                 }),
                 _ => return Err("unsupported unit, has to be s, m, h, d".to_string()),
             },
             Err(_e) => Err(format!("this time {} parsed failed", time)),
+        }
+    }
+
+    fn reminder_notification(&self) -> String {
+        match self {
+            ReminderTime::D { unit, num } => format!("every {} {}", unit, num),
+            ReminderTime::T((h, m)) => format!("on {}:{}", h, m),
         }
     }
 }
