@@ -161,3 +161,26 @@
         #|do more with the easy-handle, like actually get the URL|#)
       (when easy-handle
         (curl-easy-cleanup easy-handle))))
+
+(defvar *easy-handle-cstrings* (make-hash-table)
+  "Hashtable of easy handles to lists of C strings that may be
+  safely freed after the handle is freed.")
+   
+(defun make-easy-handle ()
+  "Answer a new CURL easy interface handle, to which the lifetime
+  of C strings may be tied.  See `add-curl-handle-cstring'."
+  (let ((easy-handle (curl-easy-init)))
+    (setf (gethash easy-handle *easy-handle-cstrings*) '())
+    easy-handle))
+
+(defun free-easy-handle (handle)
+  "Free CURL easy interface HANDLE and any C strings created to
+  be its options."
+  (curl-easy-cleanup handle)
+  (mapc #'foreign-string-free
+        (gethash handle *easy-handle-cstrings*))
+  (remhash handle *easy-handle-cstrings*))
+   
+(defun add-curl-handle-cstring (handle cstring)
+  "Add CSTRING to be freed when HANDLE is, answering CSTRING."
+  (car (push cstring (gethash handle *easy-handle-cstrings*))))
