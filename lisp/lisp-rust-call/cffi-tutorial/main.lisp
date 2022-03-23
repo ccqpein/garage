@@ -184,3 +184,47 @@
 (defun add-curl-handle-cstring (handle cstring)
   "Add CSTRING to be freed when HANDLE is, answering CSTRING."
   (car (push cstring (gethash handle *easy-handle-cstrings*))))
+
+
+(defun curry-curl-option-setter (function-name option-keyword)
+  "Wrap the function named by FUNCTION-NAME with a version that
+  curries the second argument as OPTION-KEYWORD.
+   
+  This function is intended for use in DEFINE-CURL-OPTION-SETTER."
+  (setf (symbol-function function-name)
+        (let ((c-function (symbol-function function-name)))
+          (lambda (easy-handle new-value)
+            (funcall c-function easy-handle option-keyword
+                     (if (stringp new-value)
+                         (add-curl-handle-cstring
+                          easy-handle
+                          (foreign-string-alloc new-value))
+                         new-value))))))
+
+;; https://cffi.common-lisp.dev/manual/html_node/Tutorial_002dCallbacks.html#Tutorial_002dCallbacks
+
+;;; Alias in case size_t changes.
+(defctype size :unsigned-int)
+   
+;;; To be set as the CURLOPT_WRITEFUNCTION of every easy handle.
+(defcallback easy-write size
+  ((ptr :pointer) (size size)
+   (nmemb size) (stream :pointer))
+  (let ((data-size (* size nmemb)))
+    (handler-case
+        ;; We use the dynamically-bound *easy-write-procedure* to
+        ;; call a closure with useful lexical context.
+        (progn (funcall (symbol-value '*easy-write-procedure*)
+                        (foreign-string-to-lisp ptr :count data-size))
+               data-size)               ;indicates success
+      ;; The WRITEFUNCTION should return something other than the
+      ;; #bytes available to signal an error.
+      (error () (if (zerop data-size) 1 0)))))
+
+(define-curl-options curl-option
+    (long 0 objectpoint 10000 functionpoint 20000 off-t 30000)
+  (:noprogress long 43)
+  (:nosignal long 99)
+  (:errorbuffer objectpoint 10)
+  (:url objectpoint 2)
+  (:writefunction functionpoint 11)) ;new item here
