@@ -78,6 +78,7 @@ type AS interface {
 	A
 }
 
+// AS is `and` of S A, failed example before is `or`
 type Slice3[T interface{ AS }] struct {
 	v []T
 }
