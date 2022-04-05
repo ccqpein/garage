@@ -228,3 +228,10 @@
   (:errorbuffer objectpoint 10)
   (:url objectpoint 2)
   (:writefunction functionpoint 11)) ;new item here
+
+
+ (defcfun "curl_easy_perform" curl-code
+   (handle easy-handle))
+
+;; https://cffi.common-lisp.dev/manual/html_node/Tutorial_002dTypes.html
+
