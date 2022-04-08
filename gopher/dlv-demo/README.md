@@ -6,5 +6,12 @@ dlv debug .
 (dlv) continue
 ```
 
+**installation**
+`go install github.com/go-delve/delve/cmd/dlv@latest`
+
 **Open the server**
 `dlv debug --headless --listen=:2345 --api-version=2 --accept-multiclient`
+
+**run dap-mode**
+
+select `Go Launch File Configuration`
