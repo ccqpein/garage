@@ -15,3 +15,10 @@ dlv debug .
 **run dap-mode**
 
 select `Go Launch File Configuration`
+
+**run test**
+test files use "Go Launch File Configuration"
+
+
+**run in subpkg**
+
