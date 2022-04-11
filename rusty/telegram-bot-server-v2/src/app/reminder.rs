@@ -92,19 +92,21 @@ async fn add_reminder(
 async fn wait_until(rt: &ReminderTime) -> Result<bool, String> {
     match rt {
         a @ ReminderTime::D { .. } => sleep(a.to_duration()?).await,
-        ReminderTime::T((hh, mm)) => loop {
-            let now_utc = Utc::now();
-            let now_eastern = now_utc.with_timezone(&New_York);
+        ReminderTime::T((hh, mm)) => {
+            loop {
+                let now_utc = Utc::now();
+                let now_eastern = now_utc.with_timezone(&New_York);
 
-            let (h, m) = (now_eastern.hour(), now_eastern.minute());
+                let (h, m) = (now_eastern.hour(), now_eastern.minute());
 
-            if *hh == h && *mm == m {
-                break;
+                if *hh == h && *mm == m {
+                    break;
+                }
+
+                sleep(tokio::time::Duration::from_secs(60)).await;
             }
-
-            sleep(tokio::time::Duration::from_secs(60)).await;
             return Ok(true);
-        },
+        }
     }
     Ok(false)
 }
@@ -238,7 +240,7 @@ impl ReminderTime {
     fn reminder_notification(&self) -> String {
         match self {
             ReminderTime::D { unit, num } => format!("every {} {}", unit, num),
-            ReminderTime::T((h, m)) => format!("on {}:{}", h, m),
+            ReminderTime::T((h, m)) => format!("on {}:{:02}", h, m),
         }
     }
 }
