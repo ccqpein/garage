@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Rust::GDB Run Configuration in json",
+      "type": "rust-gdb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/gdb-debugger-demo",
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "externalConsole": false,
+      "args": [],
+      "showLog": true,
+
+      "miDebuggerPath": "rust-gdb",
+      "dap-compilation": "cargo build",
+      "dap-compilation-dir": "${workspaceFolder}"
+    }
+  ]
+}
