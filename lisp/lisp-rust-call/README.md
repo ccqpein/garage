@@ -1,5 +1,7 @@
 # README #
 
+call rust lib in lisp (by cffi)
+
 ## tips ##
 
 ```toml
