@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 diesel = { version = "2.0.0-rc.0", features = ["postgres", "r2d2", "uuid", "chrono"] }
+#diesel = { version = "1.4.8", features = ["postgres", "r2d2", "uuidv07", "chrono"] }
 dotenv = "0.15.0"
 uuid = {version = "1.0.0", features = [
     "v4",                # Lets you generate random UUIDs
