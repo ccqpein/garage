@@ -1,6 +1,6 @@
 (in-package #:cl-user)
 
-(defpackage #:basic
+(defpackage #:macchiato
   (:use #:CL))
 
-(in-package #:basic)
+(in-package #:macchiato)
