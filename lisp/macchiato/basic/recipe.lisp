@@ -6,5 +6,7 @@
 
 (defclass recipe ()
   ((name
-    :initarg :name)))
-
+    :initarg :name
+    :type string)
+   (version
+    :initarg :version)))
