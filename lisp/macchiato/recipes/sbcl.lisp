@@ -6,10 +6,9 @@
 
 (in-package #:recipe)
 
-;;; inherit the super class "recipe" and make a instance named sbcl-recipe
-;;; then export it.
-;;; then I can call it outside
-
-(make-instance 'recipe
-               :name "sbcl-recipe"
-               :version "0.1.0")
+(defun sbcl-recipe ()
+  (let ((recipe (make-instance 'recipe
+                               :name "sbcl-recipe"
+                               :version "0.1.0")))
+    
+    ))
