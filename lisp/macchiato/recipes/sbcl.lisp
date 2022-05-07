@@ -4,6 +4,12 @@
    (version :initform "2.2.4")
    (url :initform "https://downloads.sourceforge.net/project/sbcl/sbcl/2.2.4/sbcl-2.2.4-source.tar.bz2")))
 
-(defmethod run ((r sbcl))
-  )
+(defmethod install ((r sbcl))
+  ;; download to temp dir
+  (download (slot-value r 'url)
+            macchiato:*download-folder*)
 
+  ;; unzip
+
+  ;; make link or not
+  )
