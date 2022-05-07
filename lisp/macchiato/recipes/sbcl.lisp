@@ -1,14 +1,9 @@
 ;;; sbcl recipes for installing sbcl on mac
-;; (in-package #:cl-user)
+(defclass sbcl ()
+  ((name :initform "sbcl")
+   (version :initform "2.2.4")
+   (url :initform "https://downloads.sourceforge.net/project/sbcl/sbcl/2.2.4/sbcl-2.2.4-source.tar.bz2")))
 
-;; (defpackage #:sbcl-recipe
-;;   (:use #:CL #:macchiato.recipe))
+(defmethod run ((r sbcl))
+  )
 
-(in-package #:recipe)
-
-(defun sbcl-recipe ()
-  (let ((recipe (make-instance 'recipe
-                               :name "sbcl-recipe"
-                               :version "0.1.0")))
-    
-    ))

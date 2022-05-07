@@ -6,7 +6,7 @@
   ;;; for example, I am installing sbcl
   (load "recipes/sbcl.lisp") ;; or fasl
   ;;:= todo: need sbcl-recipe class
-  (let ((r (make-instance 'sbcl-recipe)) ;; args maybe input as class arguments here
+  (let ((r (make-instance 'sbcl)) ;; args maybe input as class arguments here
         )
     (run r) ;;:= run method of recipe and sbcl-recipr
     ) 

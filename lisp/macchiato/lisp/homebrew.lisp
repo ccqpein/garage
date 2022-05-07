@@ -1,4 +1,6 @@
 ;;; homebrew package for taking over homebrew tools
+(in-package #:macchiato)
+
 (defpackage #:macchiato.homebrew-handler
   (:use #:CL))
 

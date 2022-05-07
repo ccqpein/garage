@@ -1,3 +1,5 @@
+(in-package #:macchiato)
+
 (defpackage #:macchiato.recipe
   (:use #:CL)
   (:export #:recipe))
