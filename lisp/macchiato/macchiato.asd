@@ -11,6 +11,9 @@
   :licence "MIT"
   :defsystem-depends-on (
                          "trivial-download"
+                         "str"
+                         "chipz"
+                         "archive"
                          )
   :components ((:module "lisp"
                 :components
