@@ -10,11 +10,19 @@
   (with-slots (url filename) r
     (macchiato:download-if-not-exist
      url
-     (str:concat macchiato::*download-folder* "/" filename)))
+     (str:concat macchiato::*download-folder* filename)))
 
-  ;; unzip
-  (let ((*default-pathname-defaults* macchiato::*download-folder*))
-    (macchiato:extract-tarball (str:concat macchiato::*download-folder* "/" filename)))
+  
+  (let ((unzip-folder (macchiato:extract-tarball ;; unzip
+                       (str:concat macchiato::*download-folder* filename))))
+    ;; install
+    (uiop:with-current-directory (unzip-folder) (macchiato:async-run-program "sh" "make.sh"))
+    )
 
-  ;; make link or not
+  ;; make link or not  
   )
+
+;;; sh make.sh
+;;; INSTALL_ROOT=~/.Macchiato/sbcl/ sh install.sh
+
+(read-line (uiop/launch-program:process-info-output (uiop/launch-program:launch-program '("ls") :output :stream)))
