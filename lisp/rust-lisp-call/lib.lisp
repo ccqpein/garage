@@ -7,13 +7,13 @@
   (apply #'+ l))
 
 ;;; in cl-user in sbcl
-(define-alien-callable calc-add int ((x c-int) (y c-int) (result (* (* t))))
+(sb-alien:define-alien-callable calc-add int ((x sb-alien:int) (y sb-alien:int) (result (* (* t))))
   (handler-case
       (progn
         ;; deref:
         ;; sap-alien:
         ;; int-sap:
         (setf (deref result)
-              (sap-alien (int-sap (sb-kernel:get-lisp-obj-address (add x y))) (* t)))
+              (sb-alien:sap-alien (sb-sys:int-sap (sb-kernel:get-lisp-obj-address (add x y))) (* t)))
          0)
     (t (condition) (declare (ignore condition)) 0)))
