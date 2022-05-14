@@ -46,7 +46,8 @@
 //     App::<Model>::new().mount_to_body();
 // }
 
-use yew::prelude::*;
+use yew::html::Context;
+use yew::*;
 
 pub enum Msg {
     AddOne,
@@ -80,7 +81,7 @@ impl Component for Model {
         let link = ctx.link();
         html! {
             <div>
-                <button onclick={link.callback(|_| Msg::AddOne)}>{ "+1" }</button>
+                <button onclick={link.callback(|_| Msg::AddOne)}>{ "add one" }</button>
                 <p>{ self.value }</p>
             </div>
         }
