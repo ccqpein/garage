@@ -20,10 +20,12 @@ func main() {
 
 	b[0] = 2
 	fmt.Printf("b: %v, a: %v, c: %v\n", b, a, c) // b: [2 1 2 3 4 5 6 7], a: [2 1 2 3 4 5 6 7], c: [2 1 2 3 4 5 6 7]
+	fmt.Printf("first element address of a, b, and c: %p, %p, %p\n", &a[0], &b[0], &c[0])
 
 	d := append(a, 8) // cap expand here
 	d[0] = 0
 	fmt.Printf("d address is: %p, d: %v, a: %v\n", &d, d, a) // d: [0 1 2 3 4 5 6 7 8], a: [2 1 2 3 4 5 6 7]
+	fmt.Printf("d[0] address is %p, a[0] address is %p\n", &d[0], &a[0])
 
 	fmt.Printf("d cap is %d\n", cap(d)) // d cap is 16
 	e := append(d, 9)
@@ -46,10 +48,12 @@ func main() {
 
 	//c = a[1:3:5] // panic 5 > cap
 	//fmt.Printf("c: %v, c len: %d, c cap: %d\n", c, len(c), cap(c))
-	c = append(c, 4)
+	c = append(c, 4)                   // because not reach the cap, it actually change the original a
 	fmt.Printf("c: %v, a: %v\n", c, a) // c: [1 2 4], a: [0 1 2 4]
 
 	c = append(c, 5)
 	c[0] = 0
 	fmt.Printf("c: %v, a: %v\n", c, a) // c: [0 2 4 5], a: [0 1 2 4]
+
+	fmt.Printf("c: %v, c len: %d, c cap: %d\n", c, len(c), cap(c)) // c: [0 2 4 5], c len: 4, c cap: 6
 }
