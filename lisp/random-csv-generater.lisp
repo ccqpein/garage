@@ -19,6 +19,7 @@
            :pad-side :center
            :pad-char " "))
 
+;;; not finished
 (random-format-of-csv
  (make-csv '("a" "b" "c")
            "~{~s~a~a~}~%"
