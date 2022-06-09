@@ -1,4 +1,4 @@
-(h-head (h-title "hello world"))
+(h-head (h-title "hello world1") (h-title "hello world2"))
 
 (h-body
  (h-h1 "Hello world")
