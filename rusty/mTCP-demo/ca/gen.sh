@@ -19,6 +19,7 @@ openssl req -new -key client_0.key -addext "subjectAltName = DNS:localhost" -out
 openssl x509 -req -in client_0.csr -CA ca.crt -CAkey ca.key -CAcreateserial -extfile ./configfile -out client_0.crt
 
 cat client_0.crt client_0.key > client_0.pem
+
 openssl pkcs12 -export -in client_0.pem -out client_0.p12 -name "client_0"
 
 # client_1 side

@@ -18,14 +18,14 @@ fn load_root_ca() -> rustls::RootCertStore {
 }
 
 fn client_cert() -> Vec<rustls::Certificate> {
-    let cert_file = &mut BufReader::new(File::open("ca/client_0.crt").unwrap());
+    let cert_file = &mut BufReader::new(File::open("ca/client_0.pem").unwrap());
     let cert = rustls::Certificate(cert_file.buffer().to_vec());
 
     vec![cert]
 }
 
 fn client_key() -> rustls::PrivateKey {
-    let key_file = &mut BufReader::new(File::open("ca/client_0.pem").unwrap());
+    let key_file = &mut BufReader::new(File::open("ca/client_0.key").unwrap());
     let mut keys = rustls_pemfile::pkcs8_private_keys(key_file).unwrap();
     rustls::PrivateKey(keys.remove(0))
 }
