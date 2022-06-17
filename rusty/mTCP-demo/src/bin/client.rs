@@ -1,3 +1,4 @@
+use std::iter::FromIterator;
 use std::{
     fs::File,
     io::{self, BufReader, Read, Write},
@@ -71,5 +72,5 @@ fn main() {
     let mut plaintext = Vec::new();
     stream.read_to_end(&mut plaintext).unwrap();
 
-    println!("{:?}", plaintext);
+    println!("{:?}", String::from_utf8(plaintext));
 }
