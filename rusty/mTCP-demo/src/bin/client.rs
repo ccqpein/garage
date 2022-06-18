@@ -10,7 +10,7 @@ fn load_root_ca() -> rustls::RootCertStore {
     let cert_file = &mut BufReader::new(File::open("ca/ca.crt").unwrap());
     let certs = rustls_pemfile::certs(cert_file).unwrap();
     for cert in certs.iter() {
-        root_store.add(&rustls::Certificate(cert.to_vec())).unwrap();
+        root_store.add_parsable_certificates(&certs);
     }
 
     //dbg!(&cert_file);
@@ -19,10 +19,15 @@ fn load_root_ca() -> rustls::RootCertStore {
 }
 
 fn client_cert() -> Vec<rustls::Certificate> {
-    let cert_file = &mut BufReader::new(File::open("ca/client_0.pem").unwrap());
-    let cert = rustls::Certificate(cert_file.buffer().to_vec());
+    let mut cert_file = &mut BufReader::new(File::open("ca/client_0.crt").unwrap());
+    rustls_pemfile::certs(&mut cert_file)
+        .unwrap()
+        .iter()
+        .map(|v| rustls::Certificate(v.clone()))
+        .collect()
+    //let cert = rustls::Certificate(cert_file.buffer().to_vec());
 
-    vec![cert]
+    //vec![cert]
 }
 
 fn client_key() -> rustls::PrivateKey {
@@ -33,7 +38,10 @@ fn client_key() -> rustls::PrivateKey {
 
 fn main() {
     let config = rustls::ClientConfig::builder()
-        .with_safe_defaults()
+        .with_cipher_suites(&rustls::DEFAULT_CIPHER_SUITES.to_vec())
+        .with_safe_default_kx_groups()
+        .with_protocol_versions(&rustls::DEFAULT_VERSIONS.to_vec())
+        .unwrap()
         .with_root_certificates(load_root_ca())
         .with_single_cert(client_cert(), client_key())
         .unwrap();
@@ -48,20 +56,19 @@ fn main() {
     dbg!(client.wants_read());
     dbg!(client.wants_write());
 
-    let request = b"GET / HTTP/2\r\n\
-         Host: localhost:3030\r\n\
-         Connection: close\r\n\
-         Accept-Encoding: identity\r\n\
-         accept: */*\r\n";
+    let request = b"GET / HTTP/1.0\r\nHost: localhost\r\nConnection: \
+                               close\r\nAccept-Encoding: identity\r\n\r\n";
 
     let mut socket = TcpStream::connect("localhost:3030").unwrap();
+
+    //client.writer().write(request).unwrap();
 
     let mut stream = rustls::Stream::new(&mut client, &mut socket);
 
     // Complete handshake.
     //stream.flush().unwrap();
 
-    dbg!(stream.write_all(request).unwrap());
+    dbg!(stream.write_all(request));
     let ciphersuite = stream.conn.negotiated_cipher_suite().unwrap();
     writeln!(
         &mut std::io::stderr(),
@@ -70,7 +77,10 @@ fn main() {
     );
 
     let mut plaintext = Vec::new();
+    dbg!(stream.conn.wants_read());
+
     stream.read_to_end(&mut plaintext).unwrap();
+    //stream.conn.reader().read_to_end(&mut plaintext);
 
     println!("{:?}", String::from_utf8(plaintext));
 }
