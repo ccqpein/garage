@@ -25,9 +25,6 @@ fn client_cert() -> Vec<rustls::Certificate> {
         .iter()
         .map(|v| rustls::Certificate(v.clone()))
         .collect()
-    //let cert = rustls::Certificate(cert_file.buffer().to_vec());
-
-    //vec![cert]
 }
 
 fn client_key() -> rustls::PrivateKey {
