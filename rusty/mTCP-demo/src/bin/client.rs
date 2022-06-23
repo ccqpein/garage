@@ -65,7 +65,8 @@ fn main() {
     // Complete handshake.
     //stream.flush().unwrap();
 
-    dbg!(stream.write_all(request));
+    //dbg!(stream.write_all(request));
+    dbg!(stream.write(request));
     let ciphersuite = stream.conn.negotiated_cipher_suite().unwrap();
     writeln!(
         &mut std::io::stderr(),

@@ -1,6 +1,6 @@
 use std::{
     fs::File,
-    io::{BufReader, Read},
+    io::{BufReader, Read, Write},
     net::TcpListener,
     sync::Arc,
 };
@@ -64,15 +64,16 @@ fn main() {
             Ok(mut stream) => {
                 let mut tls_conn = rustls::ServerConnection::new(Arc::clone(&tls_config)).unwrap();
                 let mut tls_stream = rustls::Stream::new(&mut tls_conn, &mut stream);
-                let mut buffer = Vec::new();
-                loop {
-                    match tls_stream.read_exact(&mut buffer) {
-                        Ok(0) => break,
-                        Err(_) => panic!(),
-                        Ok(n) => println!("read {} bytes", n),
-                    }
+                let mut buffer = vec![0; 512];
+                //loop {
+
+                match tls_stream.read(&mut buffer) {
+                    Err(_) => panic!(),
+                    Ok(n) => println!("read {} bytes", n),
                 }
+                //                }
                 println!("from client: {}", String::from_utf8(buffer).unwrap());
+                tls_stream.write("yoyoyo".as_bytes());
             }
             Err(e) => {
                 panic!()
