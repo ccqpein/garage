@@ -73,7 +73,8 @@ fn main() {
                 }
                 //                }
                 println!("from client: {}", String::from_utf8(buffer).unwrap());
-                tls_stream.write("yoyoyo".as_bytes());
+                tls_stream
+                    .write("HTTP/1.0 200 OK\r\nConnection: close\r\n\r\nyoyoyo\r\n".as_bytes());
             }
             Err(e) => {
                 panic!()

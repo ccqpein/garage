@@ -53,7 +53,7 @@ fn main() {
     dbg!(client.wants_read());
     dbg!(client.wants_write());
 
-    let request = b"GET / HTTP/1.0\r\nHost: localhost\r\nConnection: \
+    let request = b"GET / HTTP/2\r\nHost: localhost\r\nConnection: \
                                close\r\nAccept-Encoding: identity\r\n\r\n";
 
     let mut socket = TcpStream::connect("localhost:3030").unwrap();
