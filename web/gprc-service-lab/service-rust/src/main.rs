@@ -33,6 +33,8 @@ impl HelloWorld for RustServer {
     }
 }
 
+fn server_config() {}
+
 //#[tokio::main]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rt = runtime::Builder::new_multi_thread()
