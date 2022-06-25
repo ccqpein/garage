@@ -1,5 +1,6 @@
 use tokio::runtime;
 use tokio::time::{sleep, Duration};
+use tonic::transport::{Certificate, Identity, ServerTlsConfig};
 use tonic::{include_proto, transport::Server, Request, Response, Status};
 
 pub mod hello {
@@ -33,7 +34,18 @@ impl HelloWorld for RustServer {
     }
 }
 
-fn server_config() {}
+async fn server_tls_config() -> tokio::io::Result<ServerTlsConfig> {
+    let client_ca_cert = tokio::fs::read("../../../rusty/mTCP-demo/ca/ca.crt").await?;
+    let client_ca_cert = Certificate::from_pem(client_ca_cert);
+
+    let cert = tokio::fs::read("../../../rusty/mTCP-demo/ca/localhost.bundle.crt").await?;
+    let key = tokio::fs::read("../../../rusty/mTCP-demo/ca/localhost.key").await?;
+    let server_identity = Identity::from_pem(cert, key);
+
+    Ok(ServerTlsConfig::new()
+        .identity(server_identity)
+        .client_ca_root(client_ca_cert))
+}
 
 //#[tokio::main]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
