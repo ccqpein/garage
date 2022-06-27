@@ -34,12 +34,12 @@ impl HelloWorld for RustServer {
     }
 }
 
-async fn server_tls_config() -> tokio::io::Result<ServerTlsConfig> {
-    let client_ca_cert = tokio::fs::read("../../../rusty/mTCP-demo/ca/ca.crt").await?;
+fn server_tls_config() -> std::io::Result<ServerTlsConfig> {
+    let client_ca_cert = std::fs::read("../../../rusty/mTCP-demo/ca/ca.crt")?;
     let client_ca_cert = Certificate::from_pem(client_ca_cert);
 
-    let cert = tokio::fs::read("../../../rusty/mTCP-demo/ca/localhost.bundle.crt").await?;
-    let key = tokio::fs::read("../../../rusty/mTCP-demo/ca/localhost.key").await?;
+    let cert = std::fs::read("../../../rusty/mTCP-demo/ca/localhost.bundle.crt")?;
+    let key = std::fs::read("../../../rusty/mTCP-demo/ca/localhost.key")?;
     let server_identity = Identity::from_pem(cert, key);
 
     Ok(ServerTlsConfig::new()
@@ -81,9 +81,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // server
     let addr = "[::1]:9090".parse()?;
     let server = RustServer::default();
+    let tls_config = server_tls_config()?;
 
     rt.block_on(async {
         Server::builder()
+            .tls_config(tls_config)
+            .unwrap()
             .accept_http1(true)
             .add_service(tonic_web::enable(HelloWorldServer::new(server)))
             .serve(addr)
