@@ -2,13 +2,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"log"
 	"net"
-	"os"
 	pb "service-go/protocols/hello"
 	"time"
 
@@ -36,31 +34,32 @@ func getClientTLSCert() tls.Certificate {
 
 func clientRPC() {
 	//conn, err := grpc.Dial("[::1]:9090", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
+	var err error
+	cert := getClientTLSCert()
+	cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
+	if err != nil {
+		log.Fatalf("cannot set cert leaf: %v", err)
+	}
 
 	rootCa := x509.NewCertPool()
-	f, err := os.Open("../../../rusty/mTCP-demo/ca/ca.crt")
-	if err != nil {
-		log.Fatalf("cannot open file: %v", err)
-	}
-	defer f.Close()
+	// f, err := os.Open("../../../rusty/mTCP-demo/ca/ca.crt")
+	// if err != nil {
+	// 	log.Fatalf("cannot open file: %v", err)
+	// }
+	// defer f.Close()
 
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(f)
-	rootCrt, err := x509.ParseCertificate(buf.Bytes())
-	if err != nil {
-		log.Fatalf("cannot parser cert: %v", err)
-	}
+	// buf := new(bytes.Buffer)
+	// buf.ReadFrom(f)
+	// rootCrt, err := x509.ParseCertificate(buf.Bytes())
+	// if err != nil {
+	// 	log.Fatalf("cannot parser root cert: %v", err)
+	// }
+	rootCa.AddCert(cert.Leaf)
 
-	rootCa.AddCert(rootCrt)
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{getClientTLSCert()},
 		RootCAs:      rootCa,
 	}
-
-	// certF, err := credentials.NewClientTLSFromFile("../../../rusty/mTCP-demo/ca/ca.crt", "")
-	// if err != nil {
-	// 	log.Fatalf("cannot read crt file: %v", err)
-	// }
 
 	conn, err := grpc.Dial("[::1]:9090", grpc.WithTransportCredentials(
 		credentials.NewTLS(tlsConfig),
