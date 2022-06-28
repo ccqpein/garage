@@ -2,13 +2,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"log"
 	"net"
+	"os"
 	pb "service-go/protocols/hello"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type server struct {
@@ -20,8 +25,46 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 	return &pb.HelloResponse{MessageBody: "Receive from " + in.GetClientType() + " client"}, nil
 }
 
+func getClientTLSCert() tls.Certificate {
+	cert, err := tls.LoadX509KeyPair("../../../rusty/mTCP-demo/ca/client_0.crt", "../../../rusty/mTCP-demo/ca/client_0.key")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return cert
+}
+
 func clientRPC() {
-	conn, err := grpc.Dial("[::1]:9090", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
+	//conn, err := grpc.Dial("[::1]:9090", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
+
+	rootCa := x509.NewCertPool()
+	f, err := os.Open("../../../rusty/mTCP-demo/ca/ca.crt")
+	if err != nil {
+		log.Fatalf("cannot open file: %v", err)
+	}
+	defer f.Close()
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(f)
+	rootCrt, err := x509.ParseCertificate(buf.Bytes())
+	if err != nil {
+		log.Fatalf("cannot parser cert: %v", err)
+	}
+
+	rootCa.AddCert(rootCrt)
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{getClientTLSCert()},
+		RootCAs:      rootCa,
+	}
+
+	// certF, err := credentials.NewClientTLSFromFile("../../../rusty/mTCP-demo/ca/ca.crt", "")
+	// if err != nil {
+	// 	log.Fatalf("cannot read crt file: %v", err)
+	// }
+
+	conn, err := grpc.Dial("[::1]:9090", grpc.WithTransportCredentials(
+		credentials.NewTLS(tlsConfig),
+	), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
