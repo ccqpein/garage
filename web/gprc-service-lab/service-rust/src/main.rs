@@ -79,7 +79,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // server
-    let addr = "[::1]:9090".parse()?;
+    let addr = "127.0.0.1:3000".parse()?;
+    //:= update on 6/28/2022, dial address has to be the same as crt sign,
+    //:= in this case, it is localhost:3000 as the mTCP-demo did
     let server = RustServer::default();
     let tls_config = server_tls_config()?;
 

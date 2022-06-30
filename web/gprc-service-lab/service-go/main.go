@@ -32,36 +32,36 @@ func getClientTLSCert() tls.Certificate {
 	return cert
 }
 
+func rootCA() tls.Certificate {
+	cert, err := tls.LoadX509KeyPair("../../../rusty/mTCP-demo/ca/ca.crt", "../../../rusty/mTCP-demo/ca/ca.key")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return cert
+}
+
 func clientRPC() {
+	//:= old code without client auth
 	//conn, err := grpc.Dial("[::1]:9090", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
-	var err error
+
 	cert := getClientTLSCert()
-	cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
+
+	rootCa := x509.NewCertPool()
+	leaf, err := x509.ParseCertificate(rootCA().Certificate[0])
 	if err != nil {
 		log.Fatalf("cannot set cert leaf: %v", err)
 	}
-
-	rootCa := x509.NewCertPool()
-	// f, err := os.Open("../../../rusty/mTCP-demo/ca/ca.crt")
-	// if err != nil {
-	// 	log.Fatalf("cannot open file: %v", err)
-	// }
-	// defer f.Close()
-
-	// buf := new(bytes.Buffer)
-	// buf.ReadFrom(f)
-	// rootCrt, err := x509.ParseCertificate(buf.Bytes())
-	// if err != nil {
-	// 	log.Fatalf("cannot parser root cert: %v", err)
-	// }
-	rootCa.AddCert(cert.Leaf)
+	rootCa.AddCert(leaf)
 
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{getClientTLSCert()},
+		Certificates: []tls.Certificate{cert},
 		RootCAs:      rootCa,
 	}
 
-	conn, err := grpc.Dial("[::1]:9090", grpc.WithTransportCredentials(
+	//:= update on 6/28/2022, dial address has to be the same as crt sign,
+	//:= in this case, it is localhost:3000 as the mTCP-demo did
+	conn, err := grpc.Dial("localhost:3000", grpc.WithTransportCredentials(
 		credentials.NewTLS(tlsConfig),
 	), grpc.WithBlock(), grpc.WithTimeout(5*time.Second))
 	if err != nil {
