@@ -21,5 +21,7 @@
       (make-instance 'github-client:api-client)))
 
 ;;:= add two gist headers inside, make a github-api-call call with content
-(defun api-call (client api)
+(defmethod api-call ((client github-client:api-client) (api gist-api-doc)
+                     &rest args)
+  
   )
