@@ -23,5 +23,7 @@
 ;;:= add two gist headers inside, make a github-api-call call with content
 (defmethod api-call ((client github-client:api-client) (api gist-api-doc)
                      &rest args)
-  
-  )
+  (if (content-p api)
+      (github-client:github-api-call client api :content (content api))
+      (github-client:github-api-call client api)
+      ))
