@@ -1,5 +1,6 @@
 (ql:quickload "github-api-cl")
 
+;;:= not sure if I need to make content special api.
 (defclass gist-api-doc (github-api-doc:api-doc)
   ((content
     :initarg :content
@@ -12,7 +13,10 @@
   (not (string= (content api) "")))
 
 ;;:= make method that input the content
-(defmethod input-content ((api gist-api-doc)))
+(defmethod input-content ((api gist-api-doc))
+  (progn (format t "What is content?~%")
+         (string-downcase (read-line)))
+  )
 
 ;;:= just make the github-api-cl:api-client
 (defun make-api-client (&key token)
@@ -20,7 +24,6 @@
       (make-instance 'github-client:api-client :token token)
       (make-instance 'github-client:api-client)))
 
-;;:= add two gist headers inside, make a github-api-call call with content
 (defmethod api-call ((client github-client:api-client) (api gist-api-doc)
                      &rest args)
   (if (content-p api)
