@@ -27,6 +27,9 @@
 (defmethod api-call ((client github-client:api-client) (api gist-api-doc)
                      &rest args)
   (if (content-p api)
-      (github-client:github-api-call client api :content (content api))
+      (github-client:github-api-call client api
+                                     :headers '(("Accept" . "application/vnd.github.VERSION.raw")
+                                                ("Accept" . "application/vnd.github.VERSION.base64"))
+                                     :content (content api))
       (github-client:github-api-call client api)
       ))
