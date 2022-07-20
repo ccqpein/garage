@@ -58,6 +58,7 @@ int32_t hello_world_app(void* p) {
       osMessageQueueNew(8, sizeof(PluginEvent), NULL);
 
   PluginState* plugin_state = malloc(sizeof(PluginState));
+
   hello_world_state_init(plugin_state);
   ValueMutex state_mutex;
   if (!init_mutex(&state_mutex, plugin_state, sizeof(PluginState))) {
