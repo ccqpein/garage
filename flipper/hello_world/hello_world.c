@@ -51,7 +51,7 @@ static void hello_world_state_init(PluginState* const plugin_state) {
 
 // Create an int32_t hello_world_app(void* p) function that will function as the
 // entry of the plguin.
-int32_t hello_world_app(void* p) {
+int32_t hello_world_app() {
   // osMessageQueueNew we create a new osMessageQueueId_t that keeps track of
   // events.
   osMessageQueueId_t event_queue =

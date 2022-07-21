@@ -20,3 +20,4 @@ copy the fam file:
 
 ### Step 3 ###
 
+I use docker for compiling the firmware. [ref](https://github.com/flipperdevices/flipperzero-firmware#build-with-docker)
