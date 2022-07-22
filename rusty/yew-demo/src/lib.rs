@@ -46,6 +46,8 @@
 //     App::<Model>::new().mount_to_body();
 // }
 
+mod components_example;
+
 use yew::html::Context;
 use yew::*;
 
