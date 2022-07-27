@@ -1,11 +1,19 @@
+use lazy_static::lazy_static;
 use std::{fs::File, io::Read, path::Path};
 
 use actix_web::{
-    dev::HttpServiceFactory, http::header::ContentType, web, FromRequest, Handler, HttpResponse,
-    Responder,
+    dev::{HttpServiceFactory, ServiceFactory, ServiceRequest},
+    get,
+    http::header::ContentType,
+    web, App, Error, FromRequest, Handler, HttpResponse, Responder, Scope,
 };
 
-#[derive(Clone)]
+lazy_static! {
+    static ref LAST_RESUME: Resume<'static> = Resume::default();
+    static ref RESUME_HTML: &'static str = "";
+}
+
+#[derive(Clone, Default)]
 struct Resume<'r> {
     /// page url
     page_url: &'r str,
@@ -15,6 +23,14 @@ struct Resume<'r> {
 
     /// pdf path in filesystem
     pdf: &'r str,
+}
+
+impl<'r> Responder for Resume<'r> {
+    type Body = String;
+
+    fn respond_to(self, req: &actix_web::HttpRequest) -> HttpResponse<Self::Body> {
+        todo!()
+    }
 }
 
 impl<'r> Resume<'r> {
@@ -39,36 +55,15 @@ impl<'r> Resume<'r> {
         Ok(contents)
     }
 
-    // async fn into_response(self) -> std::io::Result<String> {
-    //     // HttpResponse::Ok()
-    //     //     .content_type(ContentType::html())
-    //     //     .body(self.resume().unwrap())
-    //     todo!()
-    // }
-
-    fn into_response<F, Args>() -> F
+    pub fn register_resume_service<T>(&self, app: App<T>) -> App<T>
     where
-        F: Handler<Args>,
-        Args: FromRequest + 'static,
-        F::Output: Responder + 'static,
+        T: ServiceFactory<ServiceRequest, Config = (), Error = Error, InitError = ()>,
     {
-        todo!()
-    }
-
-    async fn into_service(self) -> impl HttpServiceFactory + 'static {
-        //let resume = self.resume().unwarp();
-        web::scope(self.page_url.clone())
-            .service(web::resource("/dl").to(|| HttpResponse::Ok()))
-            // .default_service(web::to(|| {
-            //     HttpResponse::Ok()
-            //         .content_type(ContentType::html())
-            //         .body(resume)
-            // }))
-            //.default_service(web::to(self.into_response().await))
-            .service(web::resource("").to(Self::into_response()))
+        app.service(web::scope("/resume").service(handler))
     }
 }
 
-async fn index() -> std::io::Result<String> {
-    todo!()
+#[get("/{page_url}")]
+async fn handler(path: web::Path<(String)>) -> impl Responder {
+    *RESUME_HTML
 }
