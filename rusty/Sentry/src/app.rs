@@ -14,7 +14,7 @@ lazy_static! {
 }
 
 #[derive(Clone, Default)]
-struct Resume<'r> {
+pub struct Resume<'r> {
     /// page url
     page_url: &'r str,
 
@@ -23,14 +23,6 @@ struct Resume<'r> {
 
     /// pdf path in filesystem
     pdf: &'r str,
-}
-
-impl<'r> Responder for Resume<'r> {
-    type Body = String;
-
-    fn respond_to(self, req: &actix_web::HttpRequest) -> HttpResponse<Self::Body> {
-        todo!()
-    }
 }
 
 impl<'r> Resume<'r> {
@@ -43,7 +35,7 @@ impl<'r> Resume<'r> {
     }
 
     /// read the config of resume app
-    fn from_file_config(path: impl AsRef<Path>) {
+    pub fn from_file_config(path: impl AsRef<Path>) -> Self {
         todo!()
     }
 
@@ -55,24 +47,27 @@ impl<'r> Resume<'r> {
         Ok(contents)
     }
 
+    /// update the resume struct in case the file updated on disk
+    fn update(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+
     pub fn register_resume_service<T>(&self, app: App<T>) -> App<T>
     where
         T: ServiceFactory<ServiceRequest, Config = (), Error = Error, InitError = ()>,
     {
         app.service(
             web::scope("/resume")
-                .service(handler_html)
-                .service(handler_dl),
+                .route("/{page_url}", web::get().to(handler_html))
+                .route("/{page_url}/dl", web::get().to(handler_dl)),
         )
     }
 }
 
-#[get("/{page_url}")]
 async fn handler_html(path: web::Path<String>) -> impl Responder {
     *RESUME_HTML
 }
 
-#[get("/{page_url}/dl")]
 async fn handler_dl(path: web::Path<String>) -> impl Responder {
     *RESUME_HTML
 }
@@ -88,8 +83,8 @@ mod tests {
         let app = test::init_service(
             App::new().service(
                 web::scope("/resume")
-                    .service(handler_html)
-                    .service(handler_dl),
+                    .route("/{page_url}", web::get().to(handler_html))
+                    .route("/{page_url}/dl", web::get().to(handler_dl)),
             ),
         )
         .await;
