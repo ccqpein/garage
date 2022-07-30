@@ -1,33 +1,37 @@
-use lazy_static::lazy_static;
-use std::{fs::File, io::Read, path::Path};
-
 use actix_web::{
     dev::{HttpServiceFactory, ServiceFactory, ServiceRequest},
     get,
     http::header::ContentType,
     web, App, Error, FromRequest, Handler, HttpResponse, Responder, Scope,
 };
+use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
+use std::{
+    fs::File,
+    io::{BufReader, Read},
+    path::Path,
+};
 
 lazy_static! {
-    static ref LAST_RESUME: Resume<'static> = Resume::default();
+    static ref LAST_RESUME: Resume = Resume::default();
     static ref RESUME_HTML: &'static str = "empty";
 }
 
 //:= serdo json
-#[derive(Clone, Default)]
-pub struct Resume<'r> {
+#[derive(Clone, Default, Serialize, Deserialize)]
+pub struct Resume {
     /// page url
-    page_url: &'r str,
+    page_url: String,
 
     /// page html path in filesystem
-    page_name: &'r str,
+    page_name: String,
 
     /// pdf path in filesystem
-    pdf: &'r str,
+    pdf: String,
 }
 
-impl<'r> Resume<'r> {
-    fn new(page_url: &'r str, page_name: &'r str, pdf: &'r str) -> Self {
+impl Resume {
+    fn new(page_url: String, page_name: String, pdf: String) -> Self {
         Self {
             page_url,
             page_name,
@@ -35,14 +39,9 @@ impl<'r> Resume<'r> {
         }
     }
 
-    /// read the config of resume app
-    pub fn from_file_config(path: impl AsRef<Path>) -> Self {
-        todo!()
-    }
-
     /// read the resume html
     fn resume(&self) -> std::io::Result<String> {
-        let mut file = File::open(self.page_name)?;
+        let mut file = File::open(&self.page_name)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
         Ok(contents)
@@ -52,6 +51,16 @@ impl<'r> Resume<'r> {
     /// update the static LAST_RESUME
     fn update(&mut self) -> std::io::Result<()> {
         Ok(())
+    }
+
+    /// read the config of resume app
+    pub fn from_file_config(path: impl AsRef<Path>) -> Result<Self, Box<dyn std::error::Error>> {
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        // Read the JSON contents of the file as an instance of `User`.
+        let r = serde_json::from_reader(reader)?;
+        Ok(r)
     }
 
     pub fn register_resume_service<T>(&self, app: App<T>) -> App<T>

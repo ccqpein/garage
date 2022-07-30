@@ -3,7 +3,8 @@ use Sentry::app::Resume;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let resume_app = Resume::from_file_config("./resume_conf.json");
+    let resume_app = Resume::from_file_config("./resume_conf.json")
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
 
     HttpServer::new(move || {
         let mut app = App::new().default_service(web::to(|| HttpResponse::NotFound()));
