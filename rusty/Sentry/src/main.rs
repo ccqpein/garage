@@ -3,17 +3,10 @@ use Sentry::app::Resume;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let resume_app = Resume::from_file_config("./resume-conf.lisp");
+    let resume_app = Resume::from_file_config("./resume_conf.json");
 
-    // let mut app = App::new()
-    //     //.service(resume_service)
-    //     .default_service(web::to(|| HttpResponse::NotFound()));
-
-    // app = resume_app.register_resume_service(app);
     HttpServer::new(move || {
-        let mut app = App::new()
-            //.service(resume_service)
-            .default_service(web::to(|| HttpResponse::NotFound()));
+        let mut app = App::new().default_service(web::to(|| HttpResponse::NotFound()));
 
         app = resume_app.register_resume_service(app);
         app

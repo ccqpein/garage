@@ -13,6 +13,7 @@ lazy_static! {
     static ref RESUME_HTML: &'static str = "empty";
 }
 
+//:= serdo json
 #[derive(Clone, Default)]
 pub struct Resume<'r> {
     /// page url
@@ -48,6 +49,7 @@ impl<'r> Resume<'r> {
     }
 
     /// update the resume struct in case the file updated on disk
+    /// update the static LAST_RESUME
     fn update(&mut self) -> std::io::Result<()> {
         Ok(())
     }
@@ -65,11 +67,17 @@ impl<'r> Resume<'r> {
 }
 
 async fn handler_html(path: web::Path<String>) -> impl Responder {
-    *RESUME_HTML
+    if LAST_RESUME.page_url == path.into_inner() {
+        HttpResponse::Ok()
+            .content_type(ContentType::html())
+            .body(*RESUME_HTML)
+    } else {
+        HttpResponse::NotFound().finish()
+    }
 }
 
 async fn handler_dl(path: web::Path<String>) -> impl Responder {
-    *RESUME_HTML
+    HttpResponse::Ok()
 }
 
 #[cfg(test)]
