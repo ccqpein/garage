@@ -11,10 +11,11 @@ use std::{
     io::{BufReader, Read},
     path::Path,
 };
+use tokio::sync::Mutex;
 
 lazy_static! {
-    static ref LAST_RESUME: Resume = Resume::default();
-    static ref RESUME_HTML: &'static str = "empty";
+    static ref LAST_RESUME: Mutex<Resume> = Mutex::new(Resume::default());
+    static ref RESUME_HTML: Mutex<String> = Mutex::new(String::new());
 }
 
 //:= serdo json
@@ -49,17 +50,27 @@ impl Resume {
 
     /// update the resume struct in case the file updated on disk
     /// update the static LAST_RESUME
-    fn update(&mut self) -> std::io::Result<()> {
+    async fn update(conf_path: impl AsRef<Path>) -> std::io::Result<()> {
+        let resume = Self::from_file_config(conf_path)?;
+
+        // update the html
+        // write like this way can avoid deadlock
+        // release locker after below line
+        *RESUME_HTML.lock().await = resume.resume()?;
+
+        // update the resume instance
+        *LAST_RESUME.lock().await = resume;
+
         Ok(())
     }
 
     /// read the config of resume app
-    pub fn from_file_config(path: impl AsRef<Path>) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_file_config(path: impl AsRef<Path>) -> std::io::Result<Self> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
-        // Read the JSON contents of the file as an instance of `User`.
-        let r = serde_json::from_reader(reader)?;
+        let r = serde_json::from_reader(reader)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
         Ok(r)
     }
 
@@ -76,10 +87,10 @@ impl Resume {
 }
 
 async fn handler_html(path: web::Path<String>) -> impl Responder {
-    if LAST_RESUME.page_url == path.into_inner() {
+    if LAST_RESUME.lock().await.page_url == path.into_inner() {
         HttpResponse::Ok()
             .content_type(ContentType::html())
-            .body(*RESUME_HTML)
+            .body(RESUME_HTML.lock().await.clone())
     } else {
         HttpResponse::NotFound().finish()
     }
