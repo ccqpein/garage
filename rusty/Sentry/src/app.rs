@@ -12,14 +12,14 @@ use std::{
     path::Path,
 };
 use tokio::sync::Mutex;
+use tracing::debug;
 
 lazy_static! {
     static ref LAST_RESUME: Mutex<Resume> = Mutex::new(Resume::default());
     static ref RESUME_HTML: Mutex<String> = Mutex::new(String::new());
 }
 
-//:= serdo json
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub struct Resume {
     /// page url
     page_url: String,
@@ -51,7 +51,7 @@ impl Resume {
     /// update the resume struct in case the file updated on disk
     /// update the static LAST_RESUME
     async fn update(conf_path: impl AsRef<Path>) -> std::io::Result<()> {
-        let resume = Self::from_file_config(conf_path)?;
+        let resume = Self::from_file_config(conf_path).await?;
 
         // update the html
         // write like this way can avoid deadlock
@@ -65,12 +65,16 @@ impl Resume {
     }
 
     /// read the config of resume app
-    pub fn from_file_config(path: impl AsRef<Path>) -> std::io::Result<Self> {
+    pub async fn from_file_config(path: impl AsRef<Path>) -> std::io::Result<Self> {
+        println!("here");
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
-        let r = serde_json::from_reader(reader)
+        let r: Self = serde_json::from_reader(reader)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
+        *LAST_RESUME.lock().await = r.clone();
+        *RESUME_HTML.lock().await = r.resume()?;
+        debug!("read resume config: {:?}", &r);
         Ok(r)
     }
 
@@ -87,6 +91,7 @@ impl Resume {
 }
 
 async fn handler_html(path: web::Path<String>) -> impl Responder {
+    debug!("handler_html path is {}", path);
     if LAST_RESUME.lock().await.page_url == path.into_inner() {
         HttpResponse::Ok()
             .content_type(ContentType::html())
@@ -97,6 +102,7 @@ async fn handler_html(path: web::Path<String>) -> impl Responder {
 }
 
 async fn handler_dl(path: web::Path<String>) -> impl Responder {
+    //:= download pdf
     HttpResponse::Ok()
 }
 
