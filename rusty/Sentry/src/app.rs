@@ -66,7 +66,6 @@ impl Resume {
 
     /// read the config of resume app
     pub async fn from_file_config(path: impl AsRef<Path>) -> std::io::Result<Self> {
-        println!("here"); //:= DEL
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
@@ -102,9 +101,9 @@ async fn handler_html(path: web::Path<String>) -> impl Responder {
     }
 }
 
-async fn handler_dl(path: web::Path<String>) -> impl Responder {
-    HttpResponse::NotFound().finish()
-}
+//:= DEL: async fn handler_dl(path: web::Path<String>) -> impl Responder {
+//:= DEL:     HttpResponse::NotFound().finish()
+//:= DEL: }
 
 fn download_service_builder() -> Result<actix_files::Files, TryLockError> {
     let page_url = LAST_RESUME.try_lock()?.page_url.clone();
@@ -113,24 +112,25 @@ fn download_service_builder() -> Result<actix_files::Files, TryLockError> {
         "page_url is {}, and the pdf path is {}.",
         page_url, pdf_path
     );
-    Ok(actix_files::Files::new(format!("/{}/dl", page_url).as_str(), pdf_path).prefer_utf8(true))
+    Ok(
+        actix_files::Files::new(format!("/{}/dl", page_url).as_str(), ".")
+            .prefer_utf8(true)
+            .index_file(pdf_path),
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use actix_web::{body::MessageBody, dev::ServiceResponse, http::StatusCode, test, web::Bytes};
+    use actix_web::{http::StatusCode, test};
 
     use super::*;
 
     #[actix_web::test]
     async fn test_handler_path_match() {
-        let app = test::init_service(
-            App::new().service(
-                web::scope("/resume")
-                    .route("/{page_url}", web::get().to(handler_html))
-                    .route("/{page_url}/dl", web::get().to(handler_dl)),
-            ),
-        )
+        let app = test::init_service(App::new().service(
+            web::scope("/resume").route("/{page_url}", web::get().to(handler_html)),
+            //:= DEL: .route("/{page_url}/dl", web::get().to(handler_dl)),
+        ))
         .await;
 
         let req = test::TestRequest::default()

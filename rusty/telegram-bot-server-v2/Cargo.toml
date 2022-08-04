@@ -10,7 +10,7 @@ edition = "2021"
 telegram-bot = { git = "https://github.com/telegram-rs/telegram-bot" }
 actix-web = { version = "4", features = ["rustls"] }
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 lazy_static = "1"
 tokio = { version = "1", features = ["full"] }
 octocrab = "0.15"

@@ -77,7 +77,7 @@ fn main() -> std::io::Result<()> {
     // tracing
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter("telegram_bot=trace")
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .finish(),
     )
     .unwrap();
