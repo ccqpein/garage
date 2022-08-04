@@ -11,7 +11,7 @@ use std::{
     io::{BufReader, Read},
     path::Path,
 };
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, TryLockError};
 use tracing::debug;
 
 lazy_static! {
@@ -66,7 +66,7 @@ impl Resume {
 
     /// read the config of resume app
     pub async fn from_file_config(path: impl AsRef<Path>) -> std::io::Result<Self> {
-        println!("here");
+        println!("here"); //:= DEL
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
@@ -85,7 +85,8 @@ impl Resume {
         app.service(
             web::scope("/resume")
                 .route("/{page_url}", web::get().to(handler_html))
-                .route("/{page_url}/dl", web::get().to(handler_dl)),
+                .service(download_service_builder().unwrap()),
+            //.route("/{page_url}/dl", web::get().to(handler_dl)),
         )
     }
 }
@@ -102,8 +103,17 @@ async fn handler_html(path: web::Path<String>) -> impl Responder {
 }
 
 async fn handler_dl(path: web::Path<String>) -> impl Responder {
-    //:= download pdf
-    HttpResponse::Ok()
+    HttpResponse::NotFound().finish()
+}
+
+fn download_service_builder() -> Result<actix_files::Files, TryLockError> {
+    let page_url = LAST_RESUME.try_lock()?.page_url.clone();
+    let pdf_path = LAST_RESUME.try_lock()?.pdf.clone();
+    debug!(
+        "page_url is {}, and the pdf path is {}.",
+        page_url, pdf_path
+    );
+    Ok(actix_files::Files::new(format!("/{}/dl", page_url).as_str(), pdf_path).prefer_utf8(true))
 }
 
 #[cfg(test)]
