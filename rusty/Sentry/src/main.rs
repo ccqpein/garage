@@ -1,5 +1,5 @@
 use actix_web::{web, App, HttpResponse, HttpServer};
-use Sentry::app::Resume;
+use Sentry::app::resume::Resume;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
