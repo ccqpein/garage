@@ -65,6 +65,7 @@ impl Resume {
 
     /// read the config of resume app
     pub async fn from_file_config(path: impl AsRef<Path>) -> std::io::Result<Self> {
+        debug!("try to read config from {:?}", path.as_ref());
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 

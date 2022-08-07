@@ -1,4 +1,5 @@
 use actix_web::{web, App, HttpResponse, HttpServer};
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 use Sentry::app::resume::Resume;
 
 #[actix_web::main]
@@ -6,7 +7,11 @@ async fn main() -> std::io::Result<()> {
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
             //:= need to learn tracing_subscriber
-            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            .with_env_filter(
+                EnvFilter::builder()
+                    .with_default_directive(LevelFilter::DEBUG.into())
+                    .from_env_lossy(),
+            )
             .finish(),
     )
     .unwrap();
@@ -29,7 +34,7 @@ async fn main() -> std::io::Result<()> {
         app = resume_app.register_resume_service(app);
         app
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8760))?
     .run()
     .await
 }
