@@ -17,5 +17,6 @@
                          )
   :components ((:module "lisp"
                 :components
-                ((:file "init"))))
+                ((:file "init")
+				 (:file "recipe"))))
   )
