@@ -1,7 +1,13 @@
 # README #
 
-## Preparation ##
+## Client Side ##
 
-`git clone git@github.com:brown/protobuf.git` for installing `protoc-gen-lisp`
+Use the [qitab/grpc](https://github.com/qitab/grpc) use the client library.
 
-change makefile in this repo
+**install the protoc-gen-cl-pb**
+
+[doc](https://github.com/qitab/cl-protobufs#installation). 
+
+**git clone repo **
+
+`git clone git@github.com:qitab/grpc.git ~/quicklisp/local-projects/grpc`
