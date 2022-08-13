@@ -2,15 +2,23 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/urfave/cli/v2"
 )
 
-type resultSet struct{}
+type resultSet struct {
+	succ, failed int
+}
+
+func (rs *resultSet) String() string {
+	return fmt.Sprintf("succ: %d, failed: %d", rs.succ, rs.failed)
+}
 
 func makeApp() *cli.App {
 	return &cli.App{
@@ -31,32 +39,62 @@ func makeApp() *cli.App {
 			},
 		},
 		Action: func(c *cli.Context) error {
+			fmt.Printf("%d client(s) run %d seconds\n", c.Int("concurrency-num"), c.Int("test-time"))
+
 			ctx, cancel := context.WithTimeout(context.Background(),
 				time.Duration(c.Int("test-time"))*time.Second)
 			defer cancel()
 
-			_ = makeCall(ctx, c.Int("concurrency-num"), c.Args().Get(0))
-			//:= TODO: printResult(result)
+			re := makeCall(ctx, c.Int("concurrency-num"), c.Args().Get(0))
+			fmt.Println(re)
 			return nil
 		},
 	}
 }
 
 func makeCall(ctx context.Context, c int, url string) *resultSet {
-	// handle the test result
-	//:= TODO: go func(){}
-
 	testcaseChan := make(chan int, c)
 
+	var wg sync.WaitGroup
+
 	for i := 0; i < c; i++ {
+		wg.Add(1)
 		httpClient := http.Client{Timeout: time.Second}
-		go testFunc(ctx, &httpClient, url, testcaseChan)
+		go testFunc(ctx, &httpClient, url, testcaseChan, &wg)
 	}
 
-	return nil
+	fmt.Println("make clients done")
+
+	// handle the test result
+	rs := resultSet{}
+	flag := make(chan struct{})
+	go func(testcaseChan <-chan int, finish chan<- struct{}) {
+		for {
+			select {
+			case i, ok := <-testcaseChan:
+				if !ok {
+					flag <- struct{}{}
+					return
+				}
+				if i == 0 {
+					rs.succ += 1
+				} else {
+					rs.failed += 1
+				}
+			}
+		}
+
+	}(testcaseChan, flag)
+
+	wg.Wait()
+	close(testcaseChan)
+	<-flag
+
+	return &rs
 }
 
-func testFunc(ctx context.Context, client *http.Client, url string, testcaseChan chan<- int) error {
+func testFunc(ctx context.Context, client *http.Client, url string, testcaseChan chan<- int, wg *sync.WaitGroup) error {
+	defer wg.Done()
 	for {
 		select {
 		case <-ctx.Done():
