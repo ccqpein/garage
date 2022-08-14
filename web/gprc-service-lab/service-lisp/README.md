@@ -11,3 +11,6 @@ Use the [qitab/grpc](https://github.com/qitab/grpc) use the client library.
 **git clone repo **
 
 `git clone git@github.com:qitab/grpc.git ~/quicklisp/local-projects/grpc`
+
+*issue happens*
+[link](https://github.com/qitab/grpc/issues/44)
