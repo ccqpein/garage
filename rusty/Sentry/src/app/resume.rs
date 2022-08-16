@@ -3,7 +3,6 @@ use actix_web::{
     http::header::ContentType,
     web, App, Error, HttpResponse, Responder,
 };
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::File,
@@ -13,10 +12,9 @@ use std::{
 use tokio::sync::{Mutex, TryLockError};
 use tracing::debug;
 
-lazy_static! {
-    static ref LAST_RESUME: Mutex<Resume> = Mutex::new(Resume::default());
-    static ref RESUME_HTML: Mutex<String> = Mutex::new(String::new());
-}
+static LAST_RESUME: Mutex<Resume> =
+    Mutex::const_new(Resume::new(String::new(), String::new(), String::new()));
+static RESUME_HTML: Mutex<String> = Mutex::const_new(String::new());
 
 #[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub struct Resume {
@@ -31,7 +29,7 @@ pub struct Resume {
 }
 
 impl Resume {
-    fn new(page_url: String, page_name: String, pdf: String) -> Self {
+    const fn new(page_url: String, page_name: String, pdf: String) -> Self {
         Self {
             page_url,
             page_name,
