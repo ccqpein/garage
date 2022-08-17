@@ -1,14 +1,11 @@
 use super::*;
 use chrono::{Timelike, Utc};
 use chrono_tz::America::New_York;
-use lazy_static::*;
 use telegram_bot::ChatId;
 use tokio::sync::Mutex;
 use tracing::debug;
 
-lazy_static! {
-    pub static ref MY_CHATID: Mutex<Option<ChatId>> = Mutex::new(None);
-}
+pub static MY_CHATID: Mutex<Option<ChatId>> = Mutex::const_new(None);
 
 pub struct GithubCommitCheckActive {
     vault_path: String,
