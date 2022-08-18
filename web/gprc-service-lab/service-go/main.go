@@ -87,7 +87,8 @@ func clientRPC() {
 
 func main() {
 
-	go clientRPC()
+	//:= test lisp grpc, temp comment client call
+	//:= go clientRPC()
 
 	// pure grpc server below
 	lis, err := net.Listen("tcp", "localhost:9091")
