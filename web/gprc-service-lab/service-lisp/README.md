@@ -25,5 +25,8 @@ need `(ql:quickload "grpc")` and `(grpc:init-grpc)` first.
 
 ### generate the lisp code from protoc ###
 
+`--plugin` need to be absolute path if failed.
+
+`protoc --plugin=protoc-gen-cl-pb --cl-pb_out=output-file=hello-world.lisp:. --proto_path=../protocols hello.proto`
 
 
