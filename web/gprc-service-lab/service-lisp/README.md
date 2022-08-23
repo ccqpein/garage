@@ -29,4 +29,13 @@ need `(ql:quickload "grpc")` and `(grpc:init-grpc)` first.
 
 `protoc --plugin=protoc-gen-cl-pb --cl-pb_out=output-file=hello-world.lisp:. --proto_path=../protocols hello.proto`
 
+*update 8/21/2022*
+
+comment the make file in `grpc/Makefile` `server.o: server.cc` because it cannot make.
+
+> OFILES = client.o client_auth.o
+
+because the macos ld issue: 
+
+> $(CXX)  -pthread -shared -Wl,-undefined,error ${OFILES} -o $@ $(LDFLAGS)
 

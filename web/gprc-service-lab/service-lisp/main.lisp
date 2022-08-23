@@ -12,7 +12,7 @@
   (let* ((request (CL-PROTOBUFS.HELLO:make-hello-request
 				   :client-type "lisp"
 				   :message-body "hello from common lisp client"))
-		 (response (CL-PROTOBUFS.HELLO-RPC:say-hello channel request)))
+		 (response (CL-PROTOBUFS.HELLO-RPC:call-say-hello channel request)))
 	(format t "~a~%" response)
 	))
 
