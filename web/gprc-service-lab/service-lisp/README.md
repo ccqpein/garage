@@ -17,7 +17,7 @@ Use the [qitab/grpc](https://github.com/qitab/grpc) use the client library.
 *issue happens*
 ~~[link](https://github.com/qitab/grpc/issues/44)~~ (resolved)
 
-## usage ##
+## Usage ##
 
 ### tips ###
 
@@ -41,4 +41,8 @@ because the macos ld issue:
 
 dont forgot, I need `grpc/libraries.lisp` read the `grpc.so` compiled in last step.
 
+`cffi` `(:default #.(namestring (asdf:system-relative-pathname "grpc" "grpc")))` gonna read `dylib` file type instead of `.so` which it compiled.
+
 need give a PR to fix it.
+
+either make `grpc.dylib` 
