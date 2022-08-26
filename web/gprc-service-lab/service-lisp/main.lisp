@@ -17,8 +17,10 @@
 	(format t "~a~%" response)
 	))
 
-;; (grpc:with-ssl-channel (channel ("localhost:9091"
-;; 								 (:pem-root-certs "")
-;; 								 )))
-
 ;;:= ssl channel maybe in future
+;;:= ../../../rusty/mTCP-demo/ca/
+(grpc:with-ssl-channel (channel ("localhost:9091"
+								 (:pem-root-certs "") ;; root certs 
+								 )))
+
+
