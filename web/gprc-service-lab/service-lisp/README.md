@@ -37,7 +37,7 @@ comment the make file in `grpc/Makefile` `server.o: server.cc` because it cannot
 
 because the macos ld issue: 
 
-> $(CXX)  -pthread -shared -Wl,-undefined,error ${OFILES} -o $@ $(LDFLAGS)
+> $(CXX) -pthread -shared -Wl,-undefined,error ${OFILES} -o $@ $(LDFLAGS)
 
 dont forgot, I need `grpc/libraries.lisp` read the `grpc.so` compiled in last step.
 
