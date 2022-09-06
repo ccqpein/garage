@@ -1,4 +1,7 @@
-use std::{io::BufRead, rc::Rc};
+use std::{
+    io::{BufRead, BufReader},
+    rc::Rc,
+};
 
 #[derive(PartialEq, Debug)]
 struct YAMLObject {
@@ -32,6 +35,7 @@ where
     Ok(())
 }
 
+/// parse a line, line in arguments shouldn't has the \n at the endding
 fn parse_a_line<L>(mut line: L, buf: &mut Vec<u8>) -> std::io::Result<(LineStatus, Offset)>
 where
     L: BufRead,
@@ -50,11 +54,13 @@ where
 
             buf.clear();
             line.read_to_end(buf)?; // read the rest of line
-            if buf.is_empty() {
+
+            let (rest, _, _) = trim_space_start_and_end(buf);
+            if rest.is_empty() {
                 // only key
                 return Ok((LineStatus::OnlyKey(k), offset));
             } else {
-                let v = parse_value(buf)?;
+                let v = parse_value(rest)?;
                 return Ok((
                     LineStatus::Value(V::O(Some(box YAMLObject { key: k, value: v }))),
                     offset,
@@ -71,35 +77,78 @@ where
 }
 
 fn parser(
-    mut reader: impl BufRead,
-    mut line: &mut String,
-    last_offset: Offset,
-) -> std::io::Result<V> {
+    reader: &mut BufReader<&[u8]>,
+    line: &mut String,
+    mut current_offset: Option<Offset>,
+) -> std::io::Result<V>
+// where
+//     R: BufRead,
+{
     let mut values: Vec<V> = vec![];
     let mut line_buf = vec![];
-    reader.read_line(&mut line)?;
+    if reader.read_line(line)? == 0 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "empty",
+        ));
+    };
+
+    *line = line.trim_end().to_string();
 
     loop {
-        match parse_a_line(&mut line.as_bytes(), &mut line_buf)? {
-            (LineStatus::Nil, offset) => todo!(),
+        match parse_a_line(line.as_bytes(), &mut line_buf)? {
+            (LineStatus::Nil, _) => (),
             (LineStatus::OnlyKey(k), offset) => {
+                match current_offset {
+                    Some(lo) => {
+                        if offset < lo {
+                            // this break will keep the line
+                            // which actually is the "next" line
+                            break;
+                        }
+                    }
+                    None => current_offset = Some(offset),
+                }
+
                 line.clear();
+                line_buf.clear();
+
                 values.push(V::O(Some(box YAMLObject {
                     key: k,
-                    value: parser(&mut reader, line, offset)?,
+                    value: parser(reader, line, None)?,
                 })));
+
+                // line actually already updated by the next line
+                // continue jump the new reading at the endding of the loop
                 continue;
             }
             (LineStatus::Value(v), offset) => {
-                if offset == last_offset {
-                    values.push(v);
-                } else {
-                    break;
+                match current_offset {
+                    Some(lo) => {
+                        if offset < lo {
+                            // this break will keep the line
+                            // which actually is the "next" line
+                            break;
+                        } else {
+                            values.push(v);
+                        }
+                    }
+                    None => {
+                        current_offset = Some(offset);
+                        values.push(v)
+                    }
                 }
             }
         }
+
         line.clear();
-        reader.read_line(&mut line)?;
+        line_buf.clear();
+
+        if reader.read_line(line)? == 0 {
+            break;
+        };
+
+        *line = line.trim_end().to_string();
     }
 
     Ok(V::L(values))
@@ -145,7 +194,7 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
 
 #[cfg(test)]
 mod test {
-    use std::io::BufReader;
+    use std::io::{BufReader, Cursor};
 
     use super::*;
 
@@ -192,13 +241,14 @@ mod test {
     #[test]
     fn test_parse_a_line() {
         let mut buf = vec![];
-        let l0 = r#"doe: "a deer, a female deer""#;
-        let (v0, offset) = parse_a_line(l0.as_bytes(), &mut buf).unwrap();
-        let v0 = match v0 {
+
+        let l = r#"doe: "a deer, a female deer""#;
+        let (v, offset) = parse_a_line(l.as_bytes(), &mut buf).unwrap();
+        let v = match v {
             LineStatus::Nil => panic!(),
             LineStatus::OnlyKey(_) => panic!(),
-            LineStatus::Value(v0) => match v0 {
-                V::O(v0) => v0.unwrap(),
+            LineStatus::Value(v) => match v {
+                V::O(v) => v.unwrap(),
                 V::L(_) => panic!(),
                 V::Item(_) => panic!(),
                 V::SingleV(_) => panic!(),
@@ -207,11 +257,197 @@ mod test {
 
         assert_eq!(0, offset);
         assert_eq!(
-            v0,
+            v,
             box YAMLObject {
                 key: "doe".to_string(),
                 value: V::SingleV(r#""a deer, a female deer""#.to_string())
             }
         );
+
+        //
+        buf.clear();
+        let l = r#"doe: "#;
+        let (v, offset) = parse_a_line(l.as_bytes(), &mut buf).unwrap();
+        let v = match v {
+            LineStatus::Nil => panic!(),
+            LineStatus::OnlyKey(s) => s,
+            LineStatus::Value(_) => panic!(),
+        };
+
+        assert_eq!(0, offset);
+        assert_eq!(v, r#"doe"#);
+
+        //
+        buf.clear();
+        let l = r#"doe : "#;
+        let (v, offset) = parse_a_line(l.as_bytes(), &mut buf).unwrap();
+        let v = match v {
+            LineStatus::Nil => panic!(),
+            LineStatus::OnlyKey(s) => s,
+            LineStatus::Value(_) => panic!(),
+        };
+
+        assert_eq!(0, offset);
+        assert_eq!(v, r#"doe"#);
+
+        //
+        buf.clear();
+        let l = r#"pi: 3.14159"#;
+        let (v, offset) = parse_a_line(l.as_bytes(), &mut buf).unwrap();
+        let v = match v {
+            LineStatus::Nil => panic!(),
+            LineStatus::OnlyKey(_) => panic!(),
+            LineStatus::Value(v) => match v {
+                V::O(v) => v.unwrap(),
+                V::L(_) => panic!(),
+                V::Item(_) => panic!(),
+                V::SingleV(_) => panic!(),
+            },
+        };
+
+        assert_eq!(0, offset);
+        assert_eq!(
+            v,
+            box YAMLObject {
+                key: "pi".to_string(),
+                value: V::SingleV(r#"3.14159"#.to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn test_parse_a_line_offsets() {
+        let mut buf = vec![];
+
+        let l = r#"  doe: "a deer, a female deer""#;
+        let (v, offset) = parse_a_line(l.as_bytes(), &mut buf).unwrap();
+        let v = match v {
+            LineStatus::Nil => panic!(),
+            LineStatus::OnlyKey(_) => panic!(),
+            LineStatus::Value(v) => match v {
+                V::O(v) => v.unwrap(),
+                V::L(_) => panic!(),
+                V::Item(_) => panic!(),
+                V::SingleV(_) => panic!(),
+            },
+        };
+
+        assert_eq!(2, offset);
+        assert_eq!(
+            v,
+            box YAMLObject {
+                key: "doe".to_string(),
+                value: V::SingleV(r#""a deer, a female deer""#.to_string())
+            }
+        );
+
+        //
+        //
+
+        buf.clear();
+        let mut b = BufReader::new(
+            r#"
+    doe: "a deer, a female deer"
+  turtle-doves: two
+"#
+            .as_bytes(),
+        );
+
+        let mut line = String::new();
+
+        // first line
+        b.read_line(&mut line).unwrap();
+
+        let (v, offset) = parse_a_line(&line.as_bytes()[0..line.len() - 1], &mut buf).unwrap();
+        assert_eq!(v, LineStatus::Nil);
+        assert_eq!(0, offset);
+
+        // second line
+        line.clear();
+        buf.clear();
+        b.read_line(&mut line).unwrap();
+
+        let (v, offset) = parse_a_line(&line.as_bytes()[0..line.len() - 1], &mut buf).unwrap();
+        let v = match v {
+            LineStatus::Nil => panic!(),
+            LineStatus::OnlyKey(_) => panic!(),
+            LineStatus::Value(v) => match v {
+                V::O(v) => v.unwrap(),
+                V::L(_) => panic!(),
+                V::Item(_) => panic!(),
+                V::SingleV(_) => panic!(),
+            },
+        };
+
+        assert_eq!(4, offset);
+        assert_eq!(
+            v,
+            box YAMLObject {
+                key: "doe".to_string(),
+                value: V::SingleV(r#""a deer, a female deer""#.to_string())
+            }
+        );
+
+        // third line
+        line.clear();
+        buf.clear();
+        b.read_line(&mut line).unwrap();
+
+        let (v, offset) = parse_a_line(&line.as_bytes()[0..line.len() - 1], &mut buf).unwrap();
+        let v = match v {
+            LineStatus::Nil => panic!(),
+            LineStatus::OnlyKey(_) => panic!(),
+            LineStatus::Value(v) => match v {
+                V::O(v) => v.unwrap(),
+                V::L(_) => panic!(),
+                V::Item(_) => panic!(),
+                V::SingleV(_) => panic!(),
+            },
+        };
+
+        assert_eq!(2, offset);
+        assert_eq!(
+            v,
+            box YAMLObject {
+                key: "turtle-doves".to_string(),
+                value: V::SingleV(r#"two"#.to_string())
+            }
+        );
+    }
+
+    #[test]
+    fn test_parser() {
+        let mut content = BufReader::new(
+            r#"
+doe: "a deer, a female deer"
+pi: 3.14159
+xmas-fifth-day:
+   calling-birds: four
+   french-hens: 3
+turtle-doves: two
+partridges:
+     count: 1
+"#
+            .as_bytes(),
+        );
+
+        dbg!(parser(&mut content, &mut String::new(), None));
+
+        //
+        //
+
+        let mut content = BufReader::new(
+            r#"
+xmas-fifth-day:
+   french-hens:
+     key1:       
+       turtle-doves: two
+partridges:
+     count: 1
+"#
+            .as_bytes(),
+        );
+
+        dbg!(parser(&mut content, &mut String::new(), None));
     }
 }
