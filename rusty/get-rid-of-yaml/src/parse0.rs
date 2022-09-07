@@ -76,13 +76,13 @@ where
     }
 }
 
-fn parser(
-    reader: &mut BufReader<&[u8]>,
+fn parser<R>(
+    reader: &mut R,
     line: &mut String,
     mut current_offset: Option<Offset>,
 ) -> std::io::Result<V>
-// where
-//     R: BufRead,
+where
+    R: BufRead,
 {
     let mut values: Vec<V> = vec![];
     let mut line_buf = vec![];
@@ -431,7 +431,44 @@ partridges:
             .as_bytes(),
         );
 
-        dbg!(parser(&mut content, &mut String::new(), None));
+        //dbg!(parser(&mut content, &mut String::new(), None));
+        assert_eq!(
+            parser(&mut content, &mut String::new(), None).unwrap(),
+            V::L(vec![
+                V::O(Some(Box::new(YAMLObject {
+                    key: "doe".to_string(),
+                    value: V::SingleV(r#""a deer, a female deer""#.to_string())
+                }))),
+                V::O(Some(Box::new(YAMLObject {
+                    key: "pi".to_string(),
+                    value: V::SingleV(r#"3.14159"#.to_string())
+                }))),
+                V::O(Some(Box::new(YAMLObject {
+                    key: "xmas-fifth-day".to_string(),
+                    value: V::L(vec![
+                        V::O(Some(Box::new(YAMLObject {
+                            key: "calling-birds".to_string(),
+                            value: V::SingleV(r#"four"#.to_string())
+                        }))),
+                        V::O(Some(Box::new(YAMLObject {
+                            key: "french-hens".to_string(),
+                            value: V::SingleV(r#"3"#.to_string())
+                        })))
+                    ])
+                }))),
+                V::O(Some(Box::new(YAMLObject {
+                    key: "turtle-doves".to_string(),
+                    value: V::SingleV(r#"two"#.to_string())
+                }))),
+                V::O(Some(Box::new(YAMLObject {
+                    key: "partridges".to_string(),
+                    value: V::L(vec![V::O(Some(Box::new(YAMLObject {
+                        key: "count".to_string(),
+                        value: V::SingleV(r#"1"#.to_string())
+                    }))),])
+                }))),
+            ]),
+        );
 
         //
         //
@@ -448,6 +485,32 @@ partridges:
             .as_bytes(),
         );
 
-        dbg!(parser(&mut content, &mut String::new(), None));
+        //dbg!(parser(&mut content, &mut String::new(), None));
+
+        assert_eq!(
+            parser(&mut content, &mut String::new(), None).unwrap(),
+            V::L(vec![
+                V::O(Some(Box::new(YAMLObject {
+                    key: "xmas-fifth-day".to_string(),
+                    value: V::L(vec![V::O(Some(Box::new(YAMLObject {
+                        key: "french-hens".to_string(),
+                        value: V::L(vec![V::O(Some(Box::new(YAMLObject {
+                            key: "key1".to_string(),
+                            value: V::L(vec![V::O(Some(Box::new(YAMLObject {
+                                key: "turtle-doves".to_string(),
+                                value: V::SingleV(r#"two"#.to_string())
+                            })))])
+                        }))),])
+                    })))])
+                }))),
+                V::O(Some(Box::new(YAMLObject {
+                    key: "partridges".to_string(),
+                    value: V::L(vec![V::O(Some(Box::new(YAMLObject {
+                        key: "count".to_string(),
+                        value: V::SingleV(r#"1"#.to_string())
+                    }))),])
+                }))),
+            ]),
+        );
     }
 }
