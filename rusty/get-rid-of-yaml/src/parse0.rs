@@ -13,7 +13,7 @@ struct YAMLObject {
 enum V {
     O(Option<Box<YAMLObject>>),
     L(Vec<V>),
-    Item(String),
+    Item(String), // - item //:= need to finish this
     SingleV(String),
 }
 
@@ -21,7 +21,7 @@ enum V {
 enum LineStatus {
     Nil,
     OnlyKey(String), // key:
-    Value(V),        // - task
+    Value(V),        // a line is a V (key-value (yamlobject) or Item)
 }
 
 type Offset = usize;
@@ -31,7 +31,7 @@ fn read_until_colon<R>(mut reader: R, buf: &mut Vec<u8>) -> std::io::Result<()>
 where
     R: BufRead,
 {
-    reader.read_until(b':', buf)?; //:= TODO: need clean the unexpect space around ":"
+    reader.read_until(b':', buf)?;
     Ok(())
 }
 
@@ -185,9 +185,14 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
         return Ok(V::O(None));
     }
 
-    Ok(V::SingleV(String::from_utf8(content.to_vec()).map_err(
-        |e| std::io::Error::new(std::io::ErrorKind::InvalidData, e),
-    )?))
+    let content = String::from_utf8(content.to_vec())
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+
+    if content.starts_with("- ") {
+        return Ok(V::Item(content));
+    }
+
+    Ok(V::SingleV(content))
 }
 
 //fn parse_yaml_file(f: File) {}
@@ -236,6 +241,10 @@ mod test {
     #[test]
     fn test_parse_value() {
         assert_eq!(parse_value(&[]).expect("should success"), V::O(None));
+        assert_eq!(
+            parse_value("- aaa".as_bytes()).expect("should success"),
+            V::Item("- aaa".to_string())
+        );
     }
 
     #[test]
