@@ -9,12 +9,41 @@ struct YAMLObject {
     value: V,
 }
 
+impl std::fmt::Display for YAMLObject {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, ":{} {}", self.key, self.value)
+    }
+}
+
 #[derive(PartialEq, Debug)]
 enum V {
     O(Option<Box<YAMLObject>>),
     L(Vec<V>),
-    Item(String), // - item //:= need to finish this
+    Item(String),
     SingleV(String),
+}
+
+//:= TODO: need test
+impl std::fmt::Display for V {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            V::O(o) => match o {
+                Some(oo) => {
+                    write!(f, "{}", oo)
+                }
+                None => Ok(()),
+            },
+            V::L(l) => {
+                write!(f, "(")?;
+                for vv in l {
+                    write!(f, "{}", vv)?;
+                }
+                write!(f, ")")
+            }
+            V::Item(i) => write!(f, "{}", i),
+            V::SingleV(v) => write!(f, "{}", v),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -189,7 +218,7 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
     if content.starts_with("- ") {
-        return Ok(V::Item(content));
+        return Ok(V::Item(content.trim_start_matches("- ").to_string()));
     }
 
     Ok(V::SingleV(content))
@@ -243,7 +272,14 @@ mod test {
         assert_eq!(parse_value(&[]).expect("should success"), V::O(None));
         assert_eq!(
             parse_value("- aaa".as_bytes()).expect("should success"),
-            V::Item("- aaa".to_string())
+            V::Item("aaa".to_string())
+        );
+
+        let (con, pre, _) = trim_space_start_and_end("  - aaa ".as_bytes());
+        assert_eq!(pre, 2);
+        assert_eq!(
+            parse_value(con).expect("should success"),
+            V::Item("aaa".to_string())
         );
     }
 
