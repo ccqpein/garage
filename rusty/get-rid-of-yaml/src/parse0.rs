@@ -11,7 +11,7 @@ struct YAMLObject {
 
 impl std::fmt::Display for YAMLObject {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, ":{} {}", self.key, self.value)
+        write!(f, "(:{} {})", self.key, self.value)
     }
 }
 
@@ -36,7 +36,7 @@ impl std::fmt::Display for V {
             V::L(l) => {
                 write!(f, "(")?;
                 for vv in l {
-                    write!(f, "{}", vv)?;
+                    write!(f, "{} ", vv)?;
                 }
                 write!(f, ")")
             }
@@ -457,6 +457,39 @@ mod test {
                 key: "turtle-doves".to_string(),
                 value: V::SingleV(r#"two"#.to_string())
             }
+        );
+    }
+
+    #[test]
+    fn test_display_for_V() {
+        let v = V::Item(String::from("aaa"));
+        assert_eq!("aaa".to_string(), format!("{}", v));
+
+        let v = V::SingleV(String::from("aaa"));
+        assert_eq!("aaa".to_string(), format!("{}", v));
+
+        let v = V::L(vec![
+            V::Item(String::from("aaa")),
+            V::Item(String::from("bbb")),
+            V::Item(String::from("ccc")),
+        ]);
+        assert_eq!("(aaa bbb ccc )".to_string(), format!("{}", v));
+
+        let v = V::O(Some(box YAMLObject {
+            key: "key".to_string(),
+            value: V::L(vec![
+                V::Item(String::from("aaa")),
+                V::O(Some(Box::new(YAMLObject {
+                    key: "inner_key".to_string(),
+                    value: V::SingleV("3.1415926".to_string()),
+                }))),
+                V::Item(String::from("bbb")),
+                V::Item(String::from("ccc")),
+            ]),
+        }));
+        assert_eq!(
+            "(:key (aaa (:inner_key 3.1415926) bbb ccc ))".to_string(),
+            format!("{}", v)
         );
     }
 
