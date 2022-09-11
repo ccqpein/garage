@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Split},
     rc::Rc,
 };
 
@@ -23,7 +23,6 @@ enum V {
     SingleV(String),
 }
 
-//:= TODO: need test
 impl std::fmt::Display for V {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -69,6 +68,15 @@ fn parse_a_line<L>(mut line: L, buf: &mut Vec<u8>) -> std::io::Result<(LineStatu
 where
     L: BufRead,
 {
+    match parse_comment_line(line) {
+        (None, None) => return Ok((LineStatus::Nil, 0)),
+        (None, Some(_)) => todo!(),
+        (Some(ll), None) => line = ll,
+        (Some(ll), Some(cc)) => {
+            line = ll;
+            //:= TODO: cc
+        }
+    }
     read_until_colon(&mut line, buf)?;
 
     match buf.last() {
@@ -224,6 +232,22 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
     Ok(V::SingleV(content))
 }
 
+/// parse comment line or the line including comment
+fn parse_comment_line<T>(line: T) -> (Option<T>, Option<T>)
+where
+    T: BufRead,
+{
+    let mut sp = line.split(b'#');
+
+    match (sp.next(), sp.next()) {
+        (None, None) => todo!(),
+        (None, Some(_)) => todo!(),
+        (Some(Ok(_)), None) => todo!(),
+        (Some(_), Some(_)) => todo!(),
+    }
+}
+
+//:= NEXT
 //fn parse_yaml_file(f: File) {}
 
 #[cfg(test)]
