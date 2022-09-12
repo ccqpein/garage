@@ -1,5 +1,5 @@
 use std::{
-    io::{BufRead, BufReader, Split},
+    io::{BufRead, BufReader, Cursor, Split},
     rc::Rc,
 };
 
@@ -68,9 +68,12 @@ fn parse_a_line<L>(mut line: L, buf: &mut Vec<u8>) -> std::io::Result<(LineStatu
 where
     L: BufRead,
 {
-    match parse_comment_line(line) {
+    match parse_comment_line(line)? {
         (None, None) => return Ok((LineStatus::Nil, 0)),
-        (None, Some(_)) => todo!(),
+        (None, Some(cc)) => {
+            //:= TODO: cc
+            todo!()
+        }
         (Some(ll), None) => line = ll,
         (Some(ll), Some(cc)) => {
             line = ll;
@@ -233,17 +236,20 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
 }
 
 /// parse comment line or the line including comment
-fn parse_comment_line<T>(line: T) -> (Option<T>, Option<T>)
-where
-    T: BufRead,
-{
+fn parse_comment_line(
+    line: impl BufRead,
+) -> std::io::Result<(Option<Cursor<Vec<u8>>>, Option<Cursor<Vec<u8>>>)> {
     let mut sp = line.split(b'#');
 
     match (sp.next(), sp.next()) {
-        (None, None) => todo!(),
-        (None, Some(_)) => todo!(),
-        (Some(Ok(_)), None) => todo!(),
-        (Some(_), Some(_)) => todo!(),
+        (None, None) => Ok((None, None)),
+        (None, Some(Ok(c))) => Ok((None, Some(Cursor::new(c)))),
+        (Some(Ok(x)), None) => Ok((Some(Cursor::new(x)), None)),
+        (Some(Ok(x)), Some(Ok(c))) => Ok((Some(Cursor::new(x)), Some(Cursor::new(c)))),
+        _ => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "parse comment line has error",
+        )),
     }
 }
 
@@ -252,7 +258,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use std::io::{BufReader, Cursor};
+    use std::io::{BufReader, Result};
 
     use super::*;
 
@@ -614,5 +620,19 @@ partridges:
                 }))),
             ]),
         );
+    }
+
+    #[test]
+    fn test_parse_comment_line() -> Result<()> {
+        let (a, b) = match parse_comment_line("abc # dfg".as_bytes())? {
+            (None, None) => todo!(),
+            (None, Some(_)) => todo!(),
+            (Some(_), None) => todo!(),
+            (Some(a), Some(b)) => (a, b),
+        };
+
+        assert_eq!(a, "abc".as_bytes());
+        assert_eq!(b, " dfg".as_bytes());
+        Ok(())
     }
 }
