@@ -1,5 +1,7 @@
 use std::{
+    fs::File,
     io::{BufRead, BufReader, Cursor, Split},
+    path::Path,
     rc::Rc,
 };
 
@@ -55,7 +57,7 @@ enum LineStatus {
     Nil,
     OnlyKey(String, Option<String>), // key:
     Value(V, Option<String>),        // a line is a V (key-value (yamlobject) or Item)
-    Comment(String), //:= TODO: need find a way make comment line status inside parser()
+    Comment(String),
 }
 
 type Offset = usize;
@@ -204,7 +206,7 @@ where
                     }
                 }
             }
-            (LineStatus::Comment(_), _) => todo!(), //:= TODO
+            (LineStatus::Comment(_), _) => todo!(), //:= TODO: need find a way make comment line status inside parser()
         }
 
         line.clear();
@@ -250,8 +252,7 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
         return Ok(V::O(None));
     }
 
-    let content = String::from_utf8(content.to_vec())
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    let content = string_from_u8(content)?;
 
     if content.starts_with("- ") {
         return Ok(V::Item(content.trim_start_matches("- ").to_string()));
@@ -260,27 +261,13 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
     Ok(V::SingleV(content))
 }
 
-/// parse comment line or the line including comment
-fn parse_comment_line<L>(line: L) -> std::io::Result<(Option<L>, Option<L>)>
-where
-    L: BufRead + From<Vec<u8>>,
-{
-    let mut sp = line.split(b'#');
+fn parse_yaml_file(p: impl AsRef<Path>) -> std::io::Result<V> {
+    let mut f = File::open(p)?;
 
-    match (sp.next(), sp.next()) {
-        (None, None) => Ok((None, None)),
-        (None, Some(Ok(c))) => Ok((None, Some(c.into()))),
-        (Some(Ok(x)), None) => Ok((Some(x.into()), None)),
-        (Some(Ok(x)), Some(Ok(c))) => Ok((Some(x.into()), Some(c.into()))),
-        _ => Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "parse comment line has error",
-        )),
-    }
+    let mut b = BufReader::new(f);
+    let mut line = String::new();
+    parser(&mut b, &mut line, None)
 }
-
-//:= NEXT
-//fn parse_yaml_file(f: File) {}
 
 #[cfg(test)]
 mod test {
@@ -624,18 +611,4 @@ partridges:
             ]),
         );
     }
-
-    // #[test]
-    // fn test_parse_comment_line() -> Result<()> {
-    //     let (a, b) = match parse_comment_line("abc # dfg".as_bytes())? {
-    //         (None, None) => todo!(),
-    //         (None, Some(_)) => todo!(),
-    //         (Some(_), None) => todo!(),
-    //         (Some(a), Some(b)) => (a, b),
-    //     };
-
-    //     assert_eq!(a, "abc".as_bytes());
-    //     assert_eq!(b, " dfg".as_bytes());
-    //     Ok(())
-    // }
 }
