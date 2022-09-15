@@ -6,9 +6,18 @@ use std::{
 };
 
 #[derive(PartialEq, Debug)]
-struct YAMLObject {
+pub struct YAMLObject {
     key: String,
     value: V,
+}
+
+impl YAMLObject {
+    pub fn new(key: &str, value: V) -> Self {
+        Self {
+            key: key.to_string(),
+            value,
+        }
+    }
 }
 
 impl std::fmt::Display for YAMLObject {
@@ -18,11 +27,29 @@ impl std::fmt::Display for YAMLObject {
 }
 
 #[derive(PartialEq, Debug)]
-enum V {
+pub enum V {
     O(Option<Box<YAMLObject>>),
     L(Vec<V>),
     Item(String),
     SingleV(String),
+}
+
+impl V {
+    pub fn new_item(item: &str) -> Self {
+        V::Item(item.to_string())
+    }
+
+    pub fn new_l(ll: Vec<Self>) -> Self {
+        V::L(ll)
+    }
+
+    pub fn new_o(o: YAMLObject) -> Self {
+        V::O(Some(box o))
+    }
+
+    pub fn new_singlev(v: &str) -> Self {
+        V::SingleV(v.to_string())
+    }
 }
 
 impl std::fmt::Display for V {
@@ -261,7 +288,7 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
     Ok(V::SingleV(content))
 }
 
-fn parse_yaml_file(p: impl AsRef<Path>) -> std::io::Result<V> {
+pub fn parse_yaml_file(p: impl AsRef<Path>) -> std::io::Result<V> {
     let mut f = File::open(p)?;
 
     let mut b = BufReader::new(f);
