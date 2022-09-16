@@ -1,8 +1,7 @@
 use std::{
     fs::File,
-    io::{BufRead, BufReader, Cursor, Split},
+    io::{BufRead, BufReader},
     path::Path,
-    rc::Rc,
 };
 
 #[derive(PartialEq, Debug)]
@@ -103,7 +102,7 @@ fn get_special_symbol(line: &[u8], specials: &[u8]) -> Vec<Option<usize>> {
 }
 
 /// parse a line, line in arguments shouldn't has the \n at the endding
-fn parse_a_line(mut line: &[u8]) -> std::io::Result<(LineStatus, Offset)> {
+fn parse_a_line(line: &[u8]) -> std::io::Result<(LineStatus, Offset)> {
     let (colon_loc, sharp_loc) =
         if let [colon_loc, sharp_loc, ..] = get_special_symbol(line, &vec![b':', b'#'])[..] {
             (colon_loc, sharp_loc)
@@ -289,7 +288,7 @@ fn parse_value(mut content: &[u8]) -> std::io::Result<V> {
 }
 
 pub fn parse_yaml_file(p: impl AsRef<Path>) -> std::io::Result<V> {
-    let mut f = File::open(p)?;
+    let f = File::open(p)?;
 
     let mut b = BufReader::new(f);
     let mut line = String::new();
@@ -298,7 +297,7 @@ pub fn parse_yaml_file(p: impl AsRef<Path>) -> std::io::Result<V> {
 
 #[cfg(test)]
 mod test {
-    use std::io::{BufReader, Result};
+    use std::io::BufReader;
 
     use super::*;
 
@@ -508,7 +507,7 @@ mod test {
     }
 
     #[test]
-    fn test_display_for_V() {
+    fn test_display_for_v() {
         let v = V::Item(String::from("aaa"));
         assert_eq!("aaa".to_string(), format!("{}", v));
 
