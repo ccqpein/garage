@@ -49,6 +49,16 @@ impl V {
     pub fn new_singlev(v: &str) -> Self {
         V::SingleV(v.to_string())
     }
+
+    pub fn into_lisp_object(self) -> std::io::Result<Self> {
+        match self {
+            V::O(_) => Ok(self),
+            V::L(_) => Ok(self),
+            V::Item(_) => Ok(self),
+            V::SingleV(vv) if vv == "true" => Ok(V::SingleV("t".to_string())),
+            V::SingleV(_) => Ok(self),
+        }
+    }
 }
 
 impl std::fmt::Display for V {
@@ -330,6 +340,11 @@ mod test {
             parse_value(con).expect("should success"),
             V::Item("aaa".to_string())
         );
+    }
+
+    #[test]
+    fn test_into_lisp_object() {
+        //:= TODO
     }
 
     #[test]
