@@ -344,7 +344,8 @@ mod test {
 
     #[test]
     fn test_into_lisp_object() {
-        //:= TODO
+        let v = V::new_singlev("true");
+        assert_eq!(v.into_lisp_object().unwrap(), V::new_singlev("t"))
     }
 
     #[test]

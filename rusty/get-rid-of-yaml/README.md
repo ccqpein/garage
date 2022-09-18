@@ -10,5 +10,5 @@ this tool used to transfer yaml to lisp's [`plist`](https://www.cs.cmu.edu/Group
 
 ## TODO ##
 
-- [ ] V transfer to lisp type, like "true" to t; 
+- [x] V transfer to lisp type, like "true" to t; 
 - [x] easy way to make V (and YAMLObject) for testing

@@ -6,7 +6,6 @@ use Sentry::app::resume::Resume;
 async fn main() -> std::io::Result<()> {
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
-            //:= need to learn tracing_subscriber
             .with_env_filter(
                 EnvFilter::builder()
                     .with_default_directive(LevelFilter::DEBUG.into())
