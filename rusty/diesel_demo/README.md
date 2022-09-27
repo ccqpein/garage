@@ -5,3 +5,7 @@ the demo project for playing around [diesel](https://diesel.rs/guides/getting-st
 ## TIPS ##
 
 The `schema.rs` changed when the sql files in migrations changed. don't need to change by myself
+
+## Some other same library ##
+
+[sea-orm](https://github.com/SeaQL/sea-orm), looks like this one is async rather than the sync diesel.
