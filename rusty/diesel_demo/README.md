@@ -9,3 +9,5 @@ The `schema.rs` changed when the sql files in migrations changed. don't need to 
 ## Some other same library ##
 
 [sea-orm](https://github.com/SeaQL/sea-orm), looks like this one is async rather than the sync diesel.
+
+More detail [Compare with Diesel](https://www.sea-ql.org/SeaORM/docs/internal-design/diesel/)
