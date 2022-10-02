@@ -1,0 +1,11 @@
+#+STARTUP: content
+#+TODO: NEXT(n) TODO(t) PROCESSING(p) WAITING(w) MAYBE(m) | DONE(d) CANCELLED(c)
+#+ARCHIVE: %s_archive::
+* Ideas
+** Server side big pictures
+server side package should split two parts:
+- parser of grahphql
+- mapping the result to data structs
+** Test
+use other languages lib as the test set to result sets verifier
+

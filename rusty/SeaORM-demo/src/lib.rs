@@ -1,8 +1,9 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
-pub struct NewPost<'a> {
-    pub title: &'a str,
-    pub some_uuid: Uuid,
-    pub body: &'a str,
+#[sea_orm(table_name = "cake")]
+pub struct Model {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub name: String,
 }
