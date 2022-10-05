@@ -12,8 +12,9 @@
   ()
   (:documentation "adam scanner class"))
 
-(defgeneric clear (scanner)
-  (:documentation "clear all the content of this scanner"))
+(defgeneric clear (obj)
+  (:documentation "clear all the content of this scanner")
+  (:method-class scanner))
 
 (defclass block-scanner (scanner)
   ()
