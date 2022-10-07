@@ -25,7 +25,7 @@
   (:documentation "scanner for {} block"))
 
 (defmethod print-object ((bs block-scanner) stream)
-  (format stream "{block scanner~%tokens: ~{~a~^, ~}}" (tokens bs)))
+  (format stream "{block: tokens: ~{~a~^, ~}}" (tokens bs)))
 
 (defmethod scan ((s block-scanner) stream)
   (do ((c (read-char stream nil nil) (read-char stream nil nil))
@@ -34,20 +34,28 @@
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s) (append (tokens s)
 									(list (concatenate 'string (reverse word-token)))))))
-	(case c
+	(ccase c
 	  (#\{ (setf (tokens s)
 				 (append (tokens s)
 						 (list (let ((sub-block-scanner (make-instance 'block-scanner)))
 								 (scan sub-block-scanner stream)
 								 sub-block-scanner)))))
-	  (#\( ) ;;:= todo
-	  (#\  (if (/= 0 (length word-token))
-			   (setf (tokens s) (append (tokens s)
-										(list (concatenate 'string (reverse word-token))))
-					 word-token nil)
-			   ))
+	  (#\(  ) ;;:= todo
+	  ((#\  #\, #\newline #\#) ;; ignore tokens 
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s) (append (tokens s)
+									(list (concatenate 'string (reverse word-token))))
+				 word-token nil)
+		   ))
 	  (otherwise (push c word-token))
 	  )))
+
+(defclass parenthesis-scanner (scanner)
+  ((tokens
+	:initform nil
+	:accessor tokens))
+  (:documentation "scanner of () block")
+  )
 
 (defmethod clear ((s block-scanner))
   ;;:= todo
