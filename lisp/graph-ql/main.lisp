@@ -40,7 +40,7 @@
 						 (list (let ((sub-block-scanner (make-instance 'block-scanner)))
 								 (scan sub-block-scanner stream)
 								 sub-block-scanner)))))
-	  (#\(  ) ;;:= todo
+	  (#\(  ) ;;:= todo parenthesis-scanner
 	  ((#\  #\, #\newline #\#) ;; ignore tokens 
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s) (append (tokens s)
@@ -55,6 +55,25 @@
 	:initform nil
 	:accessor tokens))
   (:documentation "scanner of () block")
+  )
+
+(defmethod scan ((s parenthesis-scanner) stream)
+  (do ((c (read-char stream nil nil) (read-char stream nil nil))
+	   (word-token nil))
+	  ((or (not c) (char= c #\)))
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s) (append (tokens s)
+									(list (concatenate 'string (reverse word-token)))))))
+	(ccase c
+	  (#\:
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s) (append (tokens s)
+									(list (concatenate 'string (reverse word-token))))
+				 word-token nil)
+		   ))
+	  (otherwise (push c word-token))
+	  )
+	)
   )
 
 (defmethod clear ((s block-scanner))
