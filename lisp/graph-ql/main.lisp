@@ -79,12 +79,11 @@
 		   (setf (tokens s) (append (tokens s)
 									(list (concatenate 'string (reverse word-token)))))))
 	(case c
-	  (#\:
+	  ((#\: #\ )
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s) (append (tokens s)
 									(list (concatenate 'string (reverse word-token))))
-				 word-token nil)
-		   ))
+				 word-token nil)))
 	  (otherwise (push c word-token))
 	  )
 	)
