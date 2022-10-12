@@ -18,3 +18,17 @@
   (scan bs ss)
   (format t "~a" (tokens bs))
   )
+
+
+(defvar *case1* "{
+  human(id: \"1000\") {
+    name
+    height(unit: FOOT)
+  }
+}")
+
+(let ((bs (make-instance 'block-scanner))
+	  (ss (make-string-input-stream *case1*)))
+  (scan bs ss)
+  (format t "~a" (tokens bs))
+  )
