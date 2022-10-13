@@ -32,3 +32,16 @@
   (scan bs ss)
   (format t "~a" (tokens bs))
   )
+
+
+(defvar *case2* "{
+ leftComparison: hero(episode: EMPIRE) {
+    ...comparisonFields
+  }
+}")
+
+(let ((bs (make-instance 'block-scanner))
+	  (ss (make-string-input-stream *case2*)))
+  (scan bs ss)
+  (format t "~a" (tokens bs))
+  )

@@ -58,13 +58,13 @@
 				 word-token
 				 nil)
 		   ))
-	  (#\: ;; : is special
+	  ((#\. #\:) ;; : is special
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s) (append (tokens s)
 									(list (concatenate 'string (reverse word-token))
-										  #\:))
+										  c))
 				 word-token nil)
-		   (setf (tokens s) (append (tokens s) '(#\:)))))
+		   (setf (tokens s) (append (tokens s) (list c)))))
 	  (otherwise (push c word-token))
 	  )))
 
