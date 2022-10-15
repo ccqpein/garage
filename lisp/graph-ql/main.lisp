@@ -103,8 +103,9 @@
 	)
   )
 
-(defmethod clear ((s block-scanner))
-  ;;:= todo
+(defclass plain-scanner (scanner)
+  ((tokens
+	:initform nil
+	:accessor tokens))
+  (:documentation "scanner of plain text (like fragment)")
   )
-
-
