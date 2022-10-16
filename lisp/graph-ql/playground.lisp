@@ -45,3 +45,33 @@
   (scan bs ss)
   (format t "~a" (tokens bs))
   )
+
+(defvar *case3* "fragment comparisonFields on Character {
+  name
+  appearsIn
+  friends {
+    name
+  }
+}")
+
+(let ((bs (make-instance 'plain-scanner))
+	  (ss (make-string-input-stream *case3*)))
+  (scan bs ss)
+  (format t "~a" (tokens bs))
+  )
+
+
+(defvar *case4* (str:concat "{
+  leftComparison: hero(episode: EMPIRE) {
+    ...comparisonFields
+  }
+  rightComparison: hero(episode: JEDI) {
+    ...comparisonFields
+  }
+}" *case3*))
+
+(let ((bs (make-instance 'plain-scanner))
+	  (ss (make-string-input-stream *case4*)))
+  (scan bs ss)
+  (format t "~a" (tokens bs))
+  )

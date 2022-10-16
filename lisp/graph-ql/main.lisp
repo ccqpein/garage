@@ -109,3 +109,39 @@
 	:accessor tokens))
   (:documentation "scanner of plain text (like fragment)")
   )
+
+
+(defmethod scan ((s plain-scanner) stream)
+  (do ((c (read-char stream nil nil) (read-char stream nil nil))
+	   (word-token nil))
+	  ((not c)
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s) (append (tokens s)
+									(list (concatenate 'string (reverse word-token)))))))
+	(case c
+	  (#\{ (setf (tokens s)
+				 (append (tokens s)
+						 (list (let ((sub-block-scanner (make-instance 'block-scanner)))
+								 (scan sub-block-scanner stream)
+								 sub-block-scanner)))))
+
+	  (#\( (setf (tokens s)
+				 (append (tokens s)
+						 (list
+						  (concatenate 'string (reverse word-token))
+						  (let ((sub-block-scanner (make-instance 'parenthesis-scanner)))
+							(scan sub-block-scanner stream)
+							sub-block-scanner)))
+				 word-token
+				 nil))
+	  
+	  ((#\  #\, #\newline #\#) ;; ignore tokens 
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s)
+				 (append (tokens s)
+						 (list (concatenate 'string (reverse word-token))))
+				 word-token
+				 nil)
+		   ))
+
+	  (otherwise (push c word-token)))))
