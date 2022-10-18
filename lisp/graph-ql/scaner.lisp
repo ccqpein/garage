@@ -4,16 +4,16 @@
   
 ;;   )
 
-(deftype status ()
-  '(member :in-the-comment
-	))
+;; (deftype status ()
+;;   '(member :in-the-comment
+;; 	))
 
-(defclass scanner ()
-  ()
-  (:documentation "adam scanner class"))
+;; (defclass scanner ()
+;;   ()
+;;   (:documentation "adam scanner class"))
 
-(defgeneric clear (obj)
-  (:documentation "clear all the content of this scanner"))
+;; (defgeneric clear (obj)
+;;   (:documentation "clear all the content of this scanner"))
 
 (defclass block-scanner (scanner)
   (
@@ -145,3 +145,6 @@
 		   ))
 
 	  (otherwise (push c word-token)))))
+
+(defmethod print-object ((ps plain-scanner) stream)
+  (format stream "{plain block: tokens: ~{~a~^, ~}}" (tokens ps)))

@@ -103,3 +103,19 @@ fragment comparisonFields on Character {
   (scan bs ss)
   (format t "~a" (tokens bs))
   )
+
+
+(defvar *case6* "query HeroNameAndFriends($episode: Episode) {
+  hero(episode: $episode) {
+    name
+    friends {
+      name
+    }
+  }
+}")
+
+(let ((bs (make-instance 'plain-scanner))
+	  (ss (make-string-input-stream *case6*)))
+  (scan bs ss)
+  (format t "~a" (tokens bs))
+  )
