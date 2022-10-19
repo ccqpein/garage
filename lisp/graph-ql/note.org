@@ -6,6 +6,20 @@
 server side package should split two parts:
 - parser of grahphql
 - mapping the result to data structs
+- maybe can use the ~:after~ method for other people add behavior of query
+
+workflow:
+1. receive the schema
+2. resolve the schema (dont need to worry about type so far)
+3. find the struct those match the objects inside schema
+4. return the result
+
+** General
+need give a schema generator function to the lisp struct. Also generate the resolver of this struct. 
 ** Test
 use other languages lib as the test set to result sets verifier
+
+* Refs
+[[https://hasura.io/learn/graphql/intro-graphql/graphql-server/][server's work]]
+[[https://community.monday.com/t/curl-example-of-a-mutation-with-variables/1589/3][that's the meaning of separate in variables usage]]
 
