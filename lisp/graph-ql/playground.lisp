@@ -119,3 +119,10 @@ fragment comparisonFields on Character {
   (scan bs ss)
   (format t "~a" (tokens bs))
   )
+
+(defstruct hero
+  name
+  ago
+  super-power)
+
+
