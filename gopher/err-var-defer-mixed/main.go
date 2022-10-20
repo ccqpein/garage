@@ -27,7 +27,21 @@ func demo1() (err error) {
 	return err1
 }
 
+func demo2() (err error) {
+	defer func() {
+		fmt.Printf("in defer %+v\n", err)
+	}()
+
+	aErr := func() error {
+		err := errors.New("in a")
+		return err
+	}()
+
+	return aErr
+}
+
 func main() {
-	fmt.Printf("in main %+v\n", demo0())
-	fmt.Printf("in main %+v\n", demo1())
+	//fmt.Printf("in main %+v\n", demo0())
+	//fmt.Printf("in main %+v\n", demo1())
+	fmt.Printf("in main %+v\n", demo2())
 }
