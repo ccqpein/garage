@@ -13,7 +13,9 @@
 
 (defmacro generate-query-schema (s)
   "generate the query schema for structure"
-  
+  `(progn
+	 (print ,s)
+	 (check-if-symbol-is-struct ,s))
   )
 
 (defmacro generate-mutation-schema ()
