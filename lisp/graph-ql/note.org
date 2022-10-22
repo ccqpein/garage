@@ -16,6 +16,7 @@ workflow:
 
 ** General
 need give a schema generator function to the lisp struct. Also generate the resolver of this struct. 
+
 ** Test
 use other languages lib as the test set to result sets verifier
 
