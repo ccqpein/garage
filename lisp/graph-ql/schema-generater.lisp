@@ -11,12 +11,36 @@
   (:documentation "the root mutation schema class")
   )
 
-(defmacro generate-query-schema (s)
-  "generate the query schema for structure"
-  `(progn
-	 (check-if-symbol-is-struct ,s)
+;; (defmacro generate-query-schema (s)
+;;   "generate the query schema for structure"
+;;   `(progn
+;; 	 (check-if-symbol-is-struct ,s)
 	 
-	 )
+;; 	 )
+;;   )
+
+(defmacro defstruct-with-query-schema (name-and-options &rest slot-descriptions)
+  ;;(format t "~a ~{~a~}" name-and-options slot-descriptions)
+  (let (name fields)
+	(if (consp name-and-options)
+		(setf name (car name-and-options))
+		(setf name name-and-options))
+
+	(loop for f in slot-descriptions
+		  if (consp f)
+			do (push (car f) fields)
+		  else
+			do (push f fields))
+	
+	(format t "~a ~{~a,~}" name fields)
+
+	`(progn
+	   (defstruct ,name-and-options ,@slot-descriptions)
+
+	   ;;:= todo: make schema here
+	   )
+	)
+  
   )
 
 (defmacro generate-mutation-schema ()
