@@ -13,13 +13,6 @@
   (:documentation "the root mutation schema class")
   )
 
-;; (defmacro generate-query-schema (s)
-;;   "generate the query schema for structure"
-;;   `(progn
-;; 	 (check-if-symbol-is-struct ,s)
-	 
-;; 	 )
-;;   )
 
 (defmacro defstruct-with-query-schema (name-and-options &rest slot-descriptions)
   "defstruct and generate the query schema"
@@ -63,14 +56,16 @@
 		;; 					:fields ,(reverse fields))
 		;; 	 ,(format nil "auto-generated query-schema for ~a" name))
 
-		(defmethod query ((s ,schema-class-name) &rest keys &key ,@fields &allow-other-keys)
-		  ;; fetch the data, set fetcher with query :before method
-		  ;; filter the data
-		  ;;(apply (filter s) data keys)
-		  )
-		))
-	)
-  
+		(defmethod query ((s ,schema-class-name)
+						  &rest keys
+						  &key ,@fields &allow-other-keys)
+		  ;; fetch the data, set fetcher with query
+		  ;; want cache? use :before query method
+		  (let* ((data (apply (data-fetcher s) keys))
+				 ;; filter the data
+				 (results (apply (filter s) data keys)))
+			results)
+		  ))))  
   )
 
 (defmacro generate-mutation-schema ()
