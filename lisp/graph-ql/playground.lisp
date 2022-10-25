@@ -141,5 +141,8 @@ fragment comparisonFields on Character {
 									  :name (hero-name d)
 									  :ago (hero-ago d)
 									  :super-power
-									  (format nil "what's your super power again, ~a? \"~a\"" (hero-name d) (hero-super-power d)))))))
+									  (format nil
+											  "what's your super power again, ~a? \"~a\""
+											  (hero-name d)
+											  (hero-super-power d)))))))
   (format t "~a~%" (query instance)))

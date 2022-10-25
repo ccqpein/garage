@@ -57,7 +57,13 @@
 				 ;; filter the data
 				 (results (apply (filter s) data keys)))
 			results)
-		  ))))  
+		  )
+
+		(defmethod resolver ((s ,schema-class-name))
+		  "parse the scaner block of received schema to data-filter"
+		  )
+		
+		)))  
   )
 
 (defmacro generate-mutation-schema ()
