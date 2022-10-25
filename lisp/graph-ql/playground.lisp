@@ -1,4 +1,6 @@
-(load "./main.lisp")
+(load "./schema-generater.lisp")
+(load "./scaner.lisp")
+
 
 (let ((bs (make-instance 'block-scanner))
 	  (ss (make-string-input-stream "{hero {name}}")))
@@ -125,4 +127,19 @@ fragment comparisonFields on Character {
   ago
   super-power)
 
+(defstruct-with-query-schema hero
+  name
+  ago
+  (super-power "rich"))
 
+(let ((instance (make-instance
+				 'hero-query-schema
+				 :data-fetcher
+				 (lambda () (make-hero :name "batman"
+									   :ago 30))
+				 :filter (lambda (d) (make-hero
+									  :name (hero-name d)
+									  :ago (hero-ago d)
+									  :super-power
+									  (format nil "what's your super power again, ~a? \"~a\"" (hero-name d) (hero-super-power d)))))))
+  (format t "~a~%" (query instance)))
