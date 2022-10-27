@@ -1,3 +1,4 @@
+(ql:quickload "str")
 (load "./schema-generater.lisp")
 (load "./scaner.lisp")
 

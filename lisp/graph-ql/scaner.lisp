@@ -1,3 +1,9 @@
+(defclass scanner () ())
+
+#|
+block-scanner class below
+|#
+
 (defclass block-scanner (scanner)
   (
    (tokens
@@ -50,6 +56,15 @@
 		   (setf (tokens s) (append (tokens s) (list c)))))
 	  (otherwise (push c word-token))
 	  )))
+
+(defmethod schema-values ((s block-scanner))
+  "scanner pre-processed tokens return the result for schema resolver"
+  ;; todo
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass parenthesis-scanner (scanner)
   ((tokens
