@@ -15,6 +15,11 @@ func (a *A) return_inner() *inner {
 	return &a.i
 }
 
+func (a A) give_v() {
+	a.i.v = 10
+	return
+}
+
 func main() {
 	a := A{i: inner{v: 0}}
 
@@ -23,4 +28,7 @@ func main() {
 	fmt.Printf("%+v\n", &a.i)
 	fmt.Printf("%p\n", &a.i)
 	fmt.Printf("%p\n", a.return_inner())
+
+	a.give_v()
+	fmt.Printf("%+v\n", &a.i)
 }
