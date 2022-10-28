@@ -59,8 +59,20 @@ block-scanner class below
 
 (defmethod schema-values ((s block-scanner))
   "scanner pre-processed tokens return the result for schema resolver"
-  ;; todo
-  )
+  (do* ((tokens (tokens s) (cdr tokens))
+		(this-token (car tokens) (car tokens))
+		cache
+		result)
+	   ((not tokens) (push cache result) (reverse result))
+	
+	(ctypecase this-token
+	  (string
+	   (push (reverse cache) result)
+	   (serf cache nil)
+	   (push this-token cache)
+	   )
+	  (scanner (push this-token cache)))
+	))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;

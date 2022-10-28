@@ -33,7 +33,8 @@
 (let ((bs (make-instance 'block-scanner))
 	  (ss (make-string-input-stream *case1*)))
   (scan bs ss)
-  (format t "~a" (tokens bs))
+  (format t "~a~%" (tokens bs))
+  (format t "~a~%" (schema-values bs))
   )
 
 
