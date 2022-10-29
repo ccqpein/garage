@@ -28,12 +28,17 @@
     name
     height(unit: FOOT)
   }
+  human2(id: \"1000\",              hhhhh : fff) {
+    name
+    height(unit: FOOT)
+  }
 }")
 
 (let ((bs (make-instance 'block-scanner))
 	  (ss (make-string-input-stream *case1*)))
+  (read ss) ;; clean the first {
   (scan bs ss)
-  (format t "~a~%" (tokens bs))
+  (format t "~{~a~%~}" (tokens bs))
   (format t "~a~%" (schema-values bs))
   )
 

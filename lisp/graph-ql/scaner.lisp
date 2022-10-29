@@ -57,18 +57,21 @@ block-scanner class below
 	  (otherwise (push c word-token))
 	  )))
 
+;; return list of list of each fields of block
 (defmethod schema-values ((s block-scanner))
   "scanner pre-processed tokens return the result for schema resolver"
   (do* ((tokens (tokens s) (cdr tokens))
 		(this-token (car tokens) (car tokens))
 		cache
 		result)
-	   ((not tokens) (push cache result) (reverse result))
+	   ((not tokens)
+		(if cache (push (reverse cache) result))
+		(reverse result))
 	
 	(ctypecase this-token
 	  (string
-	   (push (reverse cache) result)
-	   (serf cache nil)
+	   (if cache (push (reverse cache) result))
+	   (setf cache nil)
 	   (push this-token cache)
 	   )
 	  (scanner (push this-token cache)))
@@ -108,10 +111,41 @@ block-scanner class below
 										  #\:))
 				 word-token nil)
 		   (setf (tokens s) (append (tokens s) '(#\:)))))
+	  (#\,
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s) (append (tokens s)
+									(list (concatenate 'string (reverse word-token))
+										  #\,))
+				 word-token nil)
+		   (setf (tokens s) (append (tokens s) '(#\,)))))
 	  (otherwise (push c word-token))
 	  )
 	)
   )
+
+
+(defmethod schema-values ((s parenthesis-scanner))
+  "scanner pre-processed tokens return the result for schema resolver"
+  (do* ((tokens (tokens s) (cdr tokens))
+		(this-token (car tokens) (car tokens))
+		cache
+		result)
+	   ((not tokens)
+		(if cache (push (reverse cache) result))
+		(reverse result))
+	
+	(ctypecase this-token
+	  (string
+	   (if cache (push (reverse cache) result))
+	   (setf cache nil)
+	   (push this-token cache)
+	   )
+	  (scanner (push this-token cache)))
+	))
+  
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defclass plain-scanner (scanner)
   ((tokens
