@@ -40,6 +40,7 @@
   (scan bs ss)
   (format t "~{~a~%~}" (tokens bs))
   (format t "~a~%" (schema-values bs))
+  (format t "~a~%" (schema-values (nth 4 (tokens bs))))
   )
 
 

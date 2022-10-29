@@ -135,12 +135,20 @@ block-scanner class below
 		(reverse result))
 	
 	(ctypecase this-token
-	  (string
-	   (if cache (push (reverse cache) result))
-	   (setf cache nil)
+	  ((or scanner string) 
 	   (push this-token cache)
 	   )
-	  (scanner (push this-token cache)))
+	  ;; (string 
+	  ;;  (push this-token cache)
+	  ;;  )
+	  (STANDARD-CHAR
+	   (ccase this-token
+		 (#\:
+		  ;; pass
+		  )
+		 (#\,
+		  (if cache (push (reverse cache) result))
+		  (setf cache nil)))))
 	))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;
