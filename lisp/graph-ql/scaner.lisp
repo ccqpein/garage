@@ -63,18 +63,29 @@ block-scanner class below
   (do* ((tokens (tokens s) (cdr tokens))
 		(this-token (car tokens) (car tokens))
 		cache
-		result)
+		result
+		last-colon)
 	   ((not tokens)
 		(if cache (push (reverse cache) result))
 		(reverse result))
 	
 	(ctypecase this-token
 	  (string
-	   (if cache (push (reverse cache) result))
-	   (setf cache nil)
+	   (if (not last-colon)
+		   (if cache
+			   (progn (push (reverse cache) result)
+					  (setf cache nil)))
+		   (setf last-colon nil))
 	   (push this-token cache)
 	   )
-	  (scanner (push this-token cache)))
+	  (scanner (push this-token cache))
+	  (STANDARD-CHAR
+	   (ccase this-token
+		 (#\:
+		  (push #\: cache)
+		  (setf last-colon t) ;; colon make next token escaped
+		  )
+		 )))
 	))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -138,9 +149,6 @@ block-scanner class below
 	  ((or scanner string) 
 	   (push this-token cache)
 	   )
-	  ;; (string 
-	  ;;  (push this-token cache)
-	  ;;  )
 	  (STANDARD-CHAR
 	   (ccase this-token
 		 (#\:
@@ -199,3 +207,7 @@ block-scanner class below
 
 (defmethod print-object ((ps plain-scanner) stream)
   (format stream "{plain block: tokens: ~{~a~^, ~}}" (tokens ps)))
+
+(defmethod schema-values ((s plain-scanner))
+  
+  )

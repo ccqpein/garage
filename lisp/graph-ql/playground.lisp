@@ -1,4 +1,4 @@
-(ql:quickload "str")
+(ql:quickload '("str" "closer-mop"))
 (load "./schema-generater.lisp")
 (load "./scaner.lisp")
 
@@ -38,6 +38,7 @@
 	  (ss (make-string-input-stream *case1*)))
   (read ss) ;; clean the first {
   (scan bs ss)
+  (format t "~%----------------------------------~%")
   (format t "~{~a~%~}" (tokens bs))
   (format t "~a~%" (schema-values bs))
   (format t "~a~%" (schema-values (nth 4 (tokens bs))))
@@ -111,8 +112,14 @@ fragment comparisonFields on Character {
 (let ((bs (make-instance 'plain-scanner))
 	  (ss (make-string-input-stream *case5*)))
   (scan bs ss)
-  (format t "~a" (tokens bs))
-  )
+  (format t "~%----------------------------------~%")
+  (format t "~a~%" (tokens bs))
+  (format t "~%----------------------------------~%")
+  (format t "~{~a~%~}" (mapcar #'schema-values
+							(remove-if-not (lambda (c)
+											 (c2mop:subclassp (class-of c) 'scanner)
+											 )
+										   (tokens bs)))))
 
 
 (defvar *case6* "query HeroNameAndFriends($episode: Episode) {
