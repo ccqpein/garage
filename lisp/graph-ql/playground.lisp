@@ -161,3 +161,5 @@ fragment comparisonFields on Character {
 											  (hero-name d)
 											  (hero-super-power d)))))))
   (format t "~a~%" (query instance)))
+
+
