@@ -163,3 +163,48 @@ fragment comparisonFields on Character {
   (format t "~a~%" (query instance)))
 
 
+;;;;;;;;; workflow
+
+(defstruct hero
+  name
+  ago
+  (super-power "rich"))
+
+
+(defclass hero-query-schema (query-schema)
+  (
+   (default-data-fetcher
+	:initarg :default-data-fetcher
+	:accessor default-data-fetcher
+	:documentation "function for fetching the data")
+
+   (default-filter
+	:initarg :default-filter
+	:accessor default-filter
+	:documentation "function for filtering data after fetched")
+   )
+  )
+
+(defmethod schema-name ((s hero-query-schema))
+  "hero"
+  )
+
+(defmethod prepare ((s hero-query-schema) sentence)
+  (if (string/= (schema-name s) (car fields))
+	  (error 'resolver-wrong-schema :suppose-name (schema-name s)
+									:actually-name (car sentence)))
+
+  (let (arguments fields)
+	(if (c2mop:subclassp (nth 1 sentence) 'parenthesis-scanner)
+		(setf arguments (schema-values (cadr sentence)))
+		)
+
+	(if (not arguments)
+		(setf fields (schema-values (cadr sentence)))
+		(setf fields (schema-values (caddr sentence))))))
+
+(defstruct sentence
+  name
+  arguments ;; parenthesis schema values
+  sub-sentences ;; sub block sentence
+  )

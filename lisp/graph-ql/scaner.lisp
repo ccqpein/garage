@@ -209,5 +209,15 @@ block-scanner class below
   (format stream "{plain block: tokens: ~{~a~^, ~}}" (tokens ps)))
 
 (defmethod schema-values ((s plain-scanner))
-  
+  ;;:= todo
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
+(defstruct sentence
+  name
+  arguments ;; parenthesis schema values
+  sub-sentences ;; sub block sentence
   )
