@@ -19,7 +19,8 @@
 (let ((bs (make-instance 'block-scanner))
 	  (ss (make-string-input-stream *case0*)))
   (scan bs ss)
-  (format t "~a" (tokens bs))
+  ;;(format t "~a~%" (tokens bs))
+  (format t "~a~%" (schema-values (cadr (tokens (car (tokens bs))))))
   )
 
 
@@ -40,6 +41,7 @@
   (scan bs ss)
   (format t "~%----------------------------------~%")
   (format t "~{~a~%~}" (tokens bs))
+  (format t "~a" (tokens bs))
   (format t "~a~%" (schema-values bs))
   (format t "~a~%" (schema-values (nth 4 (tokens bs))))
   )
@@ -208,3 +210,13 @@ fragment comparisonFields on Character {
   arguments ;; parenthesis schema values
   sub-sentences ;; sub block sentence
   )
+
+(defvar *case7* "(id:   \"1000\",              hhhhh : fff)")
+
+(let ((s (make-instance 'parenthesis-scanner))
+	  (ss (make-string-input-stream *case7*)))
+  (print ss)
+  (read ss)
+  (scan s ss)
+  (format t "token: ~a~%" (tokens s))
+  (format t "~a~%" (schema-values s)))

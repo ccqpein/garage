@@ -1,3 +1,5 @@
+(ql:quickload "closer-mop")
+
 (defclass scanner () ())
 
 #|
@@ -58,34 +60,61 @@ block-scanner class below
 	  )))
 
 ;; return list of list of each fields of block
+;; (defmethod schema-values ((s block-scanner))
+;;   "scanner pre-processed tokens return the result for schema resolver"
+;;   (do* ((tokens (tokens s) (cdr tokens))
+;; 		(this-token (car tokens) (car tokens))
+;; 		cache
+;; 		result
+;; 		last-colon)
+;; 	   ((not tokens)
+;; 		(if cache (push (reverse cache) result))
+;; 		(reverse result))
+	
+;; 	(ctypecase this-token
+;; 	  (string
+;; 	   (if (not last-colon)
+;; 		   (if cache
+;; 			   (progn (push (reverse cache) result)
+;; 					  (setf cache nil)))
+;; 		   (setf last-colon nil))
+;; 	   (push this-token cache)
+;; 	   )
+;; 	  (scanner (push this-token cache))
+;; 	  (STANDARD-CHAR
+;; 	   (ccase this-token
+;; 		 (#\:
+;; 		  (push #\: cache)
+;; 		  (setf last-colon t) ;; colon make next token escaped
+;; 		  )
+;; 		 )))
+;; 	))
 (defmethod schema-values ((s block-scanner))
   "scanner pre-processed tokens return the result for schema resolver"
   (do* ((tokens (tokens s) (cdr tokens))
 		(this-token (car tokens) (car tokens))
-		cache
+		cache-sentence
 		result
-		last-colon)
+		last-colon
+		)
+	   
 	   ((not tokens)
-		(if cache (push (reverse cache) result))
+		(if cache-sentence (push cache-sentence result))
 		(reverse result))
-	
+
 	(ctypecase this-token
 	  (string
 	   (if (not last-colon)
-		   (if cache
-			   (progn (push (reverse cache) result)
-					  (setf cache nil)))
-		   (setf last-colon nil))
-	   (push this-token cache)
-	   )
-	  (scanner (push this-token cache))
-	  (STANDARD-CHAR
-	   (ccase this-token
-		 (#\:
-		  (push #\: cache)
-		  (setf last-colon t) ;; colon make next token escaped
-		  )
-		 )))
+		   (if cache-sentence
+			   (progn (push cache-sentence result)
+					  (setf cache-sentence (make-instance 'struct-sentence :name this-token)))
+			   (setf cache-sentence (make-instance 'struct-sentence :name this-token)))
+		   ))
+	  (scanner
+	   (if (closer-mop:subclassp this-token 'parenthesis-scanner)
+		   (setf (arguments cache-sentence) (schema-values this-token))
+		   (setf (sub-sentences cache-sentence) (schema-values this-token))))
+	  )	
 	))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -137,27 +166,33 @@ block-scanner class below
 
 (defmethod schema-values ((s parenthesis-scanner))
   "scanner pre-processed tokens return the result for schema resolver"
-  (do* ((tokens (tokens s) (cdr tokens))
-		(this-token (car tokens) (car tokens))
-		cache
-		result)
+  (do* ((tokens (tokens s))
+	   (this-token (car tokens) (car tokens))
+	   cache-sentence
+	   result)
 	   ((not tokens)
-		(if cache (push (reverse cache) result))
+		(if cache-sentence (push cache-sentence result))
 		(reverse result))
-	
+	;;(format t "~a~%" tokens)
+	;;(format t "~a~%" this-token)
 	(ctypecase this-token
-	  ((or scanner string) 
-	   (push this-token cache)
-	   )
+	  (string
+	   (if (not cache-sentence)
+		   (setf cache-sentence (make-instance 'arguments-sentence :key this-token))
+		   (progn (push cache-sentence result)
+				  (setf cache-sentence (make-instance 'arguments-sentence :key this-token))))
+	   (setf tokens (cdr tokens)))
 	  (STANDARD-CHAR
 	   (ccase this-token
 		 (#\:
-		  ;; pass
+		  (setf (val cache-sentence) (cadr tokens)
+				tokens (cdr tokens))
 		  )
 		 (#\,
-		  (if cache (push (reverse cache) result))
-		  (setf cache nil)))))
-	))
+		  (push cache-sentence result)
+		  (setf cache-sentence nil)))
+	   (setf tokens (cdr tokens)))))
+  )
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -216,8 +251,29 @@ block-scanner class below
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(defstruct sentence
-  name
-  arguments ;; parenthesis schema values
-  sub-sentences ;; sub block sentence
+(defclass sentence ()
+  ())
+
+(defclass struct-sentence (sentence)
+  ((name
+	:initarg :name
+	:accessor name)
+   (arguments ;; parenthesis schema values
+	:initarg :arguments
+	:accessor arguments) 
+   (sub-sentences ;; sub block sentence
+	:initarg :sub-sentences
+	:accessor sub-sentences))
+  ) 
+  
+(defclass arguments-sentence (sentence)
+  ((key
+	:initarg :key
+	:accessor key)
+   (val
+	:initarg :val
+	:accessor val))
   )
+
+(defmethod print-object ((as arguments-sentence) stream)
+  (format stream "{key: ~a, val: ~a}" (key as) (val as)))
