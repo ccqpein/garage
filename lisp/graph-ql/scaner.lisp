@@ -59,36 +59,6 @@ block-scanner class below
 	  (otherwise (push c word-token))
 	  )))
 
-;; return list of list of each fields of block
-;; (defmethod schema-values ((s block-scanner))
-;;   "scanner pre-processed tokens return the result for schema resolver"
-;;   (do* ((tokens (tokens s) (cdr tokens))
-;; 		(this-token (car tokens) (car tokens))
-;; 		cache
-;; 		result
-;; 		last-colon)
-;; 	   ((not tokens)
-;; 		(if cache (push (reverse cache) result))
-;; 		(reverse result))
-	
-;; 	(ctypecase this-token
-;; 	  (string
-;; 	   (if (not last-colon)
-;; 		   (if cache
-;; 			   (progn (push (reverse cache) result)
-;; 					  (setf cache nil)))
-;; 		   (setf last-colon nil))
-;; 	   (push this-token cache)
-;; 	   )
-;; 	  (scanner (push this-token cache))
-;; 	  (STANDARD-CHAR
-;; 	   (ccase this-token
-;; 		 (#\:
-;; 		  (push #\: cache)
-;; 		  (setf last-colon t) ;; colon make next token escaped
-;; 		  )
-;; 		 )))
-;; 	))
 (defmethod schema-values ((s block-scanner))
   "scanner pre-processed tokens return the result for schema resolver"
   (do* ((tokens (tokens s) (cdr tokens))
@@ -102,6 +72,7 @@ block-scanner class below
 		(if cache-sentence (push cache-sentence result))
 		(reverse result))
 
+	;;(format t "~a~%" (class-of this-token))
 	(ctypecase this-token
 	  (string
 	   (if (not last-colon)
@@ -111,7 +82,7 @@ block-scanner class below
 			   (setf cache-sentence (make-instance 'struct-sentence :name this-token)))
 		   ))
 	  (scanner
-	   (if (closer-mop:subclassp this-token 'parenthesis-scanner)
+	   (if (c2mop:subclassp (class-of this-token) 'parenthesis-scanner)
 		   (setf (arguments cache-sentence) (schema-values this-token))
 		   (setf (sub-sentences cache-sentence) (schema-values this-token))))
 	  )	
@@ -260,11 +231,16 @@ block-scanner class below
 	:accessor name)
    (arguments ;; parenthesis schema values
 	:initarg :arguments
+	:initform nil
 	:accessor arguments) 
    (sub-sentences ;; sub block sentence
 	:initarg :sub-sentences
+	:initform nil
 	:accessor sub-sentences))
-  ) 
+  )
+
+(defmethod print-object ((ss struct-sentence) stream)
+  (format stream "{name: ~a, arguments: ~a, sub-sentences: ~a}" (name ss) (arguments ss) (sub-sentences ss)))
   
 (defclass arguments-sentence (sentence)
   ((key

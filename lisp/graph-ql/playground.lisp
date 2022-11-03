@@ -41,9 +41,9 @@
   (scan bs ss)
   (format t "~%----------------------------------~%")
   (format t "~{~a~%~}" (tokens bs))
-  (format t "~a" (tokens bs))
-  (format t "~a~%" (schema-values bs))
-  (format t "~a~%" (schema-values (nth 4 (tokens bs))))
+  (format t "~a~%" (tokens bs))
+  (format t "schema-values:~%~a~%" (schema-values bs))
+  ;;(format t "~a~%" (schema-values (nth 4 (tokens bs))))
   )
 
 
@@ -191,32 +191,14 @@ fragment comparisonFields on Character {
   "hero"
   )
 
-(defmethod prepare ((s hero-query-schema) sentence)
-  (if (string/= (schema-name s) (car fields))
+(defmethod parser? ((s hero-query-schema) sentence)
+  (assert (c2mop:subclassp (class-of sentence) 'struct-sentence)
+		  (sentence)
+		  "this schema cannot accept ~a sentence" sentence)
+
+  (if (string/= (schema-name s) (name sentence))
 	  (error 'resolver-wrong-schema :suppose-name (schema-name s)
-									:actually-name (car sentence)))
+									:actually-name (name sentence)))
 
-  (let (arguments fields)
-	(if (c2mop:subclassp (nth 1 sentence) 'parenthesis-scanner)
-		(setf arguments (schema-values (cadr sentence)))
-		)
-
-	(if (not arguments)
-		(setf fields (schema-values (cadr sentence)))
-		(setf fields (schema-values (caddr sentence))))))
-
-(defstruct sentence
-  name
-  arguments ;; parenthesis schema values
-  sub-sentences ;; sub block sentence
+  
   )
-
-(defvar *case7* "(id:   \"1000\",              hhhhh : fff)")
-
-(let ((s (make-instance 'parenthesis-scanner))
-	  (ss (make-string-input-stream *case7*)))
-  (print ss)
-  (read ss)
-  (scan s ss)
-  (format t "token: ~a~%" (tokens s))
-  (format t "~a~%" (schema-values s)))
