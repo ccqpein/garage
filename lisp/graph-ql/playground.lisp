@@ -175,21 +175,25 @@ fragment comparisonFields on Character {
 
 (defclass hero-query-schema (query-schema)
   (
-   (default-data-fetcher
-	:initarg :default-data-fetcher
-	:accessor default-data-fetcher
-	:documentation "function for fetching the data")
+   ;; (default-data-fetcher
+   ;; 	:initarg :default-data-fetcher
+   ;; 	:accessor default-data-fetcher
+   ;; 	:documentation "function for fetching the data")
 
-   (default-filter
-	:initarg :default-filter
-	:accessor default-filter
-	:documentation "function for filtering data after fetched")
+   ;; (default-filter
+   ;; 	:initarg :default-filter
+   ;; 	:accessor default-filter
+   ;; 	:documentation "function for filtering data after fetched")
+
+   
    )
   )
 
 (defmethod schema-name ((s hero-query-schema))
   "hero"
   )
+
+
 
 (defmethod parser? ((s hero-query-schema) sentence)
   (assert (c2mop:subclassp (class-of sentence) 'struct-sentence)
@@ -199,6 +203,7 @@ fragment comparisonFields on Character {
   (if (string/= (schema-name s) (name sentence))
 	  (error 'resolver-wrong-schema :suppose-name (schema-name s)
 									:actually-name (name sentence)))
-
   
+  (loop for c in (sub-sentences sentence)
+		)
   )
