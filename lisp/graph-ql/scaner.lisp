@@ -1,4 +1,4 @@
-(ql:quickload "closer-mop")
+(ql:quickload '("closer-mop" "str"))
 
 (defclass scanner () ())
 
@@ -253,3 +253,8 @@ block-scanner class below
 
 (defmethod print-object ((as arguments-sentence) stream)
   (format stream "{key: ~a, val: ~a}" (key as) (val as)))
+
+(defmethod to-keys ((as arguments-sentence))
+  (list (read-from-string (str:concat ":" (key as)))
+		(val as))
+  )

@@ -35,6 +35,8 @@
   }
 }")
 
+(defparameter *bs* nil)
+
 (let ((bs (make-instance 'block-scanner))
 	  (ss (make-string-input-stream *case1*)))
   (read ss) ;; clean the first {
@@ -44,6 +46,9 @@
   (format t "~a~%" (tokens bs))
   (format t "schema-values:~%~a~%" (schema-values bs))
   ;;(format t "~a~%" (schema-values (nth 4 (tokens bs))))
+  (format t "~a" (type-of (key (car (arguments (car (schema-values bs)))))))
+  (format t "~a" (type-of (val (car (arguments (car (schema-values bs)))))))
+  (setf *bs* bs)
   )
 
 
@@ -193,8 +198,6 @@ fragment comparisonFields on Character {
   "hero"
   )
 
-
-
 (defmethod parser? ((s hero-query-schema) sentence)
   (assert (c2mop:subclassp (class-of sentence) 'struct-sentence)
 		  (sentence)
@@ -203,7 +206,16 @@ fragment comparisonFields on Character {
   (if (string/= (schema-name s) (name sentence))
 	  (error 'resolver-wrong-schema :suppose-name (schema-name s)
 									:actually-name (name sentence)))
+  (values
+   (if (arguments sentence)
+	   (loop for a in (arguments sentence)
+			 append (to-keys a) into args))
+
+   ;; return the fileds
+   )
+  )
+
+;; define by user themselves
+(defmethod query ((s hero-query-schema) &key &allow-other-keys)
   
-  (loop for c in (sub-sentences sentence)
-		)
   )
