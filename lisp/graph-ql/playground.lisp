@@ -190,12 +190,38 @@ fragment comparisonFields on Character {
    ;; 	:accessor default-filter
    ;; 	:documentation "function for filtering data after fetched")
 
-   
+   (all-fields-names
+	:initarg :all-fields-names
+	:initform '("name" "ago" "super-power")
+	:accessor all-fields-names)
+
+   (fields-schemas
+	:initarg :fields-schemas
+	;;:initform (list ("name" . (make-instance ')))
+	:accessor fields-schemas)
    )
   )
 
+(defclass hero--name-query-schema (query-schema) ())
+(defmethod query ((s hero--name-query-schema)
+				  &optional
+					(upstream-data nil)
+					;;(list-of-fields-names (all-fields-names s))
+				  &rest keys
+				  &key &allow-other-keys)
+  (name upstream-data)
+  ;;(all-fields-names s)
+  )
+
+(defclass hero--ago-query-schema (query-schema) ())
+(defclass hero--super-power-query-schema (query-schema) ())
+
 (defmethod schema-name ((s hero-query-schema))
   "hero"
+  )
+
+(defmethod call-field-query ((s hero-query-schema) &optional (upstream-data nil) &key name &allow-other-keys)
+  (query (gethash name (fields-schemas s)) upstream-data)
   )
 
 (defmethod parser? ((s hero-query-schema) sentence)
@@ -212,10 +238,20 @@ fragment comparisonFields on Character {
 			 append (to-keys a) into args))
 
    ;; return the fileds
+   (sub-sentences sentence)
    )
   )
 
 ;; define by user themselves
-(defmethod query ((s hero-query-schema) &key &allow-other-keys)
-  
+(defmethod query ((s hero-query-schema)
+				  &optional
+					;;(upstream-data nil)
+					(list-of-fields-sentences (all-fields-names s))
+				  &rest keys
+				  &key name ago super-power &allow-other-keys)
+  list-of-fields-names
+  ;;(all-fields-names s)
   )
+
+
+(defparameter *all-query-schema* (list (make-instance 'hero-query-schema)))
