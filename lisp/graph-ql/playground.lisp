@@ -180,16 +180,6 @@ fragment comparisonFields on Character {
 
 (defclass hero-query-schema (query-schema)
   (
-   ;; (default-data-fetcher
-   ;; 	:initarg :default-data-fetcher
-   ;; 	:accessor default-data-fetcher
-   ;; 	:documentation "function for fetching the data")
-
-   ;; (default-filter
-   ;; 	:initarg :default-filter
-   ;; 	:accessor default-filter
-   ;; 	:documentation "function for filtering data after fetched")
-
    (all-fields-names
 	:initarg :all-fields-names
 	:initform '("name" "ago" "super-power")
@@ -246,7 +236,7 @@ fragment comparisonFields on Character {
 (defmethod query ((s hero-query-schema)
 				  &optional
 					;;(upstream-data nil)
-					(list-of-fields-sentences (all-fields-names s))
+					(list-of-fields-sentences nil) ;; the sencentance
 				  &rest keys
 				  &key name ago super-power &allow-other-keys)
   list-of-fields-names
