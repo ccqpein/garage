@@ -235,13 +235,13 @@ fragment comparisonFields on Character {
 ;; define by user themselves
 (defmethod query ((s hero-query-schema)
 				  &optional
-					;;(upstream-data nil)
+					(upstream-data nil)
 					(list-of-fields-sentences nil) ;; the sencentance
 				  &rest keys
 				  &key name ago super-power &allow-other-keys)
-  list-of-fields-names
-  ;;(all-fields-names s)
-  )
+  (let ((h (apply #'make-hero keys)))
+	h
+	))
 
 
 (defparameter *all-query-schema* (list (make-instance 'hero-query-schema)))
