@@ -57,6 +57,8 @@
 		 (defmethod schema-name ((s ,schema-class-name))
 		   ,(string name))
 
+		 ;;:= todo: method get-field-schema
+
 		 ,@(loop for f in fields
 				 for class-name = (read-from-string (str:concat (symbol-name name) "--" (symbol-name f) "-query-schema"))
 				 collect `(defclass ,class-name (query-schema) ()) into x
