@@ -30,6 +30,7 @@ ago
 
 (defmethod query ((s hero-query-schema) arguments sub-sentences &key upstream-data &allow-other-keys)
   (let (result)
+	;;:= maybe: add destructuring-bind to macro generator too
 	(destructuring-bind
 		(&key super-power &allow-other-keys)
 		arguments
