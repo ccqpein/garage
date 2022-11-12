@@ -1,4 +1,4 @@
-(load "../schema-generator.lisp")
+;;(load "../schema-generator.lisp")
 
 ;;
 (defstruct-with-query-schema hero
@@ -15,7 +15,7 @@ ago
 } 
 }")
 
-(defmethod query ((s hero--name-query-schema) id arguments sub-sentences &allow-other-keys)
+(defmethod query ((s hero--name-query-schema) arguments sub-sentences &key id &allow-other-keys)
   (destructuring-bind
 	  (&key nickname &allow-other-keys)
 	  arguments
@@ -26,7 +26,7 @@ ago
 
 ;;:= maybe need to add to macro generator
 (defun get-sub-sentence (name sentences)
-  (find-if (lambda (s) (string= (name s) name)) sentence))
+  (find-if (lambda (s) (string= (name s) name)) sentences))
 
 (defmethod query ((s hero-query-schema) arguments sub-sentences &key upstream-data &allow-other-keys)
   (let (result)
@@ -37,18 +37,18 @@ ago
 	  (if (string= super-power "rich")
 		  (progn (push (make-hero
 						:name (apply #'query
-									 (field-query s :name "name") ;;:= todo: change to get field schema method
-									 1
+									 (get-field-schema s "name") ;;:= todo: change to get field schema method
 									 ;;:= find sub sentence maybe can added to macro generator
-									 (parse (field-query s :name "name") (get-sub-sentence "name" sub-sentences)))
+									 (parse (field-query s :name "name") (get-sub-sentence "name" sub-sentences))
+									 :id 1)
 						:ago 20
 						:super-power (get-sub-sentence "super-power" sub-sentences))
 					   result)
 				 (push (make-hero
 						:name (apply #'query
-									 (field-query s :name "name")
-									 2
-									 (parse (field-query s :name "name") (get-sub-sentence "name" sub-sentences)))
+									 (get-field-schema s "name")
+									 (parse (field-query s :name "name") (get-sub-sentence "name" sub-sentences))
+									 :id 2)
 						:ago 30
 						:super-power (get-sub-sentence "super-power" sub-sentences))
 					   result))
@@ -57,3 +57,10 @@ ago
 	)
   )
 
+
+(defparameter *ss* nil)
+(let ((scanner (make-instance 'block-scanner)))
+  (scan scanner (make-string-input-stream *query-request-0*))
+  (setf *ss* scanner)
+  (schema-values scanner)
+  )

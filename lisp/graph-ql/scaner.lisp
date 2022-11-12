@@ -70,9 +70,12 @@ block-scanner class below
 	   
 	   ((not tokens)
 		(if cache-sentence (push cache-sentence result))
+		;;:= DEL: (format t "final: ~a~%" result)
 		(reverse result))
 
-	;;(format t "~a~%" (class-of this-token))
+	;;:= DEL: (format t "~a~%" (class-of this-token))
+	;;:= DEL: (format t "~a~%" this-token)
+	;;:= DEL: (format t "~a~%" cache-sentence)
 	(ctypecase this-token
 	  (string
 	   (if (not last-colon)
@@ -82,6 +85,8 @@ block-scanner class below
 			   (setf cache-sentence (make-instance 'struct-sentence :name this-token)))
 		   ))
 	  (scanner
+	   (if (not cache-sentence) ;; when only block body
+		   (setf cache-sentence (make-instance 'struct-sentence)))
 	   (if (c2mop:subclassp (class-of this-token) 'parenthesis-scanner)
 		   (setf (arguments cache-sentence) (schema-values this-token))
 		   (setf (sub-sentences cache-sentence) (schema-values this-token))))
@@ -228,6 +233,7 @@ block-scanner class below
 (defclass struct-sentence (sentence)
   ((name
 	:initarg :name
+	:initform nil
 	:accessor name)
    (arguments ;; parenthesis schema values
 	:initarg :arguments

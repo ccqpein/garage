@@ -214,7 +214,7 @@ fragment comparisonFields on Character {
   (query (gethash name (fields-schemas s)) upstream-data)
   )
 
-(defmethod parser? ((s hero-query-schema) sentence)
+(defmethod parser ((s hero-query-schema) sentence)
   (assert (c2mop:subclassp (class-of sentence) 'struct-sentence)
 		  (sentence)
 		  "this schema cannot accept ~a sentence" sentence)
