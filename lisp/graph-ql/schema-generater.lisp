@@ -66,9 +66,9 @@
 				   (sentence)
 				   "this schema cannot accept ~a sentence" sentence)
 
-		   (if (string/= (schema-name s) (name sentence))
+		   (if (string/= (schema-name s) (str:upcase (name sentence)))
 			   (error 'resolver-wrong-schema :suppose-name (schema-name s)
-											 :actually-name (name sentence)))
+											 :actually-name (str:upcase (name sentence))))
 		   (values
 			(if (arguments sentence)
 				(loop for a in (arguments sentence)
@@ -83,6 +83,7 @@
 				 for class-name = (read-from-string (str:concat (symbol-name name) "--" (symbol-name f) "-query-schema"))
 				 collect `(defclass ,class-name (query-schema) ()) into x
 				 collect `(defmethod schema-name ((s ,class-name) &key &allow-other-keys) ,(string f)) into x
+				 ;;:= next: parse for sub schema?
 				 finally (return x))
 
 		 ))))

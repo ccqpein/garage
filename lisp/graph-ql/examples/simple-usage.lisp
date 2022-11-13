@@ -39,7 +39,7 @@ ago
 						:name (apply #'query
 									 (get-field-schema s "name") ;;:= todo: change to get field schema method
 									 ;;:= find sub sentence maybe can added to macro generator
-									 (parse (field-query s :name "name") (get-sub-sentence "name" sub-sentences))
+									 (parse (get-field-schema s "name") (get-sub-sentence "name" sub-sentences))
 									 :id 1)
 						:ago 20
 						:super-power (get-sub-sentence "super-power" sub-sentences))
@@ -47,7 +47,7 @@ ago
 				 (push (make-hero
 						:name (apply #'query
 									 (get-field-schema s "name")
-									 (parse (field-query s :name "name") (get-sub-sentence "name" sub-sentences))
+									 (parse (get-field-schema s "name") (get-sub-sentence "name" sub-sentences))
 									 :id 2)
 						:ago 30
 						:super-power (get-sub-sentence "super-power" sub-sentences))
@@ -62,5 +62,7 @@ ago
 (let ((scanner (make-instance 'block-scanner)))
   (scan scanner (make-string-input-stream *query-request-0*))
   (setf *ss* scanner)
-  (schema-values scanner)
+  ;; return the argument and 
+  (parse (make-instance 'hero-query-schema) (nth 0 (sub-sentences (car (schema-values scanner)))))
+  ;;:= next: finish this example
   )
