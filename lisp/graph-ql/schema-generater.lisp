@@ -59,7 +59,7 @@
 
 		 (defmethod get-field-schema ((s ,schema-class-name) name &key &allow-other-keys)
 		   (declare (string name))
-		   (gethash name (fields-schemas s)))
+		   (gethash (str:upcase name) (fields-schemas s)))
 
 		 (defmethod parse ((s ,schema-class-name) sentence &key &allow-other-keys)
 		   (assert (c2mop:subclassp (class-of sentence) 'struct-sentence)
@@ -69,10 +69,13 @@
 		   (if (string/= (schema-name s) (str:upcase (name sentence)))
 			   (error 'resolver-wrong-schema :suppose-name (schema-name s)
 											 :actually-name (str:upcase (name sentence))))
+
 		   (values
 			(if (arguments sentence)
 				(loop for a in (arguments sentence)
-					  append (to-keys a) into args))
+					  append (to-keys a) into args
+					  finally (return args))
+				)
 
 			;; return the fileds
 			(sub-sentences sentence)
@@ -83,7 +86,24 @@
 				 for class-name = (read-from-string (str:concat (symbol-name name) "--" (symbol-name f) "-query-schema"))
 				 collect `(defclass ,class-name (query-schema) ()) into x
 				 collect `(defmethod schema-name ((s ,class-name) &key &allow-other-keys) ,(string f)) into x
-				 ;;:= next: parse for sub schema?
+				 collect `(defmethod parse ((s ,class-name) sentence &key &allow-other-keys)
+							(assert (c2mop:subclassp (class-of sentence) 'struct-sentence)
+									(sentence)
+									"this schema cannot accept ~a sentence" sentence)
+
+							(if (string/= (schema-name s) (str:upcase (name sentence)))
+								(error 'resolver-wrong-schema :suppose-name (schema-name s)
+															  :actually-name (str:upcase (name sentence))))
+
+							(values
+							 (if (arguments sentence)
+								 (loop for a in (arguments sentence)
+									   append (to-keys a) into args
+									   finally (return args))
+								 )
+
+							 (sub-sentences sentence)
+							 )) into x 
 				 finally (return x))
 
 		 ))))
