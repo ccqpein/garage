@@ -27,7 +27,7 @@
 			do (push (car f) fields)
 		  else
 			do (push f fields))
-	;;:= DEL: (print (type-of (string (car fields))))
+	
 	(print fields)
 	(let ((schema-class-name (read-from-string (str:concat (symbol-name name) "-QUERY-SCHEMA"))))
 	  `(progn

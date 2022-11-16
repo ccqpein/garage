@@ -70,12 +70,12 @@ block-scanner class below
 	   
 	   ((not tokens)
 		(if cache-sentence (push cache-sentence result))
-		;;:= DEL: (format t "final: ~a~%" result)
+		
 		(reverse result))
 
-	;;:= DEL: (format t "~a~%" (class-of this-token))
-	;;:= DEL: (format t "~a~%" this-token)
-	;;:= DEL: (format t "~a~%" cache-sentence)
+	
+	
+	
 	(ctypecase this-token
 	  (string
 	   (if (not last-colon)

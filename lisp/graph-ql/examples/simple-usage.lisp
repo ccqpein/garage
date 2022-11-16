@@ -33,8 +33,6 @@ ago
 	(destructuring-bind
 		(&key super-power &allow-other-keys)
 		arguments
-	  (format t "super-power: ~a~%" super-power)
-	  (format t "~a~%" (string= super-power "\"rich\""))
 	  (if (string= super-power "\"rich\"")
 		  (progn
 			(push (make-hero
