@@ -252,7 +252,7 @@ block-scanner class below
   ((key
 	:initarg :key
 	:accessor key)
-   (val
+   (val ;;:= next: need some val change like false to nil; true to t
 	:initarg :val
 	:accessor val))
   )

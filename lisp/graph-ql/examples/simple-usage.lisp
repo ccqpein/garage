@@ -15,6 +15,22 @@ ago
 } 
 }")
 
+(defparameter *query-request-1* "{
+hero(super-power: \"rich\")
+{
+name
+ago
+} 
+}")
+
+(defparameter *query-request-2* "{
+hero(super-power: \"rich\")
+{
+name(nickname: false)
+ago
+} 
+}")
+
 (defmethod query ((s hero--name-query-schema) arguments sub-sentences &rest keys &key id &allow-other-keys)
   (destructuring-bind
 	  (&key nickname &allow-other-keys)
@@ -65,6 +81,19 @@ ago
 (let ((scanner (make-instance 'block-scanner))
 	  (schema (make-instance 'hero-query-schema)))
   (scan scanner (make-string-input-stream *query-request-0*))
+  (setf *ss* scanner)
+  ;; return the argument and 
+  (multiple-value-bind (arg sub-sentences)
+	  (parse schema
+			 (nth 0 (sub-sentences (car (schema-values scanner)))))
+	(format t "args: ~a, sub-s: ~a~%" arg sub-sentences)
+	(format t "query result: ~a~%" (query schema arg sub-sentences))
+	)
+  )
+
+(let ((scanner (make-instance 'block-scanner))
+	  (schema (make-instance 'hero-query-schema)))
+  (scan scanner (make-string-input-stream *query-request-1*))
   (setf *ss* scanner)
   ;; return the argument and 
   (multiple-value-bind (arg sub-sentences)
