@@ -264,3 +264,11 @@ block-scanner class below
   (list (read-from-string (str:concat ":" (key as)))
 		(val as))
   )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defparameter values-mapping (make-hash-table :test 'equal)
+  "mapping the value from graph ql to lisp object")
