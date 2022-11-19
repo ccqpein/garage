@@ -122,15 +122,3 @@
    (lambda (condition stream)
 	 (format stream "suppose resolve the ~a schema, but receive ~a"
 			 (suppose-name condition) (actually-name condition)))))
-
-;; (define-condition is-not-struct (error)
-;;   ((incorrect-sym :initarg :incorrect-sym
-;; 				  :initform nil
-;; 				  :accessor incorrect-sym))
-;;   (:report (lambda (condition stream)
-;; 			 (format stream "the symbol '~a isn't a structure" (incorrect-sym condition)))))
-
-;; (defun check-if-symbol-is-struct (sym)
-;;   (if (not (subtypep sym 'structure-object))
-;; 	  (error 'is-not-struct :incorrect-sym sym)
-;; 	  t))

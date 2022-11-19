@@ -149,8 +149,6 @@ block-scanner class below
 	   ((not tokens)
 		(if cache-sentence (push cache-sentence result))
 		(reverse result))
-	;;(format t "~a~%" tokens)
-	;;(format t "~a~%" this-token)
 	(ctypecase this-token
 	  (string
 	   (if (not cache-sentence)
@@ -262,8 +260,7 @@ block-scanner class below
 
 (defmethod to-keys ((as arguments-sentence))
   (list (read-from-string (str:concat ":" (key as)))
-		(val as))
-  )
+		(map-graphql-value (val as))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;

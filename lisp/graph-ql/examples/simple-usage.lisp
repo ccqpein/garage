@@ -1,6 +1,6 @@
 ;;(load "../schema-generator.lisp")
 
-;;
+;; define the hero
 (defstruct-with-query-schema hero
   name
   ago
@@ -38,23 +38,21 @@ ago
 	  arguments
 	(cond ((= id 1) (if (map-graphql-value nickname) "iron man" "tony stark"))
 		  ((= id 2) (if (map-graphql-value nickname) "batman" "Bruce Wayne")))
-	)
-  )
+	))
 
 (defmethod query ((s hero--super-power-query-schema) arguments sub-sentences &rest keys &key id &allow-other-keys)
   "rich"
   )
 
-;;:= maybe need to add to macro generator
+;; define the get-sub-sentence
 (defun get-sub-sentence (name sentences)
   (find-if (lambda (s) (string= (name s) name)) sentences))
 
-(defmethod query ((s hero-query-schema) arguments sub-sentences &key upstream-data &allow-other-keys)
+(defmethod query ((s hero-query-schema) arguments sub-sentences &key &allow-other-keys)
   (let (result)
 	(destructuring-bind
 		(&key super-power &allow-other-keys)
 		arguments
-	  
 	  (if (string= super-power "\"rich\"")
 		  (progn
 			(push (make-hero
@@ -102,7 +100,7 @@ ago
   (multiple-value-bind (arg sub-sentences)
 	  (parse schema
 			 (nth 0 (sub-sentences (car (schema-values scanner)))))
-	(format t "args: ~a, sub-s: ~a~%" arg sub-sentences)
+	;;(format t "args: ~a, sub-s: ~a~%" arg sub-sentences)
 	(format t "query result: ~a~%" (query schema arg sub-sentences))
 	)
   )
@@ -115,7 +113,7 @@ ago
   (multiple-value-bind (arg sub-sentences)
 	  (parse schema
 			 (nth 0 (sub-sentences (car (schema-values scanner)))))
-	(format t "args: ~a, sub-s: ~a~%" arg sub-sentences)
+	;;(format t "args: ~a, sub-s: ~a~%" arg sub-sentences)
 	(format t "query result: ~a~%" (query schema arg sub-sentences))
 	)
   )
