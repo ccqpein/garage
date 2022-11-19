@@ -270,5 +270,12 @@ block-scanner class below
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defparameter values-mapping (make-hash-table :test 'equal)
-  "mapping the value from graph ql to lisp object")
+(defparameter *values-mapping* (make-hash-table :test 'equal)
+  "mapping the value from graph ql to lisp object"
+  )
+
+(setf (gethash "false" *values-mapping*) nil
+	  (gethash "true" *values-mapping*) t)
+
+(defun map-graphql-value (gv)
+  (gethash gv *values-mapping*))

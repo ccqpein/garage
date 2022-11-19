@@ -20,6 +20,7 @@ hero(super-power: \"rich\")
 {
 name
 ago
+super-power
 } 
 }")
 
@@ -35,9 +36,13 @@ ago
   (destructuring-bind
 	  (&key nickname &allow-other-keys)
 	  arguments
-	(cond ((= id 1) (if nickname "iron man" "tony stark"))
-		  ((= id 2) (if nickname "batman" "Bruce Wayne")))
+	(cond ((= id 1) (if (map-graphql-value nickname) "iron man" "tony stark"))
+		  ((= id 2) (if (map-graphql-value nickname) "batman" "Bruce Wayne")))
 	)
+  )
+
+(defmethod query ((s hero--super-power-query-schema) arguments sub-sentences &rest keys &key id &allow-other-keys)
+  "rich"
   )
 
 ;;:= maybe need to add to macro generator
@@ -49,6 +54,7 @@ ago
 	(destructuring-bind
 		(&key super-power &allow-other-keys)
 		arguments
+	  
 	  (if (string= super-power "\"rich\"")
 		  (progn
 			(push (make-hero
@@ -59,7 +65,12 @@ ago
 															 (get-sub-sentence "name" sub-sentences)))
 								 '(:id 1)))
 				   :ago 20
-				   :super-power (get-sub-sentence "super-power" sub-sentences))
+				   :super-power (if (get-sub-sentence "super-power" sub-sentences)
+									(apply #'query
+										   (get-field-schema s "super-power")
+										   (multiple-value-list (parse (get-field-schema s "super-power")
+																	   (get-sub-sentence "super-power" sub-sentences))))
+									nil))
 				  result)
 			(push (make-hero
 				   :name (apply #'query
@@ -69,7 +80,12 @@ ago
 															 (get-sub-sentence "name" sub-sentences)))
 								 '(:id 2)))
 				   :ago 30
-				   :super-power (get-sub-sentence "super-power" sub-sentences))
+				   :super-power (if (get-sub-sentence "super-power" sub-sentences)
+									(apply #'query
+										   (get-field-schema s "super-power")
+										   (multiple-value-list (parse (get-field-schema s "super-power")
+																	   (get-sub-sentence "super-power" sub-sentences))))
+									nil))
 				  result))
 		  (return-from query nil)))
 	result
