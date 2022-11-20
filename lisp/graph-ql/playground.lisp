@@ -245,3 +245,22 @@ fragment comparisonFields on Character {
 
 
 (defparameter *all-query-schema* (list (make-instance 'hero-query-schema)))
+
+
+(defvar *case7* "{
+  hero {
+    name
+    # Queries can have comments!
+    friends {
+      name
+    }
+  }
+}")
+
+(let ((bs (make-instance 'block-scanner))
+	  (ss (make-string-input-stream *case7*)))
+  (scan bs ss)
+  (format t "~a~%" (tokens bs))
+  (format t "~a~%" (schema-values (car (tokens bs))))
+  ;;(format t "~a~%" (schema-values (cadr (tokens (car (tokens bs))))))
+  )

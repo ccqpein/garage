@@ -22,14 +22,20 @@ block-scanner class below
 	   (word-token nil))
 	  ((or (not c) (char= c #\}))
 	   (if (/= 0 (length word-token))
-		   (setf (tokens s) (append (tokens s)
-									(list (concatenate 'string (reverse word-token)))))))
+		   (setf (tokens s)
+				 (remove ""
+						 (append (tokens s)
+								 (list (concatenate 'string (reverse word-token))))))))
 	(case c
 	  (#\{ (setf (tokens s)
 				 (append (tokens s)
-						 (list (let ((sub-block-scanner (make-instance 'block-scanner)))
-								 (scan sub-block-scanner stream)
-								 sub-block-scanner)))))
+						 (list
+						  (concatenate 'string (reverse word-token))
+						  (let ((sub-block-scanner (make-instance 'block-scanner)))
+							(scan sub-block-scanner stream)
+							sub-block-scanner)))
+				 word-token
+				 nil))
 	  
 	  (#\( (setf (tokens s)
 				 (append (tokens s)
@@ -41,21 +47,35 @@ block-scanner class below
 				 word-token
 				 nil))
 	  
-	  ((#\  #\, #\newline #\#) ;; ignore tokens 
-	   (if (/= 0 (length word-token))
-		   (setf (tokens s)
-				 (append (tokens s)
-						 (list (concatenate 'string (reverse word-token))))
-				 word-token
-				 nil)
-		   ))
+	  ((#\  #\, #\newline) ;; ignore tokens 
+	   (setf (tokens s)
+			 (append (tokens s)
+					 (list (concatenate 'string (reverse word-token))))
+			 word-token
+			 nil)
+	   )	  
+
+	  ((#\#)
+	   (setf (tokens s)
+			 (append (tokens s)
+					 (list
+					  (concatenate 'string (reverse word-token))
+					  (let ((sub-block-scanner (make-instance 'comment-scanner)))
+						(scan sub-block-scanner stream)
+						sub-block-scanner
+						)))
+			 word-token
+			 nil)
+	   )
+	  
 	  ((#\. #\:) ;; : is special
-	   (if (/= 0 (length word-token))
-		   (setf (tokens s) (append (tokens s)
-									(list (concatenate 'string (reverse word-token))
-										  c))
-				 word-token nil)
-		   (setf (tokens s) (append (tokens s) (list c)))))
+	   (setf (tokens s)
+			 (append (tokens s)
+					 (list (concatenate 'string (reverse word-token))
+						   c))
+			 word-token
+			 nil))
+	  
 	  (otherwise (push c word-token))
 	  )))
 
@@ -72,25 +92,26 @@ block-scanner class below
 		(if cache-sentence (push cache-sentence result))
 		
 		(reverse result))
-
-	
-	
 	
 	(ctypecase this-token
 	  (string
-	   (if (not last-colon)
-		   (if cache-sentence
-			   (progn (push cache-sentence result)
-					  (setf cache-sentence (make-instance 'struct-sentence :name this-token)))
-			   (setf cache-sentence (make-instance 'struct-sentence :name this-token)))
+	   (cond ((not last-colon)
+			  (if cache-sentence
+				  (progn (push cache-sentence result)
+						 (setf cache-sentence (make-instance 'struct-sentence :name this-token)))
+				  (setf cache-sentence (make-instance 'struct-sentence :name this-token))))
 		   ))
 	  (scanner
 	   (if (not cache-sentence) ;; when only block body
 		   (setf cache-sentence (make-instance 'struct-sentence)))
-	   (if (c2mop:subclassp (class-of this-token) 'parenthesis-scanner)
-		   (setf (arguments cache-sentence) (schema-values this-token))
-		   (setf (sub-sentences cache-sentence) (schema-values this-token))))
-	  )	
+	   (ctypecase this-token
+		 (parenthesis-scanner
+		  (setf (arguments cache-sentence) (schema-values this-token)))
+		 (block-scanner
+		  (setf (sub-sentences cache-sentence) (schema-values this-token)))
+		 ;;:= todo: (comment-scanner)
+		 )
+	   ))	
 	))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -225,6 +246,43 @@ block-scanner class below
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+(defclass comment-scanner (scanner)
+  ((tokens
+	:initform nil
+	:accessor tokens))
+  (:documentation "scanner of comments line")
+  )
+
+(defmethod scan ((s comment-scanner) stream)
+  (do ((c (read-char stream nil nil) (read-char stream nil nil))
+	   (word-token nil))
+	  ((char= c #\newline)
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s) (append (tokens s)
+									(list (concatenate 'string (reverse word-token)))))))
+	(case c
+	  ((#\ )
+	   (if (/= 0 (length word-token))
+		   (setf (tokens s)
+				 (append (tokens s)
+						 (list (concatenate 'string (reverse word-token))))
+				 word-token
+				 nil)
+		   )
+	   )
+	  (otherwise (push c word-token))
+	  )))
+
+(defmethod schema-values ((s comment-scanner))
+  (make-instance 'comment-sentence
+				 :content
+				 (str:join #\ (tokens s))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
 (defclass sentence ()
   ())
 
@@ -262,6 +320,11 @@ block-scanner class below
   (list (read-from-string (str:concat ":" (key as)))
 		(map-graphql-value (val as))))
 
+
+(defclass comment-sentence (sentence)
+  ((content
+	:initarg :content
+	:accessor content)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;
