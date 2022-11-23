@@ -24,3 +24,8 @@ use other languages lib as the test set to result sets verifier
 [[https://hasura.io/learn/graphql/intro-graphql/graphql-server/][server's work]]
 [[https://community.monday.com/t/curl-example-of-a-mutation-with-variables/1589/3][that's the meaning of separate in variables usage]]
 
+* todo
+
+** NEXT some unit tests
+
+
