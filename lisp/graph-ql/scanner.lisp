@@ -1,4 +1,13 @@
-(ql:quickload '("closer-mop" "str"))
+(ql:quickload '("closer-mop" "str" "lisp-unit"))
+
+(defpackage #:scanner
+  (:use #:CL)
+  (:export #:block-scanner
+		   #:tokens
+		   #:scan)
+  )
+
+(in-package #:scanner)
 
 (defclass scanner () ())
 
