@@ -3,13 +3,27 @@
 (defpackage #:scanner
   (:use #:CL)
   (:export #:block-scanner
+		   #:parenthesis-scanner
 		   #:tokens
 		   #:scan)
   )
 
 (in-package #:scanner)
 
+(defparameter *ignonre-tokens*
+  (let ((table (make-hash-table
+				:test 'equal)))
+	(setf (gethash #\newline table) t
+		  (gethash "" table) t)
+	table))
+
+(defun ignore-token-p (x)
+  (gethash x *ignonre-tokens*))
+
 (defclass scanner () ())
+
+(defgeneric equal-scanner (s1 s2)
+  (:documentation "comparing scanners"))
 
 #|
 block-scanner class below
@@ -18,10 +32,15 @@ block-scanner class below
 (defclass block-scanner (scanner)
   (
    (tokens
+	:initarg :tokens
 	:initform nil
 	:accessor tokens)
    )
   (:documentation "scanner for {} block"))
+
+;;:= DEL: not right, need recursive
+;; (defmethod equal-scanner ((s1 block-scanner) (s2 block-scanner))
+;;   (equal (tokens s1) (tokens s2)))
 
 (defmethod print-object ((bs block-scanner) stream)
   (format stream "{block: tokens: ~{~a~^, ~}}" (tokens bs)))
@@ -32,9 +51,10 @@ block-scanner class below
 	  ((or (not c) (char= c #\}))
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s)
-				 (remove ""
-						 (append (tokens s)
-								 (list (concatenate 'string (reverse word-token))))))))
+				 (append (tokens s)
+						 (list (concatenate 'string (reverse word-token))))))
+	   (setf (tokens s)
+			 (remove-if #'ignore-token-p (tokens s))))
 	(case c
 	  (#\{ (setf (tokens s)
 				 (append (tokens s)
@@ -129,6 +149,7 @@ block-scanner class below
 
 (defclass parenthesis-scanner (scanner)
   ((tokens
+	:initarg :tokens
 	:initform nil
 	:accessor tokens))
   (:documentation "scanner of () block")
@@ -142,8 +163,12 @@ block-scanner class below
 	   (word-token nil))
 	  ((or (not c) (char= c #\)))
 	   (if (/= 0 (length word-token))
-		   (setf (tokens s) (append (tokens s)
-									(list (concatenate 'string (reverse word-token)))))))
+		   (setf (tokens s)
+				 (append (tokens s)
+						 (list (concatenate 'string (reverse word-token))))))
+	   (setf (tokens s)
+			 (remove-if #'ignore-token-p (tokens s)))
+	   )
 	(case c
 	  (#\ 
 	   (if (/= 0 (length word-token))
@@ -204,6 +229,7 @@ block-scanner class below
 
 (defclass plain-scanner (scanner)
   ((tokens
+	:initarg :tokens
 	:initform nil
 	:accessor tokens))
   (:documentation "scanner of plain text (like fragment)")
@@ -214,8 +240,11 @@ block-scanner class below
 	   (word-token nil))
 	  ((not c)
 	   (if (/= 0 (length word-token))
-		   (setf (tokens s) (append (tokens s)
-									(list (concatenate 'string (reverse word-token)))))))
+		   (setf (tokens s)
+				 (append (tokens s)
+						 (list (concatenate 'string (reverse word-token))))))
+	   (setf (tokens s)
+			 (remove-if #'ignore-token-p (tokens s))))
 	(case c
 	  (#\{ (setf (tokens s)
 				 (append (tokens s)
@@ -257,6 +286,7 @@ block-scanner class below
 
 (defclass comment-scanner (scanner)
   ((tokens
+	:initarg :tokens
 	:initform nil
 	:accessor tokens))
   (:documentation "scanner of comments line")
