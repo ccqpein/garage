@@ -218,7 +218,7 @@ block-scanner class below
 									(list (concatenate 'string (reverse word-token))
 										  ":"))
 				 word-token nil)
-		   (setf (tokens s) (append (tokens s) '(#\:)))))
+		   (setf (tokens s) (append (tokens s) '(":")))))
 	  (#\,
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s) (append (tokens s)
