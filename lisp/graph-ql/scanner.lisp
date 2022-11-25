@@ -5,7 +5,8 @@
   (:export #:block-scanner
 		   #:parenthesis-scanner
 		   #:tokens
-		   #:scan)
+		   #:scan
+		   #:equal-scanner)
   )
 
 (in-package #:scanner)
@@ -38,9 +39,25 @@ block-scanner class below
    )
   (:documentation "scanner for {} block"))
 
-;;:= DEL: not right, need recursive
-;; (defmethod equal-scanner ((s1 block-scanner) (s2 block-scanner))
-;;   (equal (tokens s1) (tokens s2)))
+(defmethod equal-scanner ((s1 block-scanner) (s2 block-scanner))
+  (do* ((s1-tokens (tokens s1) (cdr s1-tokens))
+		(s2-tokens (tokens s2) (cdr s2-tokens))
+		(s1-t (car s1-tokens) (car s1-tokens))
+		(s2-t (car s2-tokens) (car s2-tokens)))
+	   ((if (and (not s1-t) (not s2-t))
+			t)
+		t)
+	(typecase s1-t
+	  (scanner (if (not (equal-scanner s1-t s2-t))
+				   (progn
+					 (format t "~s not equal ~s" s1-t s2-t)
+					 (return-from equal-scanner nil))))
+	  (otherwise
+	   (if (not (equal s1-t s2-t))
+		   (progn
+			 (format t "~s not equal ~s" s1-t s2-t)
+			 (return-from equal-scanner nil)))))
+	))
 
 (defmethod print-object ((bs block-scanner) stream)
   (format stream "{block: tokens: ~{~a~^, ~}}" (tokens bs)))
@@ -155,6 +172,26 @@ block-scanner class below
   (:documentation "scanner of () block")
   )
 
+(defmethod equal-scanner ((s1 parenthesis-scanner) (s2 parenthesis-scanner))
+  (do* ((s1-tokens (tokens s1) (cdr s1-tokens))
+		(s2-tokens (tokens s2) (cdr s2-tokens))
+		(s1-t (car s1-tokens) (car s1-tokens))
+		(s2-t (car s2-tokens) (car s2-tokens)))
+	   ((if (and (not s1-t) (not s2-t))
+			t)
+		t)
+	(typecase s1-t
+	  (scanner (if (not (equal-scanner s1-t s2-t))
+				   (progn
+					 (format t "~s not equal ~s" s1-t s2-t)
+					 (return-from equal-scanner nil))))
+	  (otherwise
+	   (if (not (equal s1-t s2-t))
+		   (progn
+			 (format t "~s not equal ~s" s1-t s2-t)
+			 (return-from equal-scanner nil)))))
+	))
+
 (defmethod print-object ((ps parenthesis-scanner) stream)
   (format stream "{parenthesis block: tokens: ~{~a~^, ~}}" (tokens ps)))
 
@@ -179,16 +216,16 @@ block-scanner class below
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s) (append (tokens s)
 									(list (concatenate 'string (reverse word-token))
-										  #\:))
+										  ":"))
 				 word-token nil)
 		   (setf (tokens s) (append (tokens s) '(#\:)))))
 	  (#\,
 	   (if (/= 0 (length word-token))
 		   (setf (tokens s) (append (tokens s)
 									(list (concatenate 'string (reverse word-token))
-										  #\,))
+										  ","))
 				 word-token nil)
-		   (setf (tokens s) (append (tokens s) '(#\,)))))
+		   (setf (tokens s) (append (tokens s) '(",")))))
 	  (otherwise (push c word-token))
 	  )
 	)
@@ -198,29 +235,27 @@ block-scanner class below
 (defmethod schema-values ((s parenthesis-scanner))
   "scanner pre-processed tokens return the result for schema resolver"
   (do* ((tokens (tokens s))
-	   (this-token (car tokens) (car tokens))
-	   cache-sentence
-	   result)
+		(this-token (car tokens) (car tokens))
+		cache-sentence
+		result)
 	   ((not tokens)
 		(if cache-sentence (push cache-sentence result))
 		(reverse result))
-	(ctypecase this-token
-	  (string
+
+	(case this-token
+	  (":"
+	   (setf (val cache-sentence) (cadr tokens)
+			 tokens (cdr tokens)))
+	  (","
+	   (push cache-sentence result)
+	   (setf cache-sentence nil))
+	  (otherwise
 	   (if (not cache-sentence)
 		   (setf cache-sentence (make-instance 'arguments-sentence :key this-token))
 		   (progn (push cache-sentence result)
-				  (setf cache-sentence (make-instance 'arguments-sentence :key this-token))))
-	   (setf tokens (cdr tokens)))
-	  (STANDARD-CHAR
-	   (ccase this-token
-		 (#\:
-		  (setf (val cache-sentence) (cadr tokens)
-				tokens (cdr tokens))
-		  )
-		 (#\,
-		  (push cache-sentence result)
-		  (setf cache-sentence nil)))
-	   (setf tokens (cdr tokens)))))
+				  (setf cache-sentence (make-instance 'arguments-sentence :key this-token)))))
+	  )
+	(setf tokens (cdr tokens)))
   )
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -234,6 +269,26 @@ block-scanner class below
 	:accessor tokens))
   (:documentation "scanner of plain text (like fragment)")
   )
+
+(defmethod equal-scanner ((s1 plain-scanner) (s2 plain-scanner))
+  (do* ((s1-tokens (tokens s1) (cdr s1-tokens))
+		(s2-tokens (tokens s2) (cdr s2-tokens))
+		(s1-t (car s1-tokens) (car s1-tokens))
+		(s2-t (car s2-tokens) (car s2-tokens)))
+	   ((if (and (not s1-t) (not s2-t))
+			t)
+		t)
+	(typecase s1-t
+	  (scanner (if (not (equal-scanner s1-t s2-t))
+				   (progn
+					 (format t "~s not equal ~s" s1-t s2-t)
+					 (return-from equal-scanner nil))))
+	  (otherwise
+	   (if (not (equal s1-t s2-t))
+		   (progn
+			 (format t "~s not equal ~s" s1-t s2-t)
+			 (return-from equal-scanner nil)))))
+	))
 
 (defmethod scan ((s plain-scanner) stream)
   (do ((c (read-char stream nil nil) (read-char stream nil nil))
