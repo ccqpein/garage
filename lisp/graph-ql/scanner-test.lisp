@@ -49,28 +49,27 @@
 		 (scanner (make-instance 'block-scanner))
 		 (ss (make-string-input-stream testcase))
 		 )
-	  
+
+	(read-char ss) ;; read the first {
 	(scan scanner ss)	
 	(assert-true (equal-scanner
 				  scanner
 				  (make-instance 'block-scanner
-								 :tokens (list
-										  (make-instance 'block-scanner
-														 :tokens
-														 (list "human"
-															   (make-instance 'parenthesis-scanner
-																			  :tokens (list "id" ":" "\"1000\""))
-															   (make-instance 'block-scanner
-																			  :tokens (list "name" "height"
-																							(make-instance 'parenthesis-scanner
-																										   :tokens (list "unit" ":" "FOOT"))))
-															   "human2"
-															   (make-instance 'parenthesis-scanner
-																			  :tokens (list "id" ":" "\"1000\"" "," "hhhhh" ":" "fff"))
-															   (make-instance 'block-scanner
-																			  :tokens (list "name" "height"
-																							(make-instance 'parenthesis-scanner
-																										   :tokens (list "unit" ":" "FOOT"))))))))
+								 :tokens
+								 (list "human"
+									   (make-instance 'parenthesis-scanner
+													  :tokens (list "id" ":" "\"1000\""))
+									   (make-instance 'block-scanner
+													  :tokens (list "name" "height"
+																	(make-instance 'parenthesis-scanner
+																				   :tokens (list "unit" ":" "FOOT"))))
+									   "human2"
+									   (make-instance 'parenthesis-scanner
+													  :tokens (list "id" ":" "\"1000\"" "," "hhhhh" ":" "fff"))
+									   (make-instance 'block-scanner
+													  :tokens (list "name" "height"
+																	(make-instance 'parenthesis-scanner
+																				   :tokens (list "unit" ":" "FOOT"))))))
 				  ))
 	)
   )
