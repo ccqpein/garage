@@ -61,9 +61,9 @@ async fn making_app_layer(
     rt.spawn(reminder_app.run());
 
     // make echo
-    let echo = app::Echo::new(deliver_sender.clone());
-    al.register_app(&echo);
-    rt.spawn(echo.run());
+    // let echo = app::Echo::new(deliver_sender.clone());
+    // al.register_app(&echo);
+    // rt.spawn(echo.run());
 
     // make github commit check active
     let gca = app::GithubCommitCheckActive::new(deliver_sender.clone(), opts.vault.clone());
