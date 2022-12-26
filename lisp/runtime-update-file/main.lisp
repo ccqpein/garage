@@ -7,3 +7,4 @@
                        ))
 
 (main)
+(format t "main doesn't block")
