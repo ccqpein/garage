@@ -284,11 +284,20 @@ impl ReminderInput {
         Self { chat_id, command }
     }
 
-    fn from_msg_v2(msg: &MessageEntity) -> Option<Self> {
-        match &msg.kind {
-            telegram_bot::MessageEntityKind::BotCommand => todo!(),
-            _ => todo!(),
-        }
+    fn from_msg_v2(msg: &Message) -> Option<Self> {
+        let data = match (&msg.chat, &msg.kind) {
+            (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
+                if let MessageEntity {
+                    offset,
+                    length,
+                    kind,
+                } = entities[0].kind
+                {
+                    data[offset + 1..]
+                }
+            }
+            _ => None,
+        };
 
         None
     }
