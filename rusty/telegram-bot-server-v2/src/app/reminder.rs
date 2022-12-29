@@ -3,7 +3,7 @@ use chrono::{Timelike, Utc};
 use chrono_tz::America::New_York;
 use lazy_static::*;
 use std::collections::HashMap;
-use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
+use telegram_bot::{ChatId, Message, MessageChat, MessageEntity, MessageKind};
 use tokio::{
     sync::{
         mpsc::{self, error::SendError, Receiver, Sender},
@@ -282,6 +282,15 @@ pub struct ReminderInput {
 impl ReminderInput {
     pub(super) fn new(chat_id: ChatId, command: ReminderComm) -> Self {
         Self { chat_id, command }
+    }
+
+    fn from_msg_v2(msg: &MessageEntity) -> Option<Self> {
+        match &msg.kind {
+            telegram_bot::MessageEntityKind::BotCommand => todo!(),
+            _ => todo!(),
+        }
+
+        None
     }
 
     fn from_msg(msg: &Message) -> Option<Self> {
