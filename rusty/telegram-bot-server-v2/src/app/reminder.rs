@@ -284,23 +284,24 @@ impl ReminderInput {
         Self { chat_id, command }
     }
 
-    fn from_msg_v2(msg: &Message) -> Option<Self> {
-        let data = match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
-                if let MessageEntity {
-                    offset,
-                    length,
-                    kind,
-                } = entities[0].kind
-                {
-                    data[offset + 1..]
-                }
-            }
-            _ => None,
-        };
+    //:= DEL
+    // fn from_msg_v2(msg: &Message) -> Option<Self> {
+    //     let data = match (&msg.chat, &msg.kind) {
+    //         (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
+    //             if let MessageEntity {
+    //                 offset,
+    //                 length,
+    //                 kind,
+    //             } = entities[0].kind
+    //             {
+    //                 data[offset + 1..]
+    //             }
+    //         }
+    //         _ => None,
+    //     };
 
-        None
-    }
+    //     None
+    // }
 
     fn from_msg(msg: &Message) -> Option<Self> {
         let data = match (&msg.chat, &msg.kind) {

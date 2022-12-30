@@ -34,6 +34,31 @@ impl GithubCommitInput {
             _ => None,
         }
     }
+
+    fn check_msg_comm(msg: &Message) -> Option<Self> {
+        match (&msg.chat, &msg.kind) {
+            (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
+                match entities.get(0) {
+                    Some(en) => match en.kind {
+                        telegram_bot::MessageEntityKind::BotCommand => {
+                            info!("receive command {}", data);
+                            if data == "/commit_check" {
+                                Some(Self {
+                                    username: msg.from.username.clone().unwrap_or(String::new()),
+                                    chatid: msg.chat.id(),
+                                })
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
+                    None => None,
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 pub struct GithubCommitInputCheck {
@@ -43,6 +68,14 @@ pub struct GithubCommitInputCheck {
 #[async_trait]
 impl AppConsumer for GithubCommitInputCheck {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
+        match GithubCommitInput::check_msg_comm(msg) {
+            Some(input) => match self.sender.send(input).await {
+                Ok(_) => return Ok(ConsumeStatus::Taken),
+                Err(e) => return Err(e.to_string()),
+            },
+            None => (),
+        }
+
         match GithubCommitInput::check_msg(msg) {
             Some(input) => match self.sender.send(input).await {
                 Ok(_) => return Ok(ConsumeStatus::Taken),
