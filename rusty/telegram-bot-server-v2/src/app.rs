@@ -49,6 +49,7 @@ pub trait App: Send {
     async fn run(mut self) -> Result<(), String>;
 }
 
+/// AppConsumer should take the message and return if it is the app needed.
 #[async_trait]
 pub trait AppConsumer: Send + Sync {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String>;
