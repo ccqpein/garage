@@ -146,6 +146,23 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
         .unwrap();
 }
 
+async fn clean_reminder(chatid: &ChatId, deliver_sender: Sender<Msg2Deliver>) {
+    let mut table = REMINDERS_TABLE.lock().await;
+    let reminders = table.entry(*chatid).or_insert(HashMap::new());
+
+    reminders.clear();
+
+    deliver_sender
+        .send(Msg2Deliver::new(
+            "send".to_string(),
+            *chatid,
+            format!("reminder cleaned"),
+        ))
+        .await
+        .map_err(|e| debug!("error in sending reminder {}", e))
+        .unwrap();
+}
+
 #[derive(Clone, Debug)]
 pub enum ReminderTime {
     D { unit: String, num: u64 },
@@ -258,6 +275,9 @@ pub enum ReminderComm {
     /// cancel the reminder
     CancelReminder(usize),
 
+    /// clean all reminders
+    CleanReminders,
+
     /// for from_msg using when parsing message to command has
     /// error
     ErrorCommand(String),
@@ -284,24 +304,31 @@ impl ReminderInput {
         Self { chat_id, command }
     }
 
-    //:= DEL
-    // fn from_msg_v2(msg: &Message) -> Option<Self> {
-    //     let data = match (&msg.chat, &msg.kind) {
-    //         (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
-    //             if let MessageEntity {
-    //                 offset,
-    //                 length,
-    //                 kind,
-    //             } = entities[0].kind
-    //             {
-    //                 data[offset + 1..]
-    //             }
-    //         }
-    //         _ => None,
-    //     };
-
-    //     None
-    // }
+    /// for command
+    fn from_msg_v2(msg: &Message) -> Option<Self> {
+        match (&msg.chat, &msg.kind) {
+            (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
+                match entities.get(0) {
+                    Some(en) => match en.kind {
+                        telegram_bot::MessageEntityKind::BotCommand => {
+                            info!("receive command {}", data);
+                            if data == "/clean_reminder" {
+                                Some(Self {
+                                    chat_id: msg.chat.id(),
+                                    command: ReminderComm::CleanReminders,
+                                })
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
+                    None => None,
+                }
+            }
+            _ => None,
+        }
+    }
 
     fn from_msg(msg: &Message) -> Option<Self> {
         let data = match (&msg.chat, &msg.kind) {
@@ -440,6 +467,9 @@ impl Reminder {
                         })
                         .unwrap();
                 }
+                ReminderComm::CleanReminders => {
+                    clean_reminder(&rem_input.chat_id, self.deliver_sender.clone()).await
+                }
             }
         }
     }
@@ -565,6 +595,14 @@ async fn awaiting_reminder(
 #[async_trait]
 impl AppConsumer for ReminderInputConsumer {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
+        match ReminderInput::from_msg_v2(msg) {
+            Some(input) => {
+                self.snd.send(input).await.map_err(|e| e.to_string())?;
+                return Ok(ConsumeStatus::Taken);
+            }
+            None => (),
+        };
+
         match ReminderInput::from_msg(msg) {
             Some(input) => {
                 self.snd.send(input).await.map_err(|e| e.to_string())?;
