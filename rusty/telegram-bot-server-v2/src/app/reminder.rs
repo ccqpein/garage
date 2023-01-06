@@ -63,6 +63,12 @@ async fn add_reminder(
 
         loop {
             brk = wait_until(&time).await.unwrap();
+
+            // because async clean all, need to check if reminder still there
+            if !reminder_still_alive(&chatid, &(largest + 1)).await {
+                break;
+            }
+
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
                     deliver_sender
@@ -87,6 +93,14 @@ async fn add_reminder(
         }
     });
     Ok(())
+}
+
+async fn reminder_still_alive(chatid: &ChatId, reminder_ind: &usize) -> bool {
+    let table = REMINDERS_TABLE.lock().await;
+    match table.get(chatid) {
+        Some(reminders) => reminders.contains_key(reminder_ind),
+        None => false,
+    }
 }
 
 async fn wait_until(rt: &ReminderTime) -> Result<bool, String> {
