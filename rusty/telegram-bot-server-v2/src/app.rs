@@ -21,10 +21,8 @@ pub use status_keeper::*;
 mod github_commit_check_active;
 pub use github_commit_check_active::*;
 
-/*
 mod chatGPT;
 pub use chatGPT::*;
-*/
 
 /// App name
 pub struct AppName(&'static str);
