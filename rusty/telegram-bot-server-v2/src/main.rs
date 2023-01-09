@@ -65,12 +65,29 @@ async fn making_app_layer(
     // al.register_app(&echo);
     // rt.spawn(echo.run());
 
+    // make chat_gpt
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone()).unwrap();
+    al.register_app(&chat_gpt);
+    rt.spawn(chat_gpt.run());
+
     // make github commit check active
     let gca = app::GithubCommitCheckActive::new(deliver_sender.clone(), opts.vault.clone());
     al.register_app(&gca);
     rt.spawn(gca.run());
 
     rt.spawn(status_checker.run());
+}
+
+async fn making_app_layer_2(
+    al: &mut AppLayer,
+    rt: &Runtime,
+    deliver_sender: &Sender<Msg2Deliver>,
+    opts: &Opts,
+) {
+    // make chat_gpt
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone()).unwrap();
+    al.register_app(&chat_gpt);
+    rt.spawn(chat_gpt.run());
 }
 
 fn main() -> std::io::Result<()> {
@@ -86,23 +103,34 @@ fn main() -> std::io::Result<()> {
 
     // read token
     let mut lines = include_str!("../vault/telebottoken").lines();
-    let token = lines.next().unwrap();
+    let token1 = lines.next().unwrap();
+
+    let mut lines = include_str!("../vault/telebottoken-mark2").lines();
+    let token2 = lines.next().unwrap();
 
     // tokio runtime
     let rt = tokio::runtime::Runtime::new().unwrap();
 
     // make deliver
-    let (deliver_sender, deliver_receiver) = mpsc::channel::<Msg2Deliver>(5);
-    let mut delvr = Deliver::new(Api::new(token), deliver_receiver);
+    let (deliver_sender1, deliver_receiver1) = mpsc::channel::<Msg2Deliver>(5);
+    let mut delvr1 = Deliver::new(Api::new(token1), deliver_receiver1);
+
+    let (deliver_sender2, deliver_receiver2) = mpsc::channel::<Msg2Deliver>(5);
+    let mut delvr2 = Deliver::new(Api::new(token2), deliver_receiver2);
 
     {
-        rt.spawn(async move { delvr.run().await });
+        rt.spawn(async move { delvr1.run().await });
+        rt.spawn(async move { delvr2.run().await });
     }
 
     // make applayer
-    let (mut applayer, app_sender) = app::AppLayer::new();
+    let (mut applayer1, app_sender1) = app::AppLayer::new();
+    let (mut applayer2, app_sender2) = app::AppLayer::new();
 
-    rt.block_on(making_app_layer(&mut applayer, &rt, &deliver_sender, &opts));
+    rt.block_on(async {
+        making_app_layer(&mut applayer1, &rt, &deliver_sender1, &opts).await;
+        making_app_layer_2(&mut applayer2, &rt, &deliver_sender2, &opts).await;
+    });
 
     {
         // one thread runtime
@@ -113,7 +141,8 @@ fn main() -> std::io::Result<()> {
 
         std::thread::spawn(move || {
             let local = tokio::task::LocalSet::new();
-            local.spawn_local(applayer.run());
+            local.spawn_local(applayer1.run());
+            local.spawn_local(applayer2.run());
             local_rt.block_on(local);
         });
     }
@@ -136,21 +165,27 @@ fn main() -> std::io::Result<()> {
         info!("done make tls config");
 
         // declare endpoint
-        let endpoint = include_str!("../vault/endpoint");
+        let endpoint1 = include_str!("../vault/endpoint");
+        let endpoint2 = include_str!("../vault/endpoint-mark2");
 
-        info!("start to run the httpserver on {}", endpoint);
+        info!("start to run the httpserver on {}", endpoint1);
+        info!("start to run the httpserver on {}", endpoint2);
         // start http server
         HttpServer::new(move || {
             App::new()
-                //.data(Api::new(token))
-                .app_data(web::Data::new(app_sender.clone()))
-                .app_data(web::Data::new(opts.clone()))
-                .route(endpoint, web::post().to(handler))
-                .route(
-                    // default
-                    endpoint,
-                    web::post().to(default),
+                .service(
+                    web::resource(endpoint1)
+                        .app_data(web::Data::new(app_sender1.clone()))
+                        .app_data(web::Data::new(opts.clone()))
+                        .route(web::post().to(handler)),
                 )
+                .service(
+                    web::resource(endpoint2)
+                        .app_data(web::Data::new(app_sender2.clone()))
+                        .app_data(web::Data::new(opts.clone()))
+                        .route(web::post().to(handler)),
+                )
+                .default_service(web::post().to(default))
         })
         .bind_rustls("0.0.0.0:8443", config)
         .unwrap()

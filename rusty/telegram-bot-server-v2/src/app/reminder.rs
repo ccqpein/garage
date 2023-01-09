@@ -325,8 +325,8 @@ impl ReminderInput {
                 match entities.get(0) {
                     Some(en) => match en.kind {
                         telegram_bot::MessageEntityKind::BotCommand => {
-                            info!("receive command {}", data);
                             if data == "/clean_reminder" {
+                                info!("receive command {}", data);
                                 Some(Self {
                                     chat_id: msg.chat.id(),
                                     command: ReminderComm::CleanReminders,
