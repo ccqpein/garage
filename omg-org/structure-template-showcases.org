@@ -1,0 +1,17 @@
+#+begin_center
+center
+#+end_center
+
+#+begin_example
+example
+#+end_example
+
+#+begin_quote
+quote
+#+end_quote
+
+#+begin_src clisp
+  (print "hello world")
+#+end_src
+
+~C-c C-e~ h o

@@ -23,10 +23,10 @@ below code example come from https://go.dev/blog/intro-generics
 */
 
 // two ways to run this
-// 1. x := GMin[int](2, 3)
-// 2. x := GMin(2, 3)
-// 3. fmin := GMin[float64]
-//    m := fmin(2.71, 3.14)
+//  1. x := GMin[int](2, 3)
+//  2. x := GMin(2, 3)
+//  3. fmin := GMin[float64]
+//     m := fmin(2.71, 3.14)
 func GMin[T constraints.Ordered](x, y T) T {
 	if x < y {
 		return x
