@@ -270,7 +270,7 @@ impl ReminderTime {
 
     fn reminder_notification(&self) -> String {
         match self {
-            ReminderTime::D { unit, num } => format!("every {} {}", unit, num),
+            ReminderTime::D { unit, num } => format!("every {} {}", num, unit),
             ReminderTime::T((h, m)) => format!("on {}:{:02}", h, m),
         }
     }
