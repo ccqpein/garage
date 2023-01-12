@@ -1,0 +1,23 @@
+* README
+
+play around of [[https://tree-sitter.github.io/tree-sitter/][tree-sitter]]
+
+** make parser local
+install cli
+
+~cargo install tree-sitter-cli~
+
+get golang version
+
+~git clone https://github.com/tree-sitter/tree-sitter-go.git~
+
+remove the parser already generated in repo
+
+~rm -rf ./src/*~
+
+generate new parser
+
+~tree-sitter generate~
+
+** binding with rust
+
