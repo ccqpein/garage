@@ -3,7 +3,7 @@ use chrono::{Timelike, Utc};
 use chrono_tz::America::New_York;
 use lazy_static::*;
 use std::collections::HashMap;
-use telegram_bot::{ChatId, Message, MessageChat, MessageEntity, MessageKind};
+use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::{
     sync::{
         mpsc::{self, error::SendError, Receiver, Sender},
@@ -64,11 +64,6 @@ async fn add_reminder(
         loop {
             brk = wait_until(&time).await.unwrap();
 
-            // because async clean all, need to check if reminder still there
-            if !reminder_still_alive(&chatid, &(largest + 1)).await {
-                break;
-            }
-
             match rev.try_recv() {
                 Err(TryRecvError::Empty) => {
                     deliver_sender
@@ -88,19 +83,11 @@ async fn add_reminder(
 
             if brk {
                 delete_reminder(&chatid, &(largest + 1), deliver_sender).await;
-                break;
+                return;
             }
         }
     });
     Ok(())
-}
-
-async fn reminder_still_alive(chatid: &ChatId, reminder_ind: &usize) -> bool {
-    let table = REMINDERS_TABLE.lock().await;
-    match table.get(chatid) {
-        Some(reminders) => reminders.contains_key(reminder_ind),
-        None => false,
-    }
 }
 
 async fn wait_until(rt: &ReminderTime) -> Result<bool, String> {
@@ -164,7 +151,16 @@ async fn clean_reminder(chatid: &ChatId, deliver_sender: Sender<Msg2Deliver>) {
     let mut table = REMINDERS_TABLE.lock().await;
     let reminders = table.entry(*chatid).or_insert(HashMap::new());
 
-    reminders.clear();
+    for (ind, sig) in reminders.drain() {
+        match sig.send(true) {
+            Ok(_) => {
+                info!("send back for deleting reminder successfully")
+            }
+            Err(_e) => {
+                debug!("send back for deleting reminder {} has error", ind)
+            }
+        }
+    }
 
     deliver_sender
         .send(Msg2Deliver::new(
@@ -175,6 +171,13 @@ async fn clean_reminder(chatid: &ChatId, deliver_sender: Sender<Msg2Deliver>) {
         .await
         .map_err(|e| debug!("error in sending reminder {}", e))
         .unwrap();
+}
+
+async fn list_reminder(chatid: &ChatId, deliver_sender: Sender<Msg2Deliver>) {
+    let mut table = REMINDERS_TABLE.lock().await;
+    let reminders = table.entry(*chatid).or_insert(HashMap::new());
+
+    //:= TODO: list summary? details? or just numbers
 }
 
 #[derive(Clone, Debug)]
@@ -292,6 +295,9 @@ pub enum ReminderComm {
     /// clean all reminders
     CleanReminders,
 
+    /// List all reminders
+    ListReminders,
+
     /// for from_msg using when parsing message to command has
     /// error
     ErrorCommand(String),
@@ -331,6 +337,22 @@ impl ReminderInput {
                                     chat_id: msg.chat.id(),
                                     command: ReminderComm::CleanReminders,
                                 })
+                            } else if data.starts_with("/list_reminders") {
+                                info!("receive command {}", data);
+                                //:= TODO: new command
+                                None
+                            } else if data.starts_with("/cancel_reminder") {
+                                info!("receive command {}", data);
+                                if let Some(ind) = data.get(en.length as usize + 1..) {
+                                    if let Ok(d) = ind.parse::<usize>() {
+                                        return Some(Self {
+                                            chat_id: msg.chat.id(),
+                                            command: ReminderComm::CancelReminder(d),
+                                        });
+                                    }
+                                }
+
+                                None
                             } else {
                                 None
                             }
@@ -483,6 +505,9 @@ impl Reminder {
                 }
                 ReminderComm::CleanReminders => {
                     clean_reminder(&rem_input.chat_id, self.deliver_sender.clone()).await
+                }
+                ReminderComm::ListReminders => {
+                    list_reminder(&rem_input.chat_id, self.deliver_sender.clone()).await
                 }
             }
         }
