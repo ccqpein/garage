@@ -2,13 +2,14 @@ use super::*;
 use async_openai::{types::CreateCompletionRequestArgs, Client};
 use std::{
     collections::HashSet,
-    fs::File,
-    io::{BufRead, BufReader},
+    fs::{File, OpenOptions},
+    io::{prelude::*, BufRead, BufReader},
 };
 use telegram_bot::{ChatId, GroupId, MessageChat, MessageKind};
 
 /// receive message and return back
 pub struct ChatGPT {
+    vault_path: String,
     // user or group
     my_name: String,
 
@@ -33,7 +34,9 @@ impl ChatGPT {
             .ok_or("Read 'myname' failed".to_string())?
             .map_err(|e| e.to_string())?;
 
-        let f = BufReader::new(File::open(vault_path + "/gpt_token").map_err(|e| e.to_string())?);
+        let f = BufReader::new(
+            File::open(vault_path.clone() + "/gpt_token").map_err(|e| e.to_string())?,
+        );
         let gpt_token = f
             .lines()
             .next()
@@ -41,14 +44,42 @@ impl ChatGPT {
             .map_err(|e| e.to_string())?;
         let gpt_client = Client::new().with_api_key(gpt_token);
 
+        let f = BufReader::new(
+            File::open(vault_path.clone() + "/stored_groups").map_err(|e| e.to_string())?,
+        );
+        let stored_groups = f
+            .lines()
+            .filter_map(|l| l.ok())
+            .collect::<HashSet<String>>();
+
+        info!(
+            "these group added to waken_groups directly: {:?}",
+            stored_groups
+        );
+
         Ok(ChatGPT {
+            vault_path,
             my_name,
             sender,
             receiver,
             deliver_sender,
             gpt_client,
-            waken_groups: HashSet::new(),
+            waken_groups: stored_groups,
         })
+    }
+
+    fn write_to_group_list_file(&self, g_id: String) -> Result<(), String> {
+        let mut f = OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(self.vault_path.clone() + "/stored_groups")
+            .map_err(|e| e.to_string())?;
+
+        f.write_all(b"\n").map_err(|e| e.to_string())?;
+        f.write_all(g_id.as_bytes()).map_err(|e| e.to_string())?;
+        f.flush().map_err(|e| e.to_string())?;
+
+        Ok(())
     }
 
     async fn handle_chat(&mut self, msg: ChatGPTInput) -> Result<(), String> {
@@ -79,6 +110,7 @@ impl ChatGPT {
                         String::from("already")
                     } else {
                         self.waken_groups.insert(g_id.clone());
+                        self.write_to_group_list_file(g_id.clone())?;
                         String::from("sure")
                     };
 
@@ -91,7 +123,7 @@ impl ChatGPT {
                         .send(Msg2Deliver::new(
                             "send".to_string(),
                             msg.chat_id,
-                            "not for you".into(),
+                            "only my owner can wake me up".into(),
                         ))
                         .await;
                 }
