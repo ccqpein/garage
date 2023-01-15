@@ -21,3 +21,4 @@ generate new parser
 
 ** binding with rust
 
++move tree-sitter-go (the repo I just git clone) to rust repo ~tree-sitter-binding~.+
