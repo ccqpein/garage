@@ -19,6 +19,11 @@ generate new parser
 
 ~tree-sitter generate~
 
+** use the parse
+
+~cd tree-sitter-go && tree-sitter parse './src/main.go' -d~
+
+
 ** binding with rust
 
 +move tree-sitter-go (the repo I just git clone) to rust repo ~tree-sitter-binding~.+
