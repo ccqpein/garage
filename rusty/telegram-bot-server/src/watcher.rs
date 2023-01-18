@@ -47,7 +47,7 @@ enum SpecialMsg {
 enum CheckMsg {
     Nil,
     Reminder,
-    //:= TODO: All
+    
 }
 
 impl From<&String> for SpecialMsg {
@@ -60,7 +60,7 @@ impl From<&String> for SpecialMsg {
                 }
                 "cancelremind" => Self::CancelReminder(String::new()),
                 "check" => Self::Check(CheckMsg::Nil),
-                //"commit" => Self::Commit, //:= UnSpportMsg as temp entrance for handling this
+                //"commit" => Self::Commit, 
                 a @ _ => Self::UnSpportMsg(String::from(a)),
             }
         } else {
@@ -132,7 +132,7 @@ impl Watcher {
                 (MessageKind::Text { ref data, .. }, MessageChat::Private(_), Status::Nil) => {
                     match SpecialMsg::from(data) {
                         SpecialMsg::Reminder(time) => {
-                            //:= guard private chat
+                            
 
                             let id = msg.chat.id().clone();
                             let (snd, mut rec) = oneshot::channel();
@@ -311,7 +311,7 @@ impl Watcher {
 
                         SpecialMsg::UnSpportMsg(m) => {
                             debug!("unsupport {}", data);
-                            //:= commit command here
+                            
                             let gc = GithubCommitCheck::new();
                             let reply = match gc.match_str(&m) {
                                 Some(_) => gc
