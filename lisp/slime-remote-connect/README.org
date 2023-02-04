@@ -1,0 +1,29 @@
+* README
+
+** In remote
+
+#+begin_src lisp
+  (ql:quickload 'swank)
+  (swank:create-server :port 4005 :dont-close t)
+#+end_src
+
+** In local
+use ssh tunnel:
+
+~ssh -L 4005:127.0.0.1:4005 pi@192.168.0.20~
+
+TODO: some problem here
+
+** In emacs
+~slime-connect~
+
+Run [[https://github.com/Shinmera/cl-gpio][gpio]]
+
+#+begin_src lisp
+  (loop for i from 1 to 40
+        do (gpio:export i))
+
+  (gpio:pins)
+#+end_src
+
+then it print all 40 pins. However, I have test if this lib is work or not.
