@@ -12,7 +12,9 @@ use ssh tunnel:
 
 ~ssh -L 4005:127.0.0.1:4005 pi@192.168.0.20~
 
-TODO: some problem here
+connect directly:
+
+remember open the port.
 
 ** In emacs
 ~slime-connect~
