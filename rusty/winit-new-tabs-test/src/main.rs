@@ -41,11 +41,17 @@ fn main() {
                             println!("hello");
                             let monitor = event_loop
                                 .available_monitors()
-                                //.next()
-                                .nth(1)
+                                .next()
+                                //.nth(1)
                                 .expect("no monitor found!");
-                            let fullscreen = Some(Fullscreen::Borderless(Some(monitor.clone())));
-                            window.set_fullscreen(fullscreen);
+
+                            if window.fullscreen().is_some() {
+                                window.set_fullscreen(None);
+                            } else {
+                                let fullscreen =
+                                    Some(Fullscreen::Borderless(Some(monitor.clone())));
+                                window.set_fullscreen(fullscreen);
+                            }
                         }
                     }
                     winit::event::ElementState::Pressed => {
