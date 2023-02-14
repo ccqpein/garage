@@ -1,10 +1,10 @@
-mod chars;
-mod fresh_line;
-mod new_line;
+//mod chars;
+//mod fresh_line;
+//mod new_line;
 
-pub use chars::*;
-pub use fresh_line::*;
-pub use new_line::*;
+//pub use chars::*;
+//pub use fresh_line::*;
+//pub use new_line::*;
 
 //use args::*;
 //use lazy_static::lazy_static;
@@ -27,9 +27,42 @@ use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 //     };
 // }
 
-enum Tildes {
+enum Tilde {
     /// ~C or ~:C
     Char,
+
+    /// loop
+    Loop(Vec<Tilde>),
+
+    /// text inside the tilde
+    Text(String),
+
+    /// vec
+    VecTilde(Vec<Tilde>),
+}
+
+impl Tilde {
+    fn parse(mut c: &mut Cursor<&'_ str>) -> Self {
+        let mut result = vec![];
+        let mut char_buf = [0u8; 1];
+        loop {
+            c.read(&mut char_buf);
+            if char_buf[0] == b'~' {
+                c.read(&mut char_buf);
+                match char_buf[0] {
+                    b'{' => result.push(Self::parse_loop(c)),
+                    _ => todo!(),
+                }
+            } else {
+            }
+        }
+
+        Self::VecTilde(result)
+    }
+
+    fn parse_loop(mut c: &mut Cursor<&'_ str>) -> Self {
+        todo!()
+    }
 }
 
 // #[derive(Debug)]
@@ -38,16 +71,30 @@ enum Tildes {
 //     T(Box<dyn Tilde>),
 // }
 
+/*:= implenment notes:
+use cursor
+ */
+
 /// the control string should including:
 /// 1. the whole string
 /// 2. the parsed tree
 struct ControlStr<'a> {
     inner: &'a str,
+    tlides: Vec<((usize, usize), Tilde)>,
 }
 
 impl<'a> ControlStr<'a> {
     fn new(s: &'a str) -> Self {
-        Self { inner: s }
+        //let mut cc = Cursor::new(s);
+
+        Self {
+            inner: s,
+            tlides: vec![],
+        }
+    }
+
+    fn scan(s: &'a str) -> Vec<((usize, usize), Tilde)> {
+        todo!()
     }
 
     // fn parse(&self) -> Result<Vec<ParseData>, String> {
