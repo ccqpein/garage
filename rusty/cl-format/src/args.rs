@@ -41,8 +41,36 @@ enum Tilde {
     VecTilde(Vec<Tilde>),
 }
 
+#[derive(Debug)]
+struct TildeError {
+    kind: ErrorKind,
+    msg: String,
+}
+
+impl TildeError {
+    fn new(kind: ErrorKind, msg: impl AsRef<str>) -> Self {
+        Self {
+            kind,
+            msg: msg.as_ref().to_string(),
+        }
+    }
+}
+
+impl std::error::Error for TildeError {}
+
+impl std::fmt::Display for TildeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TilderError {:?}: {}", self.kind, self.msg)
+    }
+}
+
+#[derive(Debug)]
+enum ErrorKind {
+    ParseError,
+}
+
 impl Tilde {
-    fn parse(mut c: &mut Cursor<&'_ str>) -> Self {
+    fn parse(mut c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut result = vec![];
         let mut char_buf = [0u8; 1];
         loop {
@@ -50,18 +78,31 @@ impl Tilde {
             if char_buf[0] == b'~' {
                 c.read(&mut char_buf);
                 match char_buf[0] {
-                    b'{' => result.push(Self::parse_loop(c)),
+                    b'{' => {
+                        c.seek(SeekFrom::Current(-2));
+                        result.push(Self::parse_loop(c)?)
+                    }
                     _ => todo!(),
                 }
             } else {
             }
         }
 
-        Self::VecTilde(result)
+        Ok(Self::VecTilde(result))
     }
 
-    fn parse_loop(mut c: &mut Cursor<&'_ str>) -> Self {
-        todo!()
+    fn parse_loop(mut c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut char_buf = [0u8; 2];
+        c.read(&mut char_buf);
+        if let Ok(s) = std::str::from_utf8(&char_buf) && s!= "~{" {
+            return Err(
+				TildeError::new(
+					ErrorKind::ParseError,
+					"should start with ~{",
+				).into());
+        }
+
+        Ok(Self::Loop(vec![]))
     }
 }
 
