@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
 #[derive(Debug, PartialEq)]
-enum Tilde {
+enum TildeKind {
     /// ~C or ~:C
     Char,
 
@@ -28,6 +28,12 @@ enum Tilde {
 
     /// vec
     VecTilde(Vec<Tilde>),
+}
+
+#[derive(Debug, PartialEq)]
+struct Tilde {
+    len: usize,
+    value: TildeKind,
 }
 
 #[derive(Debug)]
@@ -59,8 +65,12 @@ enum ErrorKind {
 }
 
 impl Tilde {
+    fn new(len: usize, value: TildeKind) -> Self {
+        Self { len, value }
+    }
+
     /// has to have '~' at current posiont of cursor
-    fn parse(mut c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+    fn parse(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut char_buf = [0u8; 1];
 
         c.read(&mut char_buf)?;
@@ -84,6 +94,7 @@ impl Tilde {
         }
     }
 
+    /// parse function for '~{~}'
     fn parse_loop(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut char_buf = [0u8; 2]; // two bytes
         c.read(&mut char_buf)?;
@@ -98,6 +109,7 @@ impl Tilde {
 
         let mut result = vec![];
         let mut buf = vec![];
+        let mut total_len = 2;
 
         loop {
             // read text until the next '~'
@@ -109,29 +121,40 @@ impl Tilde {
                 }
                 [.., b'~'] => {
                     c.seek(SeekFrom::Current(-1))?;
-                    result.push(Tilde::Text(String::from_utf8(
-                        buf[..buf.len() - 1].to_vec(),
-                    )?));
+                    result.push(Tilde::new(
+                        buf.len() - 1,
+                        TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
+                    ));
+                    total_len += buf.len() - 1;
                 }
                 [..] => {
-                    result.push(Tilde::Text(String::from_utf8(buf.to_vec())?));
-                    return Ok(Self::Loop(result));
+                    result.push(Tilde::new(
+                        buf.len() - 1,
+                        TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
+                    ));
+                    total_len += buf.len();
+                    return Ok(Tilde::new(total_len, TildeKind::Loop(result)));
                 }
             }
 
             c.read(&mut char_buf)?;
+
             if let Ok(s) = std::str::from_utf8(&char_buf) && s == "~}" {
-				return Ok(Self::Loop(result))
+				return Ok(Tilde::new(total_len + 2, TildeKind::Loop(result)));
 			}
 
             c.seek(SeekFrom::Current(-2))?;
 
             // read the tilde
-            result.push(Tilde::parse(c)?);
+            let next = Tilde::parse(c)?;
+            total_len += next.len;
+            result.push(next);
+
             buf.clear()
         }
     }
 
+    /// parse function for '~a'
     fn parse_value(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut char_buf = [0u8; 2]; // two bytes
         c.read(&mut char_buf)?;
@@ -144,8 +167,10 @@ impl Tilde {
 				).into());
         }
 
-        Ok(Self::Va)
+        Ok(Tilde::new(2, TildeKind::Va))
     }
+
+    //:= TODO: a lot parse functions below
 }
 
 /// the control string should including:
@@ -153,20 +178,21 @@ impl Tilde {
 /// 2. the parsed tree
 struct ControlStr<'a> {
     inner: &'a str,
-    tlides: Vec<((usize, usize), Tilde)>,
+    tildes: Vec<((usize, usize), Tilde)>,
 }
 
 impl<'a> ControlStr<'a> {
     fn new(s: &'a str) -> Self {
-        //let mut cc = Cursor::new(s);
+        let cc = Cursor::new(s);
+        let tildes = Self::scan(cc);
 
         Self {
             inner: s,
-            tlides: vec![],
+            tildes: tildes,
         }
     }
 
-    fn scan(s: &'a str) -> Vec<((usize, usize), Tilde)> {
+    fn scan(s: impl Read + Seek) -> Vec<((usize, usize), Tilde)> {
         todo!()
     }
 }
@@ -189,7 +215,7 @@ mod test {
     #[test]
     fn test_parse_va() -> Result<(), Box<dyn std::error::Error>> {
         let mut case = Cursor::new("~a");
-        assert_eq!(Tilde::parse_value(&mut case)?, Tilde::Va,);
+        assert_eq!(Tilde::parse_value(&mut case)?, Tilde::new(2, TildeKind::Va));
         Ok(())
     }
 
@@ -197,20 +223,41 @@ mod test {
     fn test_parse_loop() -> Result<(), Box<dyn std::error::Error>> {
         let mut case = Cursor::new("~{~}");
 
-        assert_eq!(Tilde::parse_loop(&mut case)?, Tilde::Loop(Vec::new()));
+        assert_eq!(
+            Tilde::parse_loop(&mut case)?,
+            Tilde::new(4, TildeKind::Loop(Vec::new()))
+        );
 
         let mut case = Cursor::new("~{a bc~}");
 
         assert_eq!(
             Tilde::parse_loop(&mut case)?,
-            Tilde::Loop(vec![Tilde::Text(String::from("a bc"))])
+            Tilde::new(
+                8,
+                TildeKind::Loop(vec![Tilde {
+                    len: 4,
+                    value: TildeKind::Text(String::from("a bc"))
+                }])
+            ),
         );
 
         let mut case = Cursor::new("~{a bc~a~}");
 
         assert_eq!(
             Tilde::parse_loop(&mut case)?,
-            Tilde::Loop(vec![Tilde::Text(String::from("a bc")), Tilde::Va,])
+            Tilde::new(
+                10,
+                TildeKind::Loop(vec![
+                    Tilde {
+                        len: 4,
+                        value: TildeKind::Text(String::from("a bc"))
+                    },
+                    Tilde {
+                        len: 2,
+                        value: TildeKind::Va,
+                    }
+                ])
+            )
         );
 
         Ok(())
