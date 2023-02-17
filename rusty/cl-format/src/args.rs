@@ -182,18 +182,39 @@ struct ControlStr<'a> {
 }
 
 impl<'a> ControlStr<'a> {
-    fn new(s: &'a str) -> Self {
+    fn new(s: &'a str) -> Result<Self, Box<dyn std::error::Error>> {
         let cc = Cursor::new(s);
-        let tildes = Self::scan(cc);
+        let tildes = Self::scan(cc)?;
 
-        Self {
-            inner: s,
-            tildes: tildes,
-        }
+        Ok(Self { inner: s, tildes })
     }
 
-    fn scan(s: impl Read + Seek) -> Vec<((usize, usize), Tilde)> {
-        todo!()
+    fn scan(
+        mut s: Cursor<&'_ str>,
+    ) -> Result<Vec<((usize, usize), Tilde)>, Box<dyn std::error::Error>> {
+        let mut buf = vec![];
+        let mut has_read_len = 0;
+        let mut result = vec![];
+
+        loop {
+            dbg!(s.position());
+            s.read_until(b'~', &mut buf)?;
+            match buf.last() {
+                // find the next '~'
+                Some(b'~') => {
+                    has_read_len += buf.len() - 1;
+                    s.seek(SeekFrom::Current(-1))?;
+                }
+                _ => return Ok(result),
+            }
+
+            let t = Tilde::parse(&mut s)?;
+            let end_index = has_read_len + t.len;
+
+            result.push(((has_read_len, end_index), t));
+            has_read_len = end_index;
+            buf.clear();
+        }
     }
 }
 
@@ -258,6 +279,45 @@ mod test {
                     }
                 ])
             )
+        );
+
+        let mut case = Cursor::new("~{~aa bc~a~}");
+
+        assert_eq!(
+            Tilde::parse_loop(&mut case)?,
+            Tilde::new(
+                12,
+                TildeKind::Loop(vec![
+                    Tilde {
+                        len: 2,
+                        value: TildeKind::Va,
+                    },
+                    Tilde {
+                        len: 4,
+                        value: TildeKind::Text(String::from("a bc"))
+                    },
+                    Tilde {
+                        len: 2,
+                        value: TildeKind::Va,
+                    }
+                ])
+            )
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_control_str_scan() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "hello wor~{~a~}";
+        let c = Cursor::new(case);
+
+        assert_eq!(
+            ControlStr::scan(c)?,
+            vec![(
+                (9, 15),
+                Tilde::new(6, TildeKind::Loop(vec![Tilde::new(2, TildeKind::Va)]))
+            )]
         );
 
         Ok(())
