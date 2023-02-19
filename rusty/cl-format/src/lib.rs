@@ -9,6 +9,9 @@ enum TildeKind {
     /// ~C or ~:C
     Char,
 
+    /// ~$ or ~5$
+    Float(Option<usize>),
+
     /// ~a
     Va,
 
@@ -61,29 +64,47 @@ impl Tilde {
         Self { len, value }
     }
 
+    /// start from '~' to the key char of tilde kind
+    fn scan_for_kind(
+        c: &mut Cursor<&'_ str>,
+    ) -> Result<
+        impl for<'a, 'b> Fn(
+            &'a mut std::io::Cursor<&'b str>,
+        ) -> Result<Tilde, Box<(dyn std::error::Error + 'static)>>,
+        Box<dyn std::error::Error>,
+    > {
+        //:= TODO
+        let mut buf = [0u8; 1];
+        c.read(&mut buf)?;
+        if buf[0] != b'~' {
+            return Err(TildeError::new(ErrorKind::ParseError, "should start with ~").into());
+        }
+
+        let mut offset = 1; // after ~
+
+        loop {
+            buf[0] = 0;
+            c.read(&mut buf)?;
+            offset += 1;
+
+            match buf[0] {
+                b'a' => {
+                    c.seek(SeekFrom::Current(-offset))?; // back to start
+                    return Ok(Self::parse_value);
+                }
+                _ => {
+                    return Err(
+                        TildeError::new(ErrorKind::ParseError, "cannot find the key tilde").into(),
+                    )
+                }
+            }
+        }
+    }
+
     /// has to have '~' at current posiont of cursor
     fn parse(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut char_buf = [0u8; 1];
-
-        c.read(&mut char_buf)?;
-        if char_buf[0] != b'~' {
-            return Err(
-                TildeError::new(ErrorKind::ParseError, "'~' has to be the first char").into(),
-            );
-        }
-
-        c.read(&mut char_buf)?;
-        match char_buf.as_slice() {
-            [b'a'] => {
-                c.seek(SeekFrom::Current(-2))?;
-                Self::parse_value(c)
-            }
-            [b'{'] => {
-                c.seek(SeekFrom::Current(-2))?;
-                Self::parse_loop(c)
-            }
-            _ => todo!(),
-        }
+        let parser = Self::scan_for_kind(c)?;
+        parser(c)
     }
 
     /// parse function for '~{~}'
@@ -161,6 +182,9 @@ impl Tilde {
 
         Ok(Tilde::new(2, TildeKind::Va))
     }
+
+    // parse the float
+    //fn parse_float(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {}
 
     //:= TODO: a lot parse functions below
 }
@@ -312,6 +336,45 @@ mod test {
             )]
         );
 
+        Ok(())
+    }
+
+    //:= DEL: just for test
+    #[test]
+    fn test_read_until_tilde_symbol() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~,5f";
+        let mut c = Cursor::new(case);
+        let mut buf = [0u8; 1];
+
+        c.read(&mut buf)?;
+        dbg!(String::from_utf8(buf.to_vec())?);
+        c.read(&mut buf)?;
+
+        dbg!(String::from_utf8(buf.to_vec())?);
+
+        c.read(&mut buf)?;
+        c.read(&mut buf)?;
+        c.read(&mut buf)?;
+        c.read(&mut buf)?;
+        c.read(&mut buf)?;
+        dbg!(String::from_utf8(buf.to_vec())?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_scan_for_kind() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~a";
+        let mut c = Cursor::new(case);
+        let f = Tilde::scan_for_kind(&mut c)?;
+
+        // let mut ss = String::new();
+        // c.read_to_string(&mut ss);
+        // dbg!(ss);
+        // c.seek(SeekFrom::Start(0));
+        //dbg!(f(&mut c));
+
+        assert_eq!(Tilde::new(2, TildeKind::Va), f(&mut c)?);
         Ok(())
     }
 }
