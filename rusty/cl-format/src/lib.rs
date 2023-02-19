@@ -1,6 +1,7 @@
 #![feature(let_chains)]
+#![feature(box_syntax)]
+#![feature(pattern)]
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
@@ -10,7 +11,10 @@ enum TildeKind {
     Char,
 
     /// ~$ or ~5$
-    Float(Option<usize>),
+    Float(Option<String>),
+
+    /// ~d ~:d ~:@d
+    Digit(Option<String>),
 
     /// ~a
     Va,
@@ -68,12 +72,14 @@ impl Tilde {
     fn scan_for_kind(
         c: &mut Cursor<&'_ str>,
     ) -> Result<
-        impl for<'a, 'b> Fn(
-            &'a mut std::io::Cursor<&'b str>,
-        ) -> Result<Tilde, Box<(dyn std::error::Error + 'static)>>,
+        Box<
+            dyn for<'a, 'b> Fn(
+                &'a mut std::io::Cursor<&'b str>,
+            )
+                -> Result<Tilde, Box<(dyn std::error::Error + 'static)>>,
+        >,
         Box<dyn std::error::Error>,
     > {
-        //:= TODO
         let mut buf = [0u8; 1];
         c.read(&mut buf)?;
         if buf[0] != b'~' {
@@ -82,6 +88,7 @@ impl Tilde {
 
         let mut offset = 1; // after ~
 
+        // read until the tilde key char
         loop {
             buf[0] = 0;
             c.read(&mut buf)?;
@@ -90,18 +97,30 @@ impl Tilde {
             match buf[0] {
                 b'a' => {
                     c.seek(SeekFrom::Current(-offset))?; // back to start
-                    return Ok(Self::parse_value);
+                    return Ok(box Self::parse_value);
                 }
-                _ => {
+                b'{' => {
+                    c.seek(SeekFrom::Current(-offset))?; // back to start
+                    return Ok(box Self::parse_loop);
+                }
+                b'$' | b'f' => {
+                    c.seek(SeekFrom::Current(-offset))?; // back to start
+                    return Ok(box Self::parse_float);
+                }
+                b'd' => {
+                    c.seek(SeekFrom::Current(-offset))?; // back to start
+                    return Ok(box Self::parse_digit);
+                }
+                0 => {
                     return Err(
                         TildeError::new(ErrorKind::ParseError, "cannot find the key tilde").into(),
                     )
                 }
+                _ => continue,
             }
         }
     }
 
-    /// has to have '~' at current posiont of cursor
     fn parse(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let parser = Self::scan_for_kind(c)?;
         parser(c)
@@ -157,7 +176,7 @@ impl Tilde {
 			}
 
             c.seek(SeekFrom::Current(-2))?;
-
+            dbg!(c.position());
             // read the tilde
             let next = Tilde::parse(c)?;
             total_len += next.len;
@@ -183,8 +202,51 @@ impl Tilde {
         Ok(Tilde::new(2, TildeKind::Va))
     }
 
-    // parse the float
-    //fn parse_float(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {}
+    /// parse the float
+    fn parse_float(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut buf = vec![];
+
+        for t in [b'$', b'f'] {
+            c.read_until(t, &mut buf)?;
+            match buf.last() {
+                Some(b) if *b == t => {
+                    return Ok(Tilde::new(
+                        buf.len(),
+                        TildeKind::Float(Some(String::from_utf8(
+                            buf.get(1..buf.len() - 1).map_or(Vec::new(), |s| s.to_vec()),
+                        )?)),
+                    ))
+                }
+                _ => (),
+            }
+            c.seek(SeekFrom::Current(-(buf.len() as i64)))?;
+            buf.clear();
+        }
+        Err(TildeError::new(ErrorKind::ParseError, "cannot find the '$' or 'f'").into())
+    }
+
+    /// parse the digit
+    fn parse_digit(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut buf = vec![];
+
+        for t in [b'd'] {
+            c.read_until(t, &mut buf)?;
+            match buf.last() {
+                Some(b) if *b == t => {
+                    return Ok(Tilde::new(
+                        buf.len(),
+                        TildeKind::Float(Some(String::from_utf8(
+                            buf.get(1..buf.len() - 1).map_or(Vec::new(), |s| s.to_vec()),
+                        )?)),
+                    ))
+                }
+                _ => (),
+            }
+            c.seek(SeekFrom::Current(-(buf.len() as i64)))?;
+            buf.clear();
+        }
+        Err(TildeError::new(ErrorKind::ParseError, "cannot find the '$' or 'f'").into())
+    }
 
     //:= TODO: a lot parse functions below
 }
@@ -232,6 +294,9 @@ impl<'a> ControlStr<'a> {
             buf.clear();
         }
     }
+
+    //:= TODO
+    fn output() {}
 }
 
 #[cfg(test)]
@@ -324,6 +389,29 @@ mod test {
     }
 
     #[test]
+    fn test_parse_float() -> Result<(), Box<dyn std::error::Error>> {
+        let mut case = Cursor::new("~$");
+        assert_eq!(
+            Tilde::parse_float(&mut case)?,
+            Tilde::new(2, TildeKind::Float(Some(String::new())))
+        );
+
+        let mut case = Cursor::new("~5$");
+        assert_eq!(
+            Tilde::parse_float(&mut case)?,
+            Tilde::new(3, TildeKind::Float(Some("5".to_string())))
+        );
+
+        let mut case = Cursor::new("~,5f");
+        assert_eq!(
+            Tilde::parse_float(&mut case)?,
+            Tilde::new(4, TildeKind::Float(Some(",5".to_string())))
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn test_control_str_scan() -> Result<(), Box<dyn std::error::Error>> {
         let case = "hello wor~{~a~}";
         let c = Cursor::new(case);
@@ -333,6 +421,20 @@ mod test {
             vec![(
                 (9, 15),
                 Tilde::new(6, TildeKind::Loop(vec![Tilde::new(2, TildeKind::Va)]))
+            )]
+        );
+
+        let case = "~{~5$~}";
+        let c = Cursor::new(case);
+
+        assert_eq!(
+            ControlStr::scan(c)?,
+            vec![(
+                (0, 7),
+                Tilde::new(
+                    7,
+                    TildeKind::Loop(vec![Tilde::new(3, TildeKind::Float(Some("5".to_string())))])
+                )
             )]
         );
 
