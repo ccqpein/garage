@@ -7,15 +7,19 @@ use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
 #[derive(Debug, PartialEq)]
 enum TildeKind {
-    /// ~C or ~:C
+    /// ~C ~:C
     Char,
 
-    /// ~$ or ~5$
+    /// ~$ ~5$ ~f
     Float(Option<String>),
 
     /// ~d ~:d ~:@d
     Digit(Option<String>),
 
+    //:= TODO: ~S
+    //:= TODO: ~C
+    //:= TODO: ~X
+    //:= TODO: ~O
     /// ~a
     Va,
 
@@ -95,7 +99,7 @@ impl Tilde {
             offset += 1;
 
             match buf[0] {
-                b'a' => {
+                b'a' | b'A' => {
                     c.seek(SeekFrom::Current(-offset))?; // back to start
                     return Ok(box Self::parse_value);
                 }
@@ -103,11 +107,11 @@ impl Tilde {
                     c.seek(SeekFrom::Current(-offset))?; // back to start
                     return Ok(box Self::parse_loop);
                 }
-                b'$' | b'f' => {
+                b'$' | b'f' | b'F' => {
                     c.seek(SeekFrom::Current(-offset))?; // back to start
                     return Ok(box Self::parse_float);
                 }
-                b'd' => {
+                b'd' | b'D' => {
                     c.seek(SeekFrom::Current(-offset))?; // back to start
                     return Ok(box Self::parse_digit);
                 }
@@ -188,25 +192,25 @@ impl Tilde {
 
     /// parse function for '~a'
     fn parse_value(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut char_buf = [0u8; 2]; // two bytes
-        c.read(&mut char_buf)?;
-        if let Ok(s) = std::str::from_utf8(&char_buf) && s != "~a" {
-			c.seek(SeekFrom::Current(-2))?; // restore the location
-            return Err(
-				TildeError::new(
-					ErrorKind::ParseError,
-					"should start with ~a",
-				).into());
+        let mut buf = vec![];
+        //:= this for in maybe re-write in helper function
+        for t in [b'a', b'A'] {
+            c.read_until(t, &mut buf)?;
+            match buf.last() {
+                Some(b) if *b == t => return Ok(Tilde::new(buf.len(), TildeKind::Va)),
+                _ => (),
+            }
+            c.seek(SeekFrom::Current(-(buf.len() as i64)))?;
+            buf.clear();
         }
-
-        Ok(Tilde::new(2, TildeKind::Va))
+        Err(TildeError::new(ErrorKind::ParseError, "should start with ~a").into())
     }
 
     /// parse the float
     fn parse_float(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut buf = vec![];
 
-        for t in [b'$', b'f'] {
+        for t in [b'$', b'f', b'F'] {
             c.read_until(t, &mut buf)?;
             match buf.last() {
                 Some(b) if *b == t => {
@@ -229,7 +233,7 @@ impl Tilde {
     fn parse_digit(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut buf = vec![];
 
-        for t in [b'd'] {
+        for t in [b'd', b'D'] {
             c.read_until(t, &mut buf)?;
             match buf.last() {
                 Some(b) if *b == t => {
@@ -317,6 +321,9 @@ mod test {
     #[test]
     fn test_parse_va() -> Result<(), Box<dyn std::error::Error>> {
         let mut case = Cursor::new("~a");
+        assert_eq!(Tilde::parse_value(&mut case)?, Tilde::new(2, TildeKind::Va));
+
+        let mut case = Cursor::new("~A");
         assert_eq!(Tilde::parse_value(&mut case)?, Tilde::new(2, TildeKind::Va));
         Ok(())
     }
