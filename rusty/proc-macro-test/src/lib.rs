@@ -1,7 +1,10 @@
 extern crate proc_macro;
 
-use proc_macro::*;
-use quote::quote;
+use std::iter::FromIterator;
+
+use proc_macro::TokenStream;
+use proc_macro2::{Ident, Punct, Span};
+use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
     parse_macro_input, parse_quote, Attribute, Data, DataEnum, DataStruct, DeriveInput, Field,
@@ -104,6 +107,7 @@ pub fn normal_attribute(attr: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_derive(AutoImpl, attributes(to))]
 pub fn derive_fields_to(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
+    //println!("{:#?}", input.ident);
     //println!("{:#?}", input.data);
     let mut var_to_pairs = vec![];
     match input.data {
@@ -115,7 +119,7 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
         //         //println!("{:#?}", f);
         //     }
         // }
-        Data::Enum(DataEnum { variants, .. }) => {
+        Data::Enum(DataEnum { ref variants, .. }) => {
             for v in variants {
                 let mut ids = vec![];
                 if let Some(attr) = v
@@ -131,11 +135,11 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
                     })
                     .next()
                 {
-                    println!("attr.tokens: {:#?}", attr.tokens);
+                    //println!("attr.tokens: {:#?}", attr.tokens);
 
                     match attr.parse_meta() {
                         Ok(meta_list) => {
-                            println!("{:?}", meta_list);
+                            //println!("meta_list: {:#?}", meta_list);
                             match meta_list {
                                 Meta::List(meta_l) => {
                                     meta_l.nested.into_iter().for_each(|m| match m {
@@ -153,40 +157,45 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
                         }
                         Err(e) => std::panic::panic_any(e),
                     }
-                    //println!("lit: {:#?}", lit);
-                    //let inner_tokens = attr.tokens;
-                    //println!("meta: {:#?}", parse_macro_input!(inner_tokens));
-                    //let gg = parse_macro_input!();
 
-                    // let group =
-                    //     parse_macro_input!(attr.tokens.into_iter().next().unwrap() as DeriveInput);
-                    // var_to_pairs.push((v.ident.to_string(),))
                     var_to_pairs.push((v.ident.to_string(), ids))
                 }
             }
         }
-        //Data::Union(_) => todo!(),
+
         _ => {}
     }
 
     println!("var_to_pairs: {:?}", var_to_pairs);
-    proc_macro::TokenStream::new()
+    let trait_name = Ident::new(&(input.ident.to_string() + "Able"), Span::call_site());
+
+    let mut expanded: Vec<proc_macro2::TokenStream> = var_to_pairs
+        .iter()
+        .map(|(f, tys)| {
+            let f_name = Ident::new(
+                &(String::from("into_") + input.ident.to_string().as_str() + "_" + f),
+                Span::call_site(),
+            );
+            let return_type = Ident::new(&(input.ident.to_string() + f), Span::call_site());
+            quote! {fn #f_name (&self) -> Option<&dyn #return_type>;}
+        })
+        .collect();
+    //.collect::<Vec<_>>();
+    //let b0 = Punct::new('{', proc_macro2::Spacing::Alone);
+
+    let tmp_exp = quote! { { #(#expanded)* } };
+    //let tmp_exp = proc_macro2::TokenStream::from_iter(expanded);
+    //println!("expanded: {:?}", expanded);
+
+    let mut trait_defined = quote! {trait #trait_name  #tmp_exp };
+    //trait_defined.push()
+    //trait_defined.append(&mut expanded);
+    println!(
+        "trait_defined: {:?}",
+        trait_defined.to_string() // .iter()
+                                  // .map(|x| x.to_string())
+                                  // .collect::<Vec<_>>()
+    );
+
+    proc_macro2::TokenStream::from_iter(trait_defined.into_iter()).into()
 }
-
-// struct UnitStruct {
-//     attrs: Vec<Attribute>,
-//     struct_token: Token![struct],
-//     name: Ident,
-//     semi_token: Token![;],
-// }
-
-// impl Parse for UnitStruct {
-//     fn parse(input: ParseStream) -> Result<Self> {
-//         Ok(UnitStruct {
-//             attrs: input.call(Attribute::parse_outer)?,
-//             struct_token: input.parse()?,
-//             name: input.parse()?,
-//             semi_token: input.parse()?,
-//         })
-//     }
-// }
