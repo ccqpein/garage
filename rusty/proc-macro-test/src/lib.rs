@@ -195,7 +195,37 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
     let mut trait_auto_impl = quote! {};
 
     trait_defined.extend(field_traits);
+    ////
+    ////
+    let methods_def_header: Vec<proc_macro2::TokenStream> = var_to_pairs
+        .iter()
+        .map(|(f, tys)| {
+            let f_name = Ident::new(
+                &(String::from("into_") + input.ident.to_string().as_str() + "_" + f),
+                Span::call_site(),
+            );
+            let return_type = Ident::new(&(input.ident.to_string() + f), Span::call_site());
+            quote! {fn #f_name (&self) -> Option<&dyn #return_type>}
+        })
+        .collect();
 
+    let auto_impl_traits = var_to_pairs
+        .iter()
+        .map(|(f, tys)| {
+            tys.iter().map(|tt| {
+                let inside = methods_def_header
+                    .iter()
+                    .map(|header| quote! { #header {Some(self)}});
+                let t_id = Ident::new(tt, Span::call_site());
+                quote! {impl #trait_name for #t_id {#(#inside)*}}
+            })
+        })
+        .flatten();
+
+    trait_defined.extend(auto_impl_traits);
+    ////////
+    ///////
+    ///////
     println!(
         "trait_defined: {:?}",
         trait_defined.to_string() // .iter()
