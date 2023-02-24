@@ -169,27 +169,33 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
     println!("var_to_pairs: {:?}", var_to_pairs);
     let trait_name = Ident::new(&(input.ident.to_string() + "Able"), Span::call_site());
 
-    let mut expanded: Vec<proc_macro2::TokenStream> = var_to_pairs
-        .iter()
-        .map(|(f, tys)| {
-            let f_name = Ident::new(
-                &(String::from("into_") + input.ident.to_string().as_str() + "_" + f),
-                Span::call_site(),
-            );
-            let return_type = Ident::new(&(input.ident.to_string() + f), Span::call_site());
-            quote! {fn #f_name (&self) -> Option<&dyn #return_type>;}
-        })
-        .collect();
-    //.collect::<Vec<_>>();
-    //let b0 = Punct::new('{', proc_macro2::Spacing::Alone);
+    let mut methods_def = var_to_pairs.iter().map(|(f, tys)| {
+        let f_name = Ident::new(
+            &(String::from("into_") + input.ident.to_string().as_str() + "_" + f),
+            Span::call_site(),
+        );
+        let return_type = Ident::new(&(input.ident.to_string() + f), Span::call_site());
+        quote! {fn #f_name (&self) -> Option<&dyn #return_type>;}
+    });
 
-    let tmp_exp = quote! { { #(#expanded)* } };
-    //let tmp_exp = proc_macro2::TokenStream::from_iter(expanded);
-    //println!("expanded: {:?}", expanded);
+    let tmp_exp = quote! { { #(#methods_def)* } };
 
-    let mut trait_defined = quote! {trait #trait_name  #tmp_exp };
-    //trait_defined.push()
-    //trait_defined.append(&mut expanded);
+    let mut trait_defined = quote! {trait #trait_name #tmp_exp};
+
+    let field_traits = var_to_pairs.iter().map(|(f, tys)| {
+        let trait_name = Ident::new(&(input.ident.to_string() + f), Span::call_site());
+        quote! {trait #trait_name {}}
+    });
+
+    println!(
+        "field_traits: {:?}",
+        field_traits.clone().collect::<Vec<_>>()
+    );
+
+    let mut trait_auto_impl = quote! {};
+
+    trait_defined.extend(field_traits);
+
     println!(
         "trait_defined: {:?}",
         trait_defined.to_string() // .iter()

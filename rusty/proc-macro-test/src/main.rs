@@ -3,14 +3,14 @@ use proc_macro_test::*;
 // #[derive(DeriveTestYo)]
 // struct A;
 
-#[derive(GiveMeFields, Debug)]
-struct B {
-    #[this]
-    a: String,
+// #[derive(GiveMeFields, Debug)]
+// struct B {
+//     #[this]
+//     a: String,
 
-    #[this]
-    b: i64,
-}
+//     #[this]
+//     b: i64,
+// }
 
 // #[normal_attribute(char, i32)]
 // pub fn test_C() {}
@@ -76,9 +76,9 @@ enum C {
 //     }
 // }
 
-trait CC {}
-trait CD {}
-trait CE {}
+// trait CC {}
+// trait CD {}
+// trait CE {}
 
 // then manully implenment below
 impl CC for char {}
