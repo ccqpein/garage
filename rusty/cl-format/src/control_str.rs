@@ -47,10 +47,16 @@ impl<'a> ControlStr<'a> {
     }
 
     //:= TODO
-    //fn output(&self, args: impl Iterator<Item = &dyn Revealable>) {}
+    //fn output(&self, args: impl Iterator<Item = Box<dyn Revealable<_>>>) {}
 }
 
-pub trait Revealable: Display {}
+// pub trait Revealable {
+//     type Item: Display + Debug;
+// }
+
+// impl<T: Display + Debug> Revealable for T {
+//     type Item = T;
+// }
 
 #[cfg(test)]
 mod test {

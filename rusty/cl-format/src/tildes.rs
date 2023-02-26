@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
-use crate::control_str::Revealable;
+use cl_format_macros::*;
+//use crate::control_str::Revealable;
 
 #[derive(Debug)]
 struct TildeError {
@@ -31,7 +32,7 @@ enum ErrorKind {
     ParseError,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, TildeAble)]
 pub enum TildeKind {
     /// ~C ~:C
     Char,
@@ -46,6 +47,7 @@ pub enum TildeKind {
     //:= TODO: ~C
     //:= TODO: ~X
     //:= TODO: ~O
+    #[implTo(f32, char, String)]
     /// ~a
     Va,
 
@@ -257,11 +259,6 @@ impl Tilde {
     //:= TODO: a lot parse functions below
 }
 
-// impl Tilde {
-//     //:= TODO
-//     pub fn reveal(a: &dyn Revealable) {}
-// }
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -392,4 +389,15 @@ mod test {
         assert_eq!(Tilde::new(2, TildeKind::Va), f(&mut c)?);
         Ok(())
     }
+
+    #[test]
+    fn test_trait_inherit() {
+        let aa = TildeKind::Va;
+        //aa.format_va()
+    }
+
+    // #[test]
+    // fn test_macro_expand() -> Result<(), Box<dyn std::error::Error>> {
+    //     Ok(())
+    // }
 }
