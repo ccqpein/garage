@@ -119,13 +119,15 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
         //         //println!("{:#?}", f);
         //     }
         // }
-        Data::Enum(DataEnum { ref variants, .. }) => {
+        ref ee @ Data::Enum(DataEnum { ref variants, .. }) => {
+            println!("{:#?}", ee);
             for v in variants {
                 let mut ids = vec![];
                 if let Some(attr) = v
                     .attrs
                     .iter()
                     .filter(|att| {
+                        println!("att.path.get_ident(): {:?}", att.path.get_ident());
                         att.path
                             .segments
                             .iter()
@@ -139,7 +141,7 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
 
                     match attr.parse_meta() {
                         Ok(meta_list) => {
-                            //println!("meta_list: {:#?}", meta_list);
+                            println!("meta_list: {:#?}", meta_list);
                             match meta_list {
                                 Meta::List(meta_l) => {
                                     meta_l.nested.into_iter().for_each(|m| match m {

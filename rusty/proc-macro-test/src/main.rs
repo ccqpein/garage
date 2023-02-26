@@ -21,7 +21,7 @@ enum C {
     C,
 
     #[to(usize, char)]
-    D,
+    D(char),
 
     E,
 }
