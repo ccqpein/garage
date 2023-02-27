@@ -115,7 +115,12 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
                 });
 
                 //
-                return_types_traits.push(quote! {trait #return_type {}})
+                return_types_traits.push(quote! {
+                    pub trait #return_type: Debug {
+                        fn format(&self) -> Result<String, Box<dyn std::error::Error>> {
+                            Err("un-implenmented yet".into())
+                        }
+                }})
             });
         }
         _ => panic!("only support the enum"),
@@ -124,7 +129,7 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
     let mut result = vec![];
 
     // trait TildeAble defination
-    let tilde_able_trait = quote! {trait TildeAble {#(#all_default_methods)*}};
+    let tilde_able_trait = quote! {pub trait TildeAble {#(#all_default_methods)*}};
 
     let mut auto_impl_for_types = types_impl_methods
         .iter()

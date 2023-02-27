@@ -1,6 +1,7 @@
 use crate::tildes::*;
 use std::fmt::{Debug, Display};
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
+use std::iter;
 
 /// the control string should including:
 /// 1. the whole string
@@ -47,19 +48,25 @@ impl<'a> ControlStr<'a> {
     }
 
     //:= TODO
-    //fn output(&self, args: impl Iterator<Item = Box<dyn Revealable<_>>>) {}
+    // fn reveal_tildes(
+    //     &self,
+    //     args: impl Iterator<Item = Box<dyn TildeAble>>,
+    // ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + '_>>> {
+    //     iter::zip(&self.tildes, args).map(|((_, tt), arg)| tt.reveal(arg.as_ref()))
+    // }
+
+    fn reveal_tildes<'s, 'cs: 's>(
+        &'cs self,
+        args: impl Iterator<Item = &'s dyn TildeAble>,
+    ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + 's>>> {
+        iter::zip(&self.tildes, args).map(|((_, tt), arg)| tt.reveal(arg))
+    }
 }
-
-// pub trait Revealable {
-//     type Item: Display + Debug;
-// }
-
-// impl<T: Display + Debug> Revealable for T {
-//     type Item = T;
-// }
 
 #[cfg(test)]
 mod test {
+    use std::any::{Any, TypeId};
+
     use super::*;
 
     #[test]
@@ -89,6 +96,28 @@ mod test {
             )]
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_reveal_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "hello wor~a";
+        let cs = ControlStr::new(case)?;
+        let arg: &dyn TildeAble = &13_f32;
+        dbg!(arg.into_tildekind_va());
+        // assert_eq!(
+        //     arg.into_tildekind_va().unwrap().type_id(),
+        //     TypeId::of::<f64>()
+        // );
+
+        let result: Vec<String> = vec!["13".to_string()];
+
+        assert_eq!(
+            result,
+            cs.reveal_tildes(vec![arg].into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
         Ok(())
     }
 }

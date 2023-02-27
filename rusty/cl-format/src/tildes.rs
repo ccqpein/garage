@@ -30,6 +30,7 @@ impl std::fmt::Display for TildeError {
 #[derive(Debug)]
 enum ErrorKind {
     ParseError,
+    RevealError,
 }
 
 #[derive(Debug, PartialEq, TildeAble)]
@@ -62,12 +63,19 @@ pub enum TildeKind {
 }
 
 ////
-
 ////
-
-impl TildeKindVa for f32 {}
-impl TildeKindVa for char {}
-impl TildeKindVa for String {}
+//pub trait TildeKindVa {}
+impl TildeKindVa for f32 {
+    fn format(&self) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", *self))
+    }
+}
+impl TildeKindVa for char {
+    //fn format(&self) -> Result<String, Box<dyn std::error::Error>> {}
+}
+impl TildeKindVa for String {
+    //fn format(&self) -> Result<String, Box<dyn std::error::Error>> {}
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Tilde {
@@ -82,6 +90,19 @@ impl Tilde {
 
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
+        match self.value {
+            TildeKind::Va => {
+                let a = arg.into_tildekind_va().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
+                )?;
+
+                return a.format();
+            }
+            _ => unreachable!(),
+        }
     }
 
     /// start from '~' to the key char of tilde kind
