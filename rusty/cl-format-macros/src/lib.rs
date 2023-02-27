@@ -41,11 +41,11 @@ trait TildeAble {
 
 impl TildeAble for char {
     fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar> {
-        Some(&self)
+        Some(self)
     }
 
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
-        Some(&self)
+        Some(self)
     }
 }
 
@@ -55,7 +55,7 @@ impl TildeAble for float {
     }
 
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
-        Some(&self)
+        Some(self)
     }
 }
 
@@ -65,7 +65,7 @@ impl TildeAble for String {
     }
 
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
-        Some(&self)
+        Some(self)
     }
 }
 
@@ -111,7 +111,7 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
                 //
                 tys.for_each(|ty| {
                     let en = types_impl_methods.entry(ty).or_insert(vec![]);
-                    en.push(quote! {fn #fname(&self) -> Option<&dyn #return_type> {Some(&self)}})
+                    en.push(quote! {fn #fname(&self) -> Option<&dyn #return_type> {Some(self)}})
                 });
 
                 //

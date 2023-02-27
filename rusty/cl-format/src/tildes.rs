@@ -61,6 +61,14 @@ pub enum TildeKind {
     VecTilde(Vec<Tilde>),
 }
 
+////
+
+////
+
+impl TildeKindVa for f32 {}
+impl TildeKindVa for char {}
+impl TildeKindVa for String {}
+
 #[derive(Debug, PartialEq)]
 pub struct Tilde {
     len: usize,
