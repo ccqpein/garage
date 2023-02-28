@@ -2,7 +2,6 @@ use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
 use cl_format_macros::*;
-//use crate::control_str::Revealable;
 
 #[derive(Debug)]
 struct TildeError {
@@ -62,6 +61,27 @@ pub enum TildeKind {
     VecTilde(Vec<Tilde>),
 }
 
+impl TildeKind {
+    pub fn match_reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
+        match self {
+            TildeKind::Char => todo!(),
+            TildeKind::Float(_) => todo!(),
+            TildeKind::Digit(_) => todo!(),
+            TildeKind::Va => {
+                let a = arg.into_tildekind_va().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
+                )?;
+
+                return a.format();
+            }
+            //:= this one maybe a bit tricky
+            TildeKind::Loop(_) => todo!(),
+            TildeKind::Text(_) => todo!(),
+            TildeKind::VecTilde(_) => todo!(),
+        }
+    }
+}
+
 ////
 ////
 //pub trait TildeKindVa {}
@@ -70,13 +90,36 @@ impl TildeKindVa for f32 {
         Ok(format!("{}", *self))
     }
 }
+
 impl TildeKindVa for char {
     //fn format(&self) -> Result<String, Box<dyn std::error::Error>> {}
 }
+
 impl TildeKindVa for String {
     //fn format(&self) -> Result<String, Box<dyn std::error::Error>> {}
 }
 
+// impl mamually
+impl TildeAble for Vec<&dyn TildeAble> {
+    fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
+        Some(self)
+    }
+}
+
+impl TildeKindLoop for Vec<&dyn TildeAble> {
+    fn format(&self) -> Result<String, Box<dyn std::error::Error>> {
+        let mut resutl = String::new();
+        // for tt in self {
+        //     result += tt.reveal(arg)
+        // }
+        //str::concat(self.iter().map(|tt| tt.reveal()))
+        Ok(String::new())
+    }
+}
+
+/*=========================================================*/
+
+/// The tilde struct
 #[derive(Debug, PartialEq)]
 pub struct Tilde {
     len: usize,
@@ -93,16 +136,7 @@ impl Tilde {
     }
 
     pub fn reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
-        match self.value {
-            TildeKind::Va => {
-                let a = arg.into_tildekind_va().ok_or::<TildeError>(
-                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
-                )?;
-
-                return a.format();
-            }
-            _ => unreachable!(),
-        }
+        self.value.match_reveal(arg)
     }
 
     /// start from '~' to the key char of tilde kind
@@ -158,6 +192,7 @@ impl Tilde {
         }
     }
 
+    /// cursor should located on '~'
     pub fn parse(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let parser = Self::scan_for_kind(c)?;
         parser(c)

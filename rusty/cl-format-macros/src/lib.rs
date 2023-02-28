@@ -129,7 +129,7 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
     let mut result = vec![];
 
     // trait TildeAble defination
-    let tilde_able_trait = quote! {pub trait TildeAble {#(#all_default_methods)*}};
+    let tilde_able_trait = quote! {pub trait TildeAble:Debug {#(#all_default_methods)*}};
 
     let mut auto_impl_for_types = types_impl_methods
         .iter()

@@ -100,15 +100,11 @@ mod test {
     }
 
     #[test]
-    fn test_reveal_tildes() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_reveal_normal_tildes() -> Result<(), Box<dyn std::error::Error>> {
         let case = "hello wor~a";
         let cs = ControlStr::new(case)?;
         let arg: &dyn TildeAble = &13_f32;
         dbg!(arg.into_tildekind_va());
-        // assert_eq!(
-        //     arg.into_tildekind_va().unwrap().type_id(),
-        //     TypeId::of::<f64>()
-        // );
 
         let result: Vec<String> = vec!["13".to_string()];
 
@@ -118,6 +114,29 @@ mod test {
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_reveal_loop_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "hello wor~{~a~}";
+        let cs = ControlStr::new(case)?;
+        let arg0: &dyn TildeAble = &13_f32;
+        let arg1: &dyn TildeAble = &14_f32;
+        let arg2: &dyn TildeAble = &15_f32;
+        let arg00: Vec<&dyn TildeAble> = vec![arg0, arg1];
+        let arg: Vec<&dyn TildeAble> = vec![&arg00, arg2];
+        //:= mark here
+        //dbg!(arg.into_tildekind_va());
+
+        // let result: Vec<String> = vec!["13".to_string()];
+
+        // assert_eq!(
+        //     result,
+        //     cs.reveal_tildes(vec![arg].into_iter())
+        //         .map(|a| a.unwrap())
+        //         .collect::<Vec<_>>()
+        // );
         Ok(())
     }
 }
