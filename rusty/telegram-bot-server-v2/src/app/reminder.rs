@@ -49,6 +49,7 @@ async fn add_reminder(
                 largest + 1,
                 time.reminder_notification()
             ),
+            None,
         ))
         .await?;
 
@@ -57,8 +58,9 @@ async fn add_reminder(
             "send".to_string(),
             chatid,
             format!("reminder {}:", largest + 1),
+            None,
         );
-        let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string());
+        let dlvr_msg = Msg2Deliver::new("send".to_string(), chatid, content.to_string(), None);
         let mut brk;
 
         loop {
@@ -131,12 +133,14 @@ async fn delete_reminder(chatid: &ChatId, ind: &usize, deliver_sender: Sender<Ms
                 "send".to_string(),
                 *chatid,
                 format!("reminder {} cancelled", ind),
+                None,
             )
         }
         None => Msg2Deliver::new(
             "send".to_string(),
             *chatid,
             format!("cannot find number {} reminder", ind),
+            None,
         ),
     };
 
@@ -167,6 +171,7 @@ async fn clean_reminder(chatid: &ChatId, deliver_sender: Sender<Msg2Deliver>) {
             "send".to_string(),
             *chatid,
             format!("reminder cleaned"),
+            None,
         ))
         .await
         .map_err(|e| debug!("error in sending reminder {}", e))
@@ -496,6 +501,7 @@ impl Reminder {
                             "send".to_string(),
                             rem_input.chat_id,
                             err_msg.to_owned(),
+                            None,
                         ))
                         .await
                         .map_err(|e| {
@@ -547,6 +553,7 @@ async fn awaiting_reminder(
                     "send".to_string(),
                     chat_id,
                     "Go ahead, I am listening".to_string(),
+                    None,
                 ))
                 .await
                 .map_err(|e| {
@@ -594,6 +601,7 @@ async fn awaiting_reminder(
                     "send".to_string(),
                     chat_id,
                     "Run out remind waiting time".to_string(),
+                    None,
                 ))
                 .await
                 .map_err(|e| {

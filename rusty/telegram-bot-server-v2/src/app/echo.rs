@@ -56,7 +56,7 @@ impl Echo {
     async fn consume(&mut self, EchoInput { chatid, content }: EchoInput) -> Result<(), String> {
         match self
             .deliver_sender
-            .send(Msg2Deliver::new("send".into(), chatid, content))
+            .send(Msg2Deliver::new("send".into(), chatid, content, None))
             .await
         {
             Ok(_) => Ok(()),

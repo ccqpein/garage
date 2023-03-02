@@ -114,7 +114,7 @@ impl GithubCommitCheck {
             Ok(reply) | Err(reply) => {
                 match self
                     .deliver_sender
-                    .send(Msg2Deliver::new("send".to_string(), chatid, reply))
+                    .send(Msg2Deliver::new("send".to_string(), chatid, reply, None))
                     .await
                 {
                     Ok(_) => Ok(()),

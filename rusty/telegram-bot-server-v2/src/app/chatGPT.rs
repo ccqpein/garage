@@ -5,7 +5,7 @@ use std::{
     fs::{File, OpenOptions},
     io::{prelude::*, BufRead, BufReader},
 };
-use telegram_bot::{ChatId, GroupId, MessageChat, MessageKind};
+use telegram_bot::{ChatId, GroupId, MessageChat, MessageId, MessageKind};
 
 /// receive message and return back
 pub struct ChatGPT {
@@ -93,6 +93,7 @@ impl ChatGPT {
                             "send".to_string(),
                             msg.chat_id,
                             String::from("not for you"),
+                            None,
                         ))
                         .await
                     {
@@ -115,7 +116,12 @@ impl ChatGPT {
                     };
 
                     self.deliver_sender
-                        .send(Msg2Deliver::new("send".to_string(), msg.chat_id, reply))
+                        .send(Msg2Deliver::new(
+                            "send".to_string(),
+                            msg.chat_id,
+                            reply,
+                            None,
+                        ))
                         .await;
                 } else {
                     error!("{} calls wake_up", name);
@@ -124,6 +130,7 @@ impl ChatGPT {
                             "send".to_string(),
                             msg.chat_id,
                             "only my owner can wake me up".into(),
+                            None,
                         ))
                         .await;
                 }
@@ -155,7 +162,7 @@ impl ChatGPT {
             Ok(response) => match self
                 .deliver_sender
                 .send(Msg2Deliver::new(
-                    "send".to_string(),
+                    "reply_to".to_string(),
                     msg.chat_id,
                     format!(
                         "{}",
@@ -172,6 +179,7 @@ impl ChatGPT {
                             ))
                             .unwrap_or("sorry, something wrong".into())
                     ),
+                    Some(msg.this_message_id),
                 ))
                 .await
             {
@@ -188,6 +196,7 @@ impl ChatGPT {
                         "send".to_string(),
                         msg.chat_id,
                         "sorry, something wrong from server".into(),
+                        None,
                     ))
                     .await;
                 re
@@ -228,6 +237,8 @@ pub struct ChatGPTInput {
 
     chat_id: ChatId,
     group_id: Option<String>,
+
+    this_message_id: MessageId,
 }
 
 impl ChatGPTInput {
@@ -252,6 +263,7 @@ impl ChatGPTInput {
                                         group_id: None,
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
+                                        this_message_id: msg.id,
                                     });
                                 }
                             }
@@ -277,6 +289,7 @@ impl ChatGPTInput {
                                     last_name: msg.from.last_name.clone(),
                                     chat_id: msg.chat.id(),
                                     group_id: Some(group.id.to_string()),
+                                    this_message_id: msg.id,
                                 });
                             } else if data.starts_with("/chat_gpt") {
                                 info!("receive command {}", data);
@@ -293,6 +306,7 @@ impl ChatGPTInput {
                                         group_id: Some(group.id.to_string()),
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
+                                        this_message_id: msg.id,
                                     })
                                 } else {
                                     None
@@ -320,6 +334,7 @@ impl ChatGPTInput {
                                     last_name: msg.from.last_name.clone(),
                                     chat_id: msg.chat.id(),
                                     group_id: Some(group.id.to_string()),
+                                    this_message_id: msg.id,
                                 });
                             } else if data.starts_with("/chat_gpt") {
                                 info!("receive command {}", data);
@@ -336,6 +351,7 @@ impl ChatGPTInput {
                                         group_id: Some(group.id.to_string()),
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
+                                        this_message_id: msg.id,
                                     })
                                 } else {
                                     None
