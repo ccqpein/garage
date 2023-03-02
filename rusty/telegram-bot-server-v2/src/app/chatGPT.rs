@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 
 /// add tables for storing the chat
 lazy_static! {
-    static ref CHAT_CHAIN_TABLE: Mutex<HashMap<MessageId, MessageId>> = {
+    static ref CHAT_CHAIN_TABLE: Mutex<HashMap<MessageId, Option<MessageId>>> = {
         let m = HashMap::new();
         Mutex::new(m)
     };
@@ -66,10 +66,17 @@ pub async fn get_chats_ids(
     for _ in 0..len {
         result.push(this);
         this = match table.get(&this) {
-            Some(id) => *id,
-            None => return Ok(result),
+            Some(p_id) => {
+                if let Some(id) = p_id {
+                    *id
+                } else {
+                    break;
+                }
+            }
+            None => break,
         }
     }
+    result.reverse();
     Ok(result)
 }
 
@@ -90,29 +97,33 @@ async fn make_messages_in_body(
 
 /// connect this message with its parent and add this message detail to table
 pub async fn insert_new_reply(msg: &Message, role: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let (reply_to_id, content) = match &msg.reply_to_message {
+    let reply_to_id = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
             telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
-                MessageKind::Text { data, .. } => (m.id, data),
+                MessageKind::Text { data, .. } => Some(m.id),
                 _ => return Err("only support the text".into()),
             },
             telegram_bot::MessageOrChannelPost::ChannelPost(_) => {
                 return Err("ChannelPost isn't support yet".into())
             }
         },
-        None => return Err("no reply message inside".into()),
+        None => None,
     };
 
-    CHAT_CHAIN_TABLE
-        .lock()
-        .await
-        .insert(msg.id, reply_to_id)
-        .ok_or::<String>("insert CHAT_CHAIN_TABLE has issue".into())?;
+    let content = match &msg.kind {
+        MessageKind::Text { data, .. } => data,
+        _ => return Err("only support the text".into()),
+    };
+
+    CHAT_CHAIN_TABLE.lock().await.insert(msg.id, reply_to_id);
+    //.ok_or::<String>("insert CHAT_CHAIN_TABLE has issue".into())?;
     CHAT_DETAIL_TABLE
         .lock()
         .await
-        .insert(msg.id, ChatDetail::new(role, content))
-        .ok_or::<String>("insert CHAT_DETAIL_TABLE has issue".into())?;
+        .insert(msg.id, ChatDetail::new(role, &content));
+    //.ok_or::<String>("insert CHAT_DETAIL_TABLE has issue".into())?;
+
+    info!("insert {} with its parent {:?}", msg.id, reply_to_id);
 
     Ok(())
 }
@@ -124,6 +135,8 @@ pub struct ChatGPT {
     my_name: String,
 
     gpt_client: Client,
+    openai_token: String,
+    reqwest_client: reqwest::Client,
 
     waken_groups: HashSet<String>,
 
@@ -152,7 +165,7 @@ impl ChatGPT {
             .next()
             .ok_or("Read 'gpt_token' failed".to_string())?
             .map_err(|e| e.to_string())?;
-        let gpt_client = Client::new().with_api_key(gpt_token);
+        //let gpt_client = Client::new().with_api_key(gpt_token);
 
         let f = BufReader::new(
             File::open(vault_path.clone() + "/stored_groups").map_err(|e| e.to_string())?,
@@ -173,8 +186,10 @@ impl ChatGPT {
             sender,
             receiver,
             deliver_sender,
-            gpt_client,
+            gpt_client: Client::new().with_api_key(""), //:= DEL
             waken_groups: stored_groups,
+            reqwest_client: reqwest::Client::new(),
+            openai_token: gpt_token,
         })
     }
 
@@ -258,32 +273,53 @@ impl ChatGPT {
         };
 
         // call open ai
-        let request = match CreateCompletionRequestArgs::default()
-            .model("text-davinci-003")
-            .prompt(data)
-            .max_tokens(3500_u16)
-            .build()
-        {
-            Ok(args) => args,
-            Err(e) => return Err(e.to_string()),
-        };
+        // let request = match CreateCompletionRequestArgs::default()
+        //     .model("text-davinci-003")
+        //     .prompt(data)
+        //     .max_tokens(3500_u16)
+        //     .build()
+        // {
+        //     Ok(args) => args,
+        //     Err(e) => return Err(e.to_string()),
+        // };
 
-        let result = match self.gpt_client.completions().create(request).await {
-            Ok(response) => match self
+        let body = self
+            .make_chat_messages(&msg.this_message_id)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        debug!("body: {}", body.to_string());
+
+        let response_from_chat_gpt = self
+            .reqwest_client
+            .post("https://api.openai.com/v1/chat/completions")
+            .bearer_auth(&self.openai_token)
+            .header("Content-Type", "application/json")
+            .body(body.to_string())
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .json::<serde_json::Value>()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        debug!("response: {}", response_from_chat_gpt.to_string());
+
+        let role = &response_from_chat_gpt["choices"][0]["message"]["role"];
+        let content = &response_from_chat_gpt["choices"][0]["message"]["content"];
+
+        let result = if !role.is_null() && !content.is_null() {
+            match self
                 .deliver_sender
                 .send(Msg2Deliver::new(
                     "reply_to".to_string(),
                     msg.chat_id,
                     format!(
                         "{}",
-                        response
-                            .choices
-                            .first()
-                            .map(|choice| format!(
-                                "{}",
-                                choice.text.trim_start_matches(['\n', ',', ' ']) //:= TODO: clean some utf8 stuff
-                            ))
-                            .unwrap_or("sorry, something wrong".into())
+                        content
+                            .to_string()
+                            .trim_start_matches(['\n', ',', ' ', '"'])
+                            .trim_end_matches(['"'])
                     ),
                     Some(msg.this_message_id),
                 ))
@@ -291,9 +327,37 @@ impl ChatGPT {
             {
                 Err(e) => Err(e.to_string()),
                 _ => Ok(()),
-            },
-            Err(e) => Err(e.to_string()),
+            }
+        } else {
+            Err("getting role or content has issue".to_string())
         };
+
+        // let result = match self.gpt_client.completions().create(request).await {
+        //     Ok(response) => match self
+        //         .deliver_sender
+        //         .send(Msg2Deliver::new(
+        //             "reply_to".to_string(),
+        //             msg.chat_id,
+        //             format!(
+        //                 "{}",
+        //                 response
+        //                     .choices
+        //                     .first()
+        //                     .map(|choice| format!(
+        //                         "{}",
+        //                         choice.text.trim_start_matches(['\n', ',', ' ']) //:= TODO: clean some utf8 stuff
+        //                     ))
+        //                     .unwrap_or("sorry, something wrong".into())
+        //             ),
+        //             Some(msg.this_message_id),
+        //         ))
+        //         .await
+        //     {
+        //         Err(e) => Err(e.to_string()),
+        //         _ => Ok(()),
+        //     },
+        //     Err(e) => Err(e.to_string()),
+        // };
 
         // if err happen
         match result {
@@ -312,10 +376,25 @@ impl ChatGPT {
         }
     }
 
-    //:= TODO
     /// get the last ten replies of this msg_id
-    async fn get_reply_chain(&mut self, msg_id: &MessageId) {
-        todo!()
+    async fn get_reply_chain(
+        &mut self,
+        msg_id: &MessageId,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        make_messages_in_body(*msg_id, 10).await
+    }
+
+    async fn make_chat_messages(
+        &mut self,
+        msg_id: &MessageId,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let body = self.get_reply_chain(msg_id).await?;
+        let body = json!({
+            "model": "gpt-3.5-turbo",
+            "messages": body
+        });
+
+        Ok(body)
     }
 
     //:= TODO
@@ -371,6 +450,10 @@ impl ChatGPTInput {
                             if data.starts_with("/chat_gpt") {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
+                                    if let Err(e) = insert_new_reply(msg, "user").await {
+                                        error!("insert_new_reply error: {}", e.to_string())
+                                    }
+
                                     return Some(Self {
                                         data: words.into(),
                                         user_name: msg
@@ -414,6 +497,9 @@ impl ChatGPTInput {
                             } else if data.starts_with("/chat_gpt") {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
+                                    if let Err(e) = insert_new_reply(msg, "user").await {
+                                        error!("insert_new_reply error: {}", e.to_string())
+                                    }
                                     return Some(Self {
                                         data: words.into(),
                                         user_name: msg
@@ -456,6 +542,9 @@ impl ChatGPTInput {
                             } else if data.starts_with("/chat_gpt") {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
+                                    if let Err(e) = insert_new_reply(msg, "user").await {
+                                        error!("insert_new_reply error: {}", e.to_string())
+                                    }
                                     return Some(Self {
                                         data: words.into(),
                                         user_name: msg
@@ -483,8 +572,10 @@ impl ChatGPTInput {
 
         // pass all check upper
         // check if this message reply some message in CHAT_CHAIN_TABLE
-        if !if_reply_chat_in_the_chain(msg).await {
-            insert_new_reply(msg, "user").await;
+        if if_reply_chat_in_the_chain(msg).await {
+            if let Err(e) = insert_new_reply(msg, "user").await {
+                error!("insert_new_reply error: {}", e.to_string())
+            }
             let data = msg.kind.text().unwrap_or("".into());
             Some(Self {
                 data: data,
