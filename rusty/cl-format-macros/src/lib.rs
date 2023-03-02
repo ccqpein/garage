@@ -34,9 +34,11 @@ pub enum TildeKind {
 Will generate:
 
 ```rust
+/// all default method is return none.
 trait TildeAble {
-    fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar>;
-    fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa>;
+    fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar>{None}
+    fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa>{None}
+    // and all other fields...
 }
 
 impl TildeAble for char {
@@ -50,20 +52,12 @@ impl TildeAble for char {
 }
 
 impl TildeAble for float {
-    fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar> {
-        None
-    }
-
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
         Some(self)
     }
 }
 
 impl TildeAble for String {
-    fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar> {
-        None
-    }
-
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
         Some(self)
     }
@@ -106,18 +100,23 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
 
                 // add default methods to TildeAble
                 all_default_methods
-                    .push(quote! {fn #fname(&self) -> Option<&dyn #return_type> {None}});
+                    .push(quote! {
+						fn #fname(&self) -> Option<&dyn #return_type> {
+							None
+						}});
 
-                //
+                // impl for types
                 tys.for_each(|ty| {
                     let en = types_impl_methods.entry(ty).or_insert(vec![]);
-                    en.push(quote! {fn #fname(&self) -> Option<&dyn #return_type> {Some(self)}})
+                    en.push(quote! {fn #fname(&self) -> Option<&dyn #return_type> {
+						Some(self)
+					}})
                 });
 
                 //
                 return_types_traits.push(quote! {
                     pub trait #return_type: Debug {
-                        fn format(&self) -> Result<String, Box<dyn std::error::Error>> {
+                        fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
                             Err("un-implenmented yet".into())
                         }
                 }})
@@ -146,7 +145,7 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
     proc_macro2::TokenStream::from_iter(result.into_iter()).into()
 }
 
-/// return the field Ident and all types implTo if it has implTo
+/// return the field Ident and all types implTo. Empty if there is no implTo types
 fn parse_variant_attrs(variant: &Variant) -> (String, impl Iterator<Item = Ident> + '_) {
     let all_impl_to_type = variant
         .attrs

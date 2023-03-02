@@ -72,31 +72,19 @@ impl TildeKind {
                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
                 )?;
 
-                return a.format();
+                return a.format(self);
             }
-            //:= this one maybe a bit tricky
-            TildeKind::Loop(_) => todo!(),
+            TildeKind::Loop(_) => {
+                let a = arg.into_tildekind_loop().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Loop").into(),
+                )?;
+
+                return a.format(self);
+            }
             TildeKind::Text(_) => todo!(),
             TildeKind::VecTilde(_) => todo!(),
         }
     }
-}
-
-////
-////
-//pub trait TildeKindVa {}
-impl TildeKindVa for f32 {
-    fn format(&self) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", *self))
-    }
-}
-
-impl TildeKindVa for char {
-    //fn format(&self) -> Result<String, Box<dyn std::error::Error>> {}
-}
-
-impl TildeKindVa for String {
-    //fn format(&self) -> Result<String, Box<dyn std::error::Error>> {}
 }
 
 // impl mamually
@@ -106,14 +94,33 @@ impl TildeAble for Vec<&dyn TildeAble> {
     }
 }
 
+////
+////
+/// impl, re-define the format method for over writing the default method
+impl TildeKindVa for f32 {
+    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", *self))
+    }
+}
+
 impl TildeKindLoop for Vec<&dyn TildeAble> {
-    fn format(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let mut resutl = String::new();
-        // for tt in self {
-        //     result += tt.reveal(arg)
-        // }
-        //str::concat(self.iter().map(|tt| tt.reveal()))
-        Ok(String::new())
+    //:= need new method for TildeKindLoop...
+    //:= like format inside tilde with the args?
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::Loop(vv) => {
+                let zip_pair = vv.iter().cycle().zip(self);
+                //dbg!(&zip_pair);
+                let mut result = vec![];
+                for (tilde, arg) in zip_pair {
+                    //:= DEL: dbg!(tilde);
+                    //:= DEL: dbg!(arg);
+                    result.push(tilde.reveal(*arg)?);
+                }
+                Ok(result.as_slice().concat())
+            }
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
+        }
     }
 }
 
@@ -248,7 +255,7 @@ impl Tilde {
 			}
 
             c.seek(SeekFrom::Current(-2))?;
-            dbg!(c.position());
+            //dbg!(c.position());
             // read the tilde
             let next = Tilde::parse(c)?;
             total_len += next.len;
@@ -453,15 +460,4 @@ mod test {
         assert_eq!(Tilde::new(2, TildeKind::Va), f(&mut c)?);
         Ok(())
     }
-
-    #[test]
-    fn test_trait_inherit() {
-        let aa = TildeKind::Va;
-        //aa.format_va()
-    }
-
-    // #[test]
-    // fn test_macro_expand() -> Result<(), Box<dyn std::error::Error>> {
-    //     Ok(())
-    // }
 }

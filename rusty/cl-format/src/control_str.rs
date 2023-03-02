@@ -27,7 +27,7 @@ impl<'a> ControlStr<'a> {
         let mut result = vec![];
 
         loop {
-            dbg!(s.position());
+            //dbg!(s.position());
             s.read_until(b'~', &mut buf)?;
             match buf.last() {
                 // find the next '~'
@@ -46,14 +46,6 @@ impl<'a> ControlStr<'a> {
             buf.clear();
         }
     }
-
-    //:= TODO
-    // fn reveal_tildes(
-    //     &self,
-    //     args: impl Iterator<Item = Box<dyn TildeAble>>,
-    // ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + '_>>> {
-    //     iter::zip(&self.tildes, args).map(|((_, tt), arg)| tt.reveal(arg.as_ref()))
-    // }
 
     fn reveal_tildes<'s, 'cs: 's>(
         &'cs self,
@@ -119,24 +111,27 @@ mod test {
 
     #[test]
     fn test_reveal_loop_tildes() -> Result<(), Box<dyn std::error::Error>> {
-        let case = "hello wor~{~a~}";
+        let case = "hello wor~{~a~}~a";
         let cs = ControlStr::new(case)?;
         let arg0: &dyn TildeAble = &13_f32;
         let arg1: &dyn TildeAble = &14_f32;
         let arg2: &dyn TildeAble = &15_f32;
         let arg00: Vec<&dyn TildeAble> = vec![arg0, arg1];
         let arg: Vec<&dyn TildeAble> = vec![&arg00, arg2];
-        //:= mark here
-        //dbg!(arg.into_tildekind_va());
 
-        // let result: Vec<String> = vec!["13".to_string()];
+        let result: Vec<String> = vec!["1314".to_string(), "15".to_string()];
+        // dbg!(&cs.tildes[0]);
+        // dbg!(cs
+        //     .reveal_tildes(arg.into_iter())
+        //     .map(|a| a)
+        //     .collect::<Vec<_>>());
 
-        // assert_eq!(
-        //     result,
-        //     cs.reveal_tildes(vec![arg].into_iter())
-        //         .map(|a| a.unwrap())
-        //         .collect::<Vec<_>>()
-        // );
+        assert_eq!(
+            result,
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
         Ok(())
     }
 }
