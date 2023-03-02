@@ -3,6 +3,7 @@ use async_openai::{
     Client,
 };
 use reqwest::Response;
+use serde_json::json;
 
 async fn old_api_call() {
     let client = Client::new();
@@ -25,20 +26,35 @@ async fn old_api_call() {
 
 async fn chat_api_call() -> Result<serde_json::Value, reqwest::Error> {
     let resp = reqwest::Client::new();
+    let body = json!({
+        "model": "gpt-3.5-turbo",
+        "messages": json!([
+            json!({
+                "role": "system", "content": "You are a helpful assistant."
+            }),
+            json!({"role": "user", "content": "Who won the world series in 2020?"}),
+            json!({"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."}),
+            json!({"role": "user", "content": "Where was it played?"})
+        ])
+    });
+
+    println!("body: {}", body.to_string());
+
     resp.post("https://api.openai.com/v1/chat/completions")
         .bearer_auth(std::env!("OPENAI_API_KEY"))
         .header("Content-Type", "application/json")
-        .body(
-            r#"{
-  "model": "gpt-3.5-turbo",
-  "messages": [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Who won the world series in 2020?"},
-        {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
-        {"role": "user", "content": "Where was it played?"}
-    ]
-}"#,
-        )
+        //         .body(
+        //             r#"{
+        //   "model": "gpt-3.5-turbo",
+        //   "messages": [
+        //         {"role": "system", "content": "You are a helpful assistant."},
+        //         {"role": "user", "content": "Who won the world series in 2020?"},
+        //         {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."},
+        //         {"role": "user", "content": "Where was it played?"}
+        //     ]
+        // }"#,
+        //         )
+        .body(body.to_string())
         .send()
         .await?
         .json::<serde_json::Value>()

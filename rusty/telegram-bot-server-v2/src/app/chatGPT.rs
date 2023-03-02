@@ -1,11 +1,76 @@
 use super::*;
 use async_openai::{types::CreateCompletionRequestArgs, Client};
+use lazy_static::*;
+use serde_json::{json, Value};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs::{File, OpenOptions},
     io::{prelude::*, BufRead, BufReader},
 };
 use telegram_bot::{ChatId, GroupId, MessageChat, MessageId, MessageKind};
+use tokio::sync::Mutex;
+
+/// add tables for storing the chat
+lazy_static! {
+    static ref CHAT_CHAIN_TABLE: Mutex<HashMap<MessageId, MessageId>> = {
+        let m = HashMap::new();
+        Mutex::new(m)
+    };
+    static ref CHAT_DETAIL_TABLE: Mutex<HashMap<MessageId, ChatDetail>> = {
+        let m = HashMap::new();
+        Mutex::new(m)
+    };
+}
+
+pub struct ChatDetail {
+    role: String,
+    message: String,
+}
+
+impl ChatDetail {
+    fn new(role: &str, message: &str) -> Self {
+        Self {
+            role: role.into(),
+            message: message.into(),
+        }
+    }
+
+    fn to_json_message(&self) -> Value {
+        json!({"role": &self.role, "content": &self.message})
+    }
+}
+
+/// get this and all its parent chat ids
+pub async fn get_chats_ids(
+    this_id: MessageId,
+    len: usize,
+) -> Result<Vec<MessageId>, Box<dyn std::error::Error>> {
+    let table = CHAT_CHAIN_TABLE.lock().await;
+    let mut result = Vec::with_capacity(len);
+    let mut this = this_id;
+    for _ in 0..len {
+        result.push(this);
+        this = *table
+            .get(&this)
+            .ok_or::<String>("get the chat id wrong".into())?;
+    }
+    Ok(result)
+}
+
+async fn make_messages_in_body(
+    this_id: MessageId,
+    len: usize,
+) -> Result<Value, Box<dyn std::error::Error>> {
+    let table = CHAT_DETAIL_TABLE.lock().await;
+    let details = get_chats_ids(this_id, len)
+        .await?
+        .iter()
+        .filter_map(|id| table.get(id))
+        .map(|detail| detail.to_json_message())
+        .collect::<Vec<_>>();
+
+    Ok(json!(details))
+}
 
 /// receive message and return back
 pub struct ChatGPT {
@@ -170,11 +235,7 @@ impl ChatGPT {
                             .choices
                             .first()
                             .map(|choice| format!(
-                                "{}{}:\n{}",
-                                msg.first_name,
-                                msg.last_name
-                                    .map(|ln| String::from(" ") + &ln)
-                                    .unwrap_or(String::new()),
+                                "{}",
                                 choice.text.trim_start_matches(['\n', ',', ' ']) //:= TODO: clean some utf8 stuff
                             ))
                             .unwrap_or("sorry, something wrong".into())
@@ -189,6 +250,7 @@ impl ChatGPT {
             Err(e) => Err(e.to_string()),
         };
 
+        // if err happen
         match result {
             re @ Err(_) => {
                 self.deliver_sender
@@ -204,6 +266,16 @@ impl ChatGPT {
             _ => Ok(()),
         }
     }
+
+    //:= TODO
+    /// get the last ten replies of this msg_id
+    async fn get_reply_chain(&mut self, msg_id: &MessageId) {
+        todo!()
+    }
+
+    //:= TODO
+    /// clean the message older than 3600 * 24 * 5
+    async fn clean_table() {}
 }
 
 #[async_trait]

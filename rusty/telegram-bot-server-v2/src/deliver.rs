@@ -44,6 +44,8 @@ impl Deliver {
                 "reply_to" => {
                     if let Err(s) = self.reply_message(&d.chatid, &d.reply_to, &d.msg).await {
                         info!("{}", s);
+                    } else {
+                        //:= TODO: change the Chatgpt global table
                     }
                 }
                 other @ _ => {
@@ -70,10 +72,12 @@ impl Deliver {
     ) -> Result<(), String> {
         match reply_to_id {
             Some(m_id) => {
-                self.api
+                let resp = self
+                    .api
                     .send(SendMessage::new(id, msg).reply_to(m_id))
                     .await
                     .map_err(|e| e.to_string())?;
+                debug!("reply response: {:?}", resp);
                 Ok(())
             }
             None => Err("reply message id is none".to_string()),
