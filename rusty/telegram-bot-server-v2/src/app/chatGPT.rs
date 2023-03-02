@@ -7,7 +7,7 @@ use std::{
     fs::{File, OpenOptions},
     io::{prelude::*, BufRead, BufReader},
 };
-use telegram_bot::{ChatId, GroupId, MessageChat, MessageId, MessageKind};
+use telegram_bot::{ChatId, GroupId, MessageChat, MessageId, MessageKind, MessageText};
 use tokio::sync::Mutex;
 
 /// add tables for storing the chat
@@ -40,6 +40,21 @@ impl ChatDetail {
     }
 }
 
+pub async fn if_reply_chat_in_the_chain(msg: &Message) -> bool {
+    match &msg.reply_to_message {
+        Some(m) => match m.as_ref() {
+            telegram_bot::MessageOrChannelPost::Message(mm) => if_in_chain(&mm.id).await,
+            telegram_bot::MessageOrChannelPost::ChannelPost(_) => false,
+        },
+        None => false,
+    }
+}
+
+pub async fn if_in_chain(this_id: &MessageId) -> bool {
+    CHAT_CHAIN_TABLE.lock().await.contains_key(this_id)
+}
+
+//:= dont need to return error, chang it later
 /// get this and all its parent chat ids
 pub async fn get_chats_ids(
     this_id: MessageId,
@@ -50,9 +65,10 @@ pub async fn get_chats_ids(
     let mut this = this_id;
     for _ in 0..len {
         result.push(this);
-        this = *table
-            .get(&this)
-            .ok_or::<String>("get the chat id wrong".into())?;
+        this = match table.get(&this) {
+            Some(id) => *id,
+            None => return Ok(result),
+        }
     }
     Ok(result)
 }
@@ -70,6 +86,35 @@ async fn make_messages_in_body(
         .collect::<Vec<_>>();
 
     Ok(json!(details))
+}
+
+/// connect this message with its parent and add this message detail to table
+pub async fn insert_new_reply(msg: &Message, role: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let (reply_to_id, content) = match &msg.reply_to_message {
+        Some(m) => match m.as_ref() {
+            telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
+                MessageKind::Text { data, .. } => (m.id, data),
+                _ => return Err("only support the text".into()),
+            },
+            telegram_bot::MessageOrChannelPost::ChannelPost(_) => {
+                return Err("ChannelPost isn't support yet".into())
+            }
+        },
+        None => return Err("no reply message inside".into()),
+    };
+
+    CHAT_CHAIN_TABLE
+        .lock()
+        .await
+        .insert(msg.id, reply_to_id)
+        .ok_or::<String>("insert CHAT_CHAIN_TABLE has issue".into())?;
+    CHAT_DETAIL_TABLE
+        .lock()
+        .await
+        .insert(msg.id, ChatDetail::new(role, content))
+        .ok_or::<String>("insert CHAT_DETAIL_TABLE has issue".into())?;
+
+    Ok(())
 }
 
 /// receive message and return back
@@ -314,7 +359,10 @@ pub struct ChatGPTInput {
 }
 
 impl ChatGPTInput {
-    fn check_msg_comm(msg: &Message) -> Option<Self> {
+    async fn check_msg_comm(msg: &Message) -> Option<Self> {
+        let mut group_id = None;
+
+        // check the start with command
         match (&msg.chat, &msg.kind) {
             (MessageChat::Private(_), MessageKind::Text { data, entities }) => {
                 match entities.get(0) {
@@ -339,16 +387,16 @@ impl ChatGPTInput {
                                     });
                                 }
                             }
-                            None
                         }
-                        _ => None,
+                        _ => (),
                     },
-                    None => None,
+                    None => (),
                 }
             }
 
             // group
             (MessageChat::Group(group), MessageKind::Text { data, entities }) => {
+                group_id = Some(group.id.to_string());
                 match entities.get(0) {
                     Some(en) => match en.kind {
                         telegram_bot::MessageEntityKind::BotCommand => {
@@ -366,7 +414,7 @@ impl ChatGPTInput {
                             } else if data.starts_with("/chat_gpt") {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
-                                    Some(Self {
+                                    return Some(Self {
                                         data: words.into(),
                                         user_name: msg
                                             .from
@@ -379,21 +427,18 @@ impl ChatGPTInput {
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
                                         this_message_id: msg.id,
-                                    })
-                                } else {
-                                    None
+                                    });
                                 }
-                            } else {
-                                None
                             }
                         }
-                        _ => None,
+                        _ => (),
                     },
-                    None => None,
+                    None => (),
                 }
             }
             //super group
             (MessageChat::Supergroup(group), MessageKind::Text { data, entities }) => {
+                group_id = Some(group.id.to_string());
                 match entities.get(0) {
                     Some(en) => match en.kind {
                         telegram_bot::MessageEntityKind::BotCommand => {
@@ -411,7 +456,7 @@ impl ChatGPTInput {
                             } else if data.starts_with("/chat_gpt") {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
-                                    Some(Self {
+                                    return Some(Self {
                                         data: words.into(),
                                         user_name: msg
                                             .from
@@ -424,20 +469,34 @@ impl ChatGPTInput {
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
                                         this_message_id: msg.id,
-                                    })
-                                } else {
-                                    None
+                                    });
                                 }
-                            } else {
-                                None
                             }
                         }
-                        _ => None,
+                        _ => (),
                     },
-                    None => None,
+                    None => (),
                 }
             }
-            _ => None,
+            _ => (),
+        }
+
+        // pass all check upper
+        // check if this message reply some message in CHAT_CHAIN_TABLE
+        if !if_reply_chat_in_the_chain(msg).await {
+            insert_new_reply(msg, "user").await;
+            let data = msg.kind.text().unwrap_or("".into());
+            Some(Self {
+                data: data,
+                user_name: msg.from.username.clone().unwrap_or(String::new()),
+                chat_id: msg.chat.id(),
+                group_id: group_id,
+                first_name: msg.from.first_name.clone(),
+                last_name: msg.from.last_name.clone(),
+                this_message_id: msg.id,
+            })
+        } else {
+            None
         }
     }
 }
@@ -449,7 +508,7 @@ pub struct ChatGPTInputConsumer {
 #[async_trait]
 impl AppConsumer for ChatGPTInputConsumer {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
-        match ChatGPTInput::check_msg_comm(msg) {
+        match ChatGPTInput::check_msg_comm(msg).await {
             Some(input) => match self.sender.send(input).await {
                 Ok(_) => return Ok(ConsumeStatus::Taken),
                 Err(e) => return Err(e.to_string()),

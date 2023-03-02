@@ -1,7 +1,9 @@
-use telegram_bot::{Api, ChatId, MessageId, SendMessage};
+use telegram_bot::{Api, ChatId, Message, MessageId, MessageOrChannelPost, SendMessage};
 use tokio::sync::mpsc::Receiver;
 
 use tracing::{debug, info};
+
+use crate::app::insert_new_reply;
 
 #[derive(Debug, Clone)]
 pub struct Msg2Deliver {
@@ -41,11 +43,10 @@ impl Deliver {
                         info!("{}", s);
                     }
                 }
+                // reply to only used by chat gpt so far.
                 "reply_to" => {
                     if let Err(s) = self.reply_message(&d.chatid, &d.reply_to, &d.msg).await {
                         info!("{}", s);
-                    } else {
-                        //:= TODO: change the Chatgpt global table
                     }
                 }
                 other @ _ => {
@@ -78,9 +79,28 @@ impl Deliver {
                     .await
                     .map_err(|e| e.to_string())?;
                 debug!("reply response: {:?}", resp);
+
+                //:= no need resp_content here
+                let (m, resp_content) = get_reply_text_msg(&resp)?;
+
+                insert_new_reply(m, "assistant")
+                    .await
+                    .map_err(|e| e.to_string())?;
+
                 Ok(())
             }
             None => Err("reply message id is none".to_string()),
         }
+    }
+}
+
+fn get_reply_text_msg(mm: &MessageOrChannelPost) -> Result<(&Message, String), String> {
+    match mm {
+        MessageOrChannelPost::Message(m) => match &m.kind {
+            telegram_bot::MessageKind::Text { data, .. } => Ok((m, data.to_string())),
+
+            _ => Err("only support text so far".into()),
+        },
+        MessageOrChannelPost::ChannelPost(_) => Err("only support Message so far".into()),
     }
 }
