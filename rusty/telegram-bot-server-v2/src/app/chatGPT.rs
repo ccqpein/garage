@@ -1,5 +1,4 @@
 use super::*;
-use async_openai::{types::CreateCompletionRequestArgs, Client};
 use lazy_static::*;
 use serde_json::{json, Value};
 use std::{
@@ -10,6 +9,7 @@ use std::{
 use telegram_bot::{ChatId, GroupId, MessageChat, MessageId, MessageKind, MessageText};
 use tokio::sync::Mutex;
 
+//:= TODO: need seprate the space, like the group and private chat
 /// add tables for storing the chat
 lazy_static! {
     static ref CHAT_CHAIN_TABLE: Mutex<HashMap<MessageId, Option<MessageId>>> = {
@@ -21,6 +21,9 @@ lazy_static! {
         Mutex::new(m)
     };
 }
+
+/// the number of how many messages inside the request body
+static CHAT_COUNT: usize = 20;
 
 pub struct ChatDetail {
     role: String,
@@ -100,7 +103,7 @@ pub async fn insert_new_reply(msg: &Message, role: &str) -> Result<(), Box<dyn s
     let reply_to_id = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
             telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
-                MessageKind::Text { data, .. } => Some(m.id),
+                MessageKind::Text { .. } => Some(m.id),
                 _ => return Err("only support the text".into()),
             },
             telegram_bot::MessageOrChannelPost::ChannelPost(_) => {
@@ -116,12 +119,10 @@ pub async fn insert_new_reply(msg: &Message, role: &str) -> Result<(), Box<dyn s
     };
 
     CHAT_CHAIN_TABLE.lock().await.insert(msg.id, reply_to_id);
-    //.ok_or::<String>("insert CHAT_CHAIN_TABLE has issue".into())?;
     CHAT_DETAIL_TABLE
         .lock()
         .await
         .insert(msg.id, ChatDetail::new(role, &content));
-    //.ok_or::<String>("insert CHAT_DETAIL_TABLE has issue".into())?;
 
     info!("insert {} with its parent {:?}", msg.id, reply_to_id);
 
@@ -134,7 +135,6 @@ pub struct ChatGPT {
     // user or group
     my_name: String,
 
-    gpt_client: Client,
     openai_token: String,
     reqwest_client: reqwest::Client,
 
@@ -165,7 +165,6 @@ impl ChatGPT {
             .next()
             .ok_or("Read 'gpt_token' failed".to_string())?
             .map_err(|e| e.to_string())?;
-        //let gpt_client = Client::new().with_api_key(gpt_token);
 
         let f = BufReader::new(
             File::open(vault_path.clone() + "/stored_groups").map_err(|e| e.to_string())?,
@@ -186,7 +185,6 @@ impl ChatGPT {
             sender,
             receiver,
             deliver_sender,
-            gpt_client: Client::new().with_api_key(""), //:= DEL
             waken_groups: stored_groups,
             reqwest_client: reqwest::Client::new(),
             openai_token: gpt_token,
@@ -272,17 +270,7 @@ impl ChatGPT {
             (a, b, c) => return Err(format!("unmatched pattern: {:?}, {:?}, {:?}", a, b, c)),
         };
 
-        // call open ai
-        // let request = match CreateCompletionRequestArgs::default()
-        //     .model("text-davinci-003")
-        //     .prompt(data)
-        //     .max_tokens(3500_u16)
-        //     .build()
-        // {
-        //     Ok(args) => args,
-        //     Err(e) => return Err(e.to_string()),
-        // };
-
+        // start to call open ai
         let body = self
             .make_chat_messages(&msg.this_message_id)
             .await
@@ -309,18 +297,23 @@ impl ChatGPT {
         let content = &response_from_chat_gpt["choices"][0]["message"]["content"];
 
         let result = if !role.is_null() && !content.is_null() {
+            let deliver_msg = format!(
+                "{}",
+                content
+                    .to_string()
+                    .replace("\\n", "\n")
+                    .trim_start_matches(['\n', ',', ' ', '"'])
+                    .trim_end_matches(['"'])
+            );
+
+            debug!("delivery msg: {}", deliver_msg);
+
             match self
                 .deliver_sender
                 .send(Msg2Deliver::new(
                     "reply_to".to_string(),
                     msg.chat_id,
-                    format!(
-                        "{}",
-                        content
-                            .to_string()
-                            .trim_start_matches(['\n', ',', ' ', '"'])
-                            .trim_end_matches(['"'])
-                    ),
+                    deliver_msg,
                     Some(msg.this_message_id),
                 ))
                 .await
@@ -331,33 +324,6 @@ impl ChatGPT {
         } else {
             Err("getting role or content has issue".to_string())
         };
-
-        // let result = match self.gpt_client.completions().create(request).await {
-        //     Ok(response) => match self
-        //         .deliver_sender
-        //         .send(Msg2Deliver::new(
-        //             "reply_to".to_string(),
-        //             msg.chat_id,
-        //             format!(
-        //                 "{}",
-        //                 response
-        //                     .choices
-        //                     .first()
-        //                     .map(|choice| format!(
-        //                         "{}",
-        //                         choice.text.trim_start_matches(['\n', ',', ' ']) //:= TODO: clean some utf8 stuff
-        //                     ))
-        //                     .unwrap_or("sorry, something wrong".into())
-        //             ),
-        //             Some(msg.this_message_id),
-        //         ))
-        //         .await
-        //     {
-        //         Err(e) => Err(e.to_string()),
-        //         _ => Ok(()),
-        //     },
-        //     Err(e) => Err(e.to_string()),
-        // };
 
         // if err happen
         match result {
@@ -381,7 +347,7 @@ impl ChatGPT {
         &mut self,
         msg_id: &MessageId,
     ) -> Result<Value, Box<dyn std::error::Error>> {
-        make_messages_in_body(*msg_id, 10).await
+        make_messages_in_body(*msg_id, CHAT_COUNT).await
     }
 
     async fn make_chat_messages(
@@ -448,6 +414,7 @@ impl ChatGPTInput {
                     Some(en) => match en.kind {
                         telegram_bot::MessageEntityKind::BotCommand => {
                             if data.starts_with("/chat_gpt") {
+                                //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     if let Err(e) = insert_new_reply(msg, "user").await {
@@ -495,6 +462,7 @@ impl ChatGPTInput {
                                     this_message_id: msg.id,
                                 });
                             } else if data.starts_with("/chat_gpt") {
+                                //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     if let Err(e) = insert_new_reply(msg, "user").await {
@@ -540,6 +508,7 @@ impl ChatGPTInput {
                                     this_message_id: msg.id,
                                 });
                             } else if data.starts_with("/chat_gpt") {
+                                //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     if let Err(e) = insert_new_reply(msg, "user").await {
@@ -578,10 +547,10 @@ impl ChatGPTInput {
             }
             let data = msg.kind.text().unwrap_or("".into());
             Some(Self {
-                data: data,
+                data,
                 user_name: msg.from.username.clone().unwrap_or(String::new()),
                 chat_id: msg.chat.id(),
-                group_id: group_id,
+                group_id,
                 first_name: msg.from.first_name.clone(),
                 last_name: msg.from.last_name.clone(),
                 this_message_id: msg.id,
@@ -614,5 +583,9 @@ mod test {
     //use super::*;
 
     #[test]
-    fn test_parse_text() {}
+    fn test_clean_text() {
+        let a = "a\\nb";
+        dbg!(a.replace(r"\\n", r"\n"));
+        println!("{}", a.replace("\\n", "\n"));
+    }
 }
