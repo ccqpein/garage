@@ -6,17 +6,18 @@ use std::{
     fs::{File, OpenOptions},
     io::{prelude::*, BufRead, BufReader},
 };
-use telegram_bot::{ChatId, GroupId, MessageChat, MessageId, MessageKind, MessageText};
+use telegram_bot::{
+    ChatId, GroupId, MessageChat, MessageId, MessageKind, MessageText, SupergroupId,
+};
 use tokio::sync::Mutex;
 
-//:= TODO: need seprate the space, like the group and private chat
 /// add tables for storing the chat
 lazy_static! {
-    static ref CHAT_CHAIN_TABLE: Mutex<HashMap<MessageId, Option<MessageId>>> = {
+    static ref CHAT_CHAIN_TABLE: Mutex<HashMap<ChatSpace, Option<MessageId>>> = {
         let m = HashMap::new();
         Mutex::new(m)
     };
-    static ref CHAT_DETAIL_TABLE: Mutex<HashMap<MessageId, ChatDetail>> = {
+    static ref CHAT_DETAIL_TABLE: Mutex<HashMap<ChatSpace, ChatDetail>> = {
         let m = HashMap::new();
         Mutex::new(m)
     };
@@ -43,32 +44,78 @@ impl ChatDetail {
     }
 }
 
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+enum ChatSpaceKind {
+    Group(GroupId),
+    Private(ChatId),
+    SuperGroup(SupergroupId),
+}
+
+impl From<&Message> for ChatSpaceKind {
+    fn from(value: &Message) -> Self {
+        match &value.chat {
+            c @ MessageChat::Private(_) => Self::Private(c.id()),
+            MessageChat::Group(g) => Self::Group(g.id),
+            MessageChat::Supergroup(g) => Self::SuperGroup(g.id),
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+pub struct ChatSpace {
+    kind: ChatSpaceKind,
+    id: MessageId,
+}
+
+impl ChatSpace {
+    fn update_id(&mut self, id: MessageId) {
+        self.id = id
+    }
+}
+
+impl From<&Message> for ChatSpace {
+    fn from(value: &Message) -> Self {
+        Self {
+            kind: ChatSpaceKind::from(value),
+            id: value.id,
+        }
+    }
+}
+
+pub async fn if_in_chain(cs: &ChatSpace) -> bool {
+    CHAT_CHAIN_TABLE.lock().await.contains_key(cs)
+}
+
 pub async fn if_reply_chat_in_the_chain(msg: &Message) -> bool {
+    let mut cs = ChatSpace::from(msg);
     match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
-            telegram_bot::MessageOrChannelPost::Message(mm) => if_in_chain(&mm.id).await,
+            telegram_bot::MessageOrChannelPost::Message(mm) => {
+                cs.update_id(mm.id); // update to reply id
+                if_in_chain(&cs).await
+            }
             telegram_bot::MessageOrChannelPost::ChannelPost(_) => false,
         },
         None => false,
     }
 }
 
-pub async fn if_in_chain(this_id: &MessageId) -> bool {
-    CHAT_CHAIN_TABLE.lock().await.contains_key(this_id)
-}
-
 //:= dont need to return error, chang it later
 /// get this and all its parent chat ids
 pub async fn get_chats_ids(
-    this_id: MessageId,
+    this_msg: &Message,
     len: usize,
-) -> Result<Vec<MessageId>, Box<dyn std::error::Error>> {
+) -> Result<Vec<ChatSpace>, Box<dyn std::error::Error>> {
+    let mut cs = ChatSpace::from(this_msg);
+
     let table = CHAT_CHAIN_TABLE.lock().await;
     let mut result = Vec::with_capacity(len);
-    let mut this = this_id;
+    let mut this;
+
     for _ in 0..len {
-        result.push(this);
-        this = match table.get(&this) {
+        result.push(cs.clone());
+        this = match table.get(&cs) {
             Some(p_id) => {
                 if let Some(id) = p_id {
                     *id
@@ -77,18 +124,19 @@ pub async fn get_chats_ids(
                 }
             }
             None => break,
-        }
+        };
+        cs.update_id(this);
     }
     result.reverse();
     Ok(result)
 }
 
 async fn make_messages_in_body(
-    this_id: MessageId,
+    msg: &Message,
     len: usize,
 ) -> Result<Value, Box<dyn std::error::Error>> {
     let table = CHAT_DETAIL_TABLE.lock().await;
-    let details = get_chats_ids(this_id, len)
+    let details = get_chats_ids(msg, len)
         .await?
         .iter()
         .filter_map(|id| table.get(id))
@@ -118,11 +166,14 @@ pub async fn insert_new_reply(msg: &Message, role: &str) -> Result<(), Box<dyn s
         _ => return Err("only support the text".into()),
     };
 
-    CHAT_CHAIN_TABLE.lock().await.insert(msg.id, reply_to_id);
+    CHAT_CHAIN_TABLE
+        .lock()
+        .await
+        .insert(msg.into(), reply_to_id);
     CHAT_DETAIL_TABLE
         .lock()
         .await
-        .insert(msg.id, ChatDetail::new(role, &content));
+        .insert(msg.into(), ChatDetail::new(role, &content));
 
     info!("insert {} with its parent {:?}", msg.id, reply_to_id);
 
@@ -272,7 +323,7 @@ impl ChatGPT {
 
         // start to call open ai
         let body = self
-            .make_chat_messages(&msg.this_message_id)
+            .make_chat_messages(&msg.this_message)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -314,7 +365,7 @@ impl ChatGPT {
                     "reply_to".to_string(),
                     msg.chat_id,
                     deliver_msg,
-                    Some(msg.this_message_id),
+                    Some(msg.this_message.id),
                 ))
                 .await
             {
@@ -345,16 +396,16 @@ impl ChatGPT {
     /// get the last ten replies of this msg_id
     async fn get_reply_chain(
         &mut self,
-        msg_id: &MessageId,
+        msg: &Message,
     ) -> Result<Value, Box<dyn std::error::Error>> {
-        make_messages_in_body(*msg_id, CHAT_COUNT).await
+        make_messages_in_body(msg, CHAT_COUNT).await
     }
 
     async fn make_chat_messages(
         &mut self,
-        msg_id: &MessageId,
+        msg: &Message,
     ) -> Result<Value, Box<dyn std::error::Error>> {
-        let body = self.get_reply_chain(msg_id).await?;
+        let body = self.get_reply_chain(msg).await?;
         let body = json!({
             "model": "gpt-3.5-turbo",
             "messages": body
@@ -400,7 +451,7 @@ pub struct ChatGPTInput {
     chat_id: ChatId,
     group_id: Option<String>,
 
-    this_message_id: MessageId,
+    this_message: Message,
 }
 
 impl ChatGPTInput {
@@ -433,7 +484,7 @@ impl ChatGPTInput {
                                         group_id: None,
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
-                                        this_message_id: msg.id,
+                                        this_message: msg.clone(),
                                     });
                                 }
                             }
@@ -459,7 +510,7 @@ impl ChatGPTInput {
                                     last_name: msg.from.last_name.clone(),
                                     chat_id: msg.chat.id(),
                                     group_id: Some(group.id.to_string()),
-                                    this_message_id: msg.id,
+                                    this_message: msg.clone(),
                                 });
                             } else if data.starts_with("/chat_gpt") {
                                 //:= do I need the system role here?
@@ -480,7 +531,7 @@ impl ChatGPTInput {
                                         group_id: Some(group.id.to_string()),
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
-                                        this_message_id: msg.id,
+                                        this_message: msg.clone(),
                                     });
                                 }
                             }
@@ -505,7 +556,7 @@ impl ChatGPTInput {
                                     last_name: msg.from.last_name.clone(),
                                     chat_id: msg.chat.id(),
                                     group_id: Some(group.id.to_string()),
-                                    this_message_id: msg.id,
+                                    this_message: msg.clone(),
                                 });
                             } else if data.starts_with("/chat_gpt") {
                                 //:= do I need the system role here?
@@ -526,7 +577,7 @@ impl ChatGPTInput {
                                         group_id: Some(group.id.to_string()),
                                         first_name: msg.from.first_name.clone(),
                                         last_name: msg.from.last_name.clone(),
-                                        this_message_id: msg.id,
+                                        this_message: msg.clone(),
                                     });
                                 }
                             }
@@ -553,7 +604,7 @@ impl ChatGPTInput {
                 group_id,
                 first_name: msg.from.first_name.clone(),
                 last_name: msg.from.last_name.clone(),
-                this_message_id: msg.id,
+                this_message: msg.clone(),
             })
         } else {
             None
