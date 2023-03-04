@@ -54,6 +54,9 @@ pub enum TildeKind {
     /// loop
     Loop(Vec<Tilde>),
 
+    /// ~[ ~] condition
+    Cond((Vec<Tilde>, bool)),
+
     /// text inside the tilde
     Text(String),
 
@@ -83,6 +86,7 @@ impl TildeKind {
             }
             TildeKind::Text(_) => todo!(),
             TildeKind::VecTilde(_) => todo!(),
+            TildeKind::Cond(_) => todo!(),
         }
     }
 }
@@ -103,9 +107,19 @@ impl TildeKindVa for f32 {
     }
 }
 
+impl TildeKindVa for String {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Err("un-implenmented yet".into())
+    }
+}
+
+impl TildeKindVa for char {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Err("un-implenmented yet".into())
+    }
+}
+
 impl TildeKindLoop for Vec<&dyn TildeAble> {
-    //:= need new method for TildeKindLoop...
-    //:= like format inside tilde with the args?
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Loop(vv) => {
@@ -261,6 +275,74 @@ impl Tilde {
             total_len += next.len;
             result.push(next);
 
+            buf.clear()
+        }
+    }
+
+    /// parse the '~[~]'
+    fn parse_cond(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut char_buf = [0u8; 2]; // two bytes
+        c.read(&mut char_buf)?;
+        if let Ok(s) = std::str::from_utf8(&char_buf) && s != "~[" {
+			c.seek(SeekFrom::Current(-2))?; // restore the location
+            return Err(
+				TildeError::new(
+					ErrorKind::ParseError,
+					"should start with ~[",
+				).into());
+        }
+
+        let mut result = vec![];
+        let mut buf = vec![];
+        let mut total_len = 2;
+        let mut flag = false;
+
+        // new buf
+        let mut char_buf = [0u8; 3];
+
+        loop {
+            // read text until the next '~'
+            c.read_until(b'~', &mut buf)?;
+
+            match buf.as_slice() {
+                [b'~'] => {
+                    c.seek(SeekFrom::Current(-1))?;
+                }
+                [.., b'~'] => {
+                    c.seek(SeekFrom::Current(-1))?;
+                    result.push(Tilde::new(
+                        buf.len() - 1,
+                        TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
+                    ));
+                    total_len += buf.len() - 1;
+                }
+                [..] => {
+                    result.push(Tilde::new(
+                        buf.len() - 1,
+                        TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
+                    ));
+                    total_len += buf.len();
+                    return Ok(Tilde::new(total_len, TildeKind::Cond((result, flag))));
+                }
+            }
+
+            c.read(&mut char_buf)?;
+
+            if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~]") {
+				return Ok(Tilde::new(total_len + 2, TildeKind::Cond((result,flag))));
+			}
+
+            if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~;") {
+				c.seek(SeekFrom::Current(-1))?;
+				total_len+= 2;
+				flag = false;
+			}
+
+            if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~:;") {
+				total_len+= 3;
+				flag = true;
+			}
+            //dbg!(c.position());
             buf.clear()
         }
     }
@@ -458,6 +540,86 @@ mod test {
         //dbg!(f(&mut c));
 
         assert_eq!(Tilde::new(2, TildeKind::Va), f(&mut c)?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_cond() -> Result<(), Box<dyn std::error::Error>> {
+        let mut case = Cursor::new("~[~]");
+
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(4, TildeKind::Cond((Vec::new(), false)))
+        );
+
+        let mut case = Cursor::new("~[cero~]");
+
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(
+                8,
+                TildeKind::Cond((
+                    vec![Tilde {
+                        len: 4,
+                        value: TildeKind::Text(String::from("cero"))
+                    }],
+                    false
+                ))
+            ),
+        );
+
+        let mut case = Cursor::new("~[cero~;uno~;dos~]");
+
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(
+                18,
+                TildeKind::Cond((
+                    vec![
+                        Tilde {
+                            len: 4,
+                            value: TildeKind::Text(String::from("cero"))
+                        },
+                        Tilde {
+                            len: 3,
+                            value: TildeKind::Text(String::from("uno"))
+                        },
+                        Tilde {
+                            len: 3,
+                            value: TildeKind::Text(String::from("dos"))
+                        },
+                    ],
+                    false
+                ))
+            )
+        );
+
+        let mut case = Cursor::new("~[cero~;uno~:;dos~]");
+
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(
+                19,
+                TildeKind::Cond((
+                    vec![
+                        Tilde {
+                            len: 4,
+                            value: TildeKind::Text(String::from("cero"))
+                        },
+                        Tilde {
+                            len: 3,
+                            value: TildeKind::Text(String::from("uno"))
+                        },
+                        Tilde {
+                            len: 3,
+                            value: TildeKind::Text(String::from("dos"))
+                        },
+                    ],
+                    true
+                ))
+            )
+        );
+
         Ok(())
     }
 }
