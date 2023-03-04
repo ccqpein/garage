@@ -134,4 +134,34 @@ mod test {
         );
         Ok(())
     }
+
+    #[test]
+    fn test_reveal_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~[cero~;uno~;dos~]";
+        let cs = ControlStr::new(case)?;
+
+        // dbg!(&cs.tildes[0]);
+        // dbg!(cs
+        //     .reveal_tildes(arg.into_iter())
+        //     .map(|a| a)
+        //     .collect::<Vec<_>>());
+        let arg: Vec<&dyn TildeAble> = vec![&0_usize];
+        assert_eq!(
+            vec!["cero".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        //
+        let arg: Vec<&dyn TildeAble> = vec![&1_usize];
+        assert_eq!(
+            vec!["uno".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        Ok(())
+    }
 }

@@ -32,6 +32,9 @@ enum ErrorKind {
     RevealError,
 }
 
+#[derive(Debug)]
+struct TildeNull;
+
 #[derive(Debug, PartialEq, TildeAble)]
 pub enum TildeKind {
     /// ~C ~:C
@@ -54,6 +57,7 @@ pub enum TildeKind {
     /// loop
     Loop(Vec<Tilde>),
 
+    #[implTo(usize)]
     /// ~[ ~] condition
     Cond((Vec<Tilde>, bool)),
 
@@ -84,9 +88,14 @@ impl TildeKind {
 
                 return a.format(self);
             }
-            TildeKind::Text(_) => todo!(),
+            TildeKind::Text(s) => Ok(s.to_string()),
             TildeKind::VecTilde(_) => todo!(),
-            TildeKind::Cond(_) => todo!(),
+            TildeKind::Cond(_) => {
+                let a = arg.into_tildekind_cond().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Loop").into(),
+                )?;
+                return a.format(self);
+            }
         }
     }
 }
@@ -97,6 +106,8 @@ impl TildeAble for Vec<&dyn TildeAble> {
         Some(self)
     }
 }
+
+impl TildeAble for TildeNull {}
 
 ////
 ////
@@ -133,6 +144,22 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
                 }
                 Ok(result.as_slice().concat())
             }
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
+        }
+    }
+}
+
+impl TildeKindCond for usize {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::Cond((vv, true)) => match vv.get(*self) {
+                Some(tt) => tt.reveal(&TildeNull),
+                None => Ok(String::new()),
+            },
+            TildeKind::Cond((vv, false)) => match vv.get(*self) {
+                Some(tt) => tt.reveal(&TildeNull),
+                None => Ok(String::new()),
+            },
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
         }
     }
@@ -178,37 +205,37 @@ impl Tilde {
             return Err(TildeError::new(ErrorKind::ParseError, "should start with ~").into());
         }
 
-        let mut offset = 1; // after ~
+        //let mut offset = 1; // after ~
 
         // read until the tilde key char
-        loop {
-            buf[0] = 0;
-            c.read(&mut buf)?;
-            offset += 1;
+        let mut buf = [0_u8; 3];
 
-            match buf[0] {
-                b'a' | b'A' => {
-                    c.seek(SeekFrom::Current(-offset))?; // back to start
-                    return Ok(box Self::parse_value);
-                }
-                b'{' => {
-                    c.seek(SeekFrom::Current(-offset))?; // back to start
-                    return Ok(box Self::parse_loop);
-                }
-                b'$' | b'f' | b'F' => {
-                    c.seek(SeekFrom::Current(-offset))?; // back to start
-                    return Ok(box Self::parse_float);
-                }
-                b'd' | b'D' => {
-                    c.seek(SeekFrom::Current(-offset))?; // back to start
-                    return Ok(box Self::parse_digit);
-                }
-                0 => {
-                    return Err(
-                        TildeError::new(ErrorKind::ParseError, "cannot find the key tilde").into(),
-                    )
-                }
-                _ => continue,
+        c.read(&mut buf)?;
+        match buf {
+            [b'a', ..] | [b'A', ..] => {
+                c.seek(SeekFrom::Current(-4))?; // back to start
+                return Ok(box Self::parse_value);
+            }
+            [b'{', ..] => {
+                c.seek(SeekFrom::Current(-4))?; // back to start
+                return Ok(box Self::parse_loop);
+            }
+            [b'$', ..] | [b'f', ..] | [b'F', ..] => {
+                c.seek(SeekFrom::Current(-4))?; // back to start
+                return Ok(box Self::parse_float);
+            }
+            [b'd', ..] | [b'D', ..] => {
+                c.seek(SeekFrom::Current(-4))?; // back to start
+                return Ok(box Self::parse_digit);
+            }
+            [b'[', ..] => {
+                c.seek(SeekFrom::Current(-4))?; // back to start
+                return Ok(box Self::parse_cond);
+            }
+            _ => {
+                return Err(
+                    TildeError::new(ErrorKind::ParseError, "cannot find the key tilde").into(),
+                )
             }
         }
     }
