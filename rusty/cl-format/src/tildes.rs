@@ -227,27 +227,35 @@ impl Tilde {
 
         // read until the tilde key char
         let mut buf = [0_u8; 3];
-
+        let mut buf_offset = 1;
         c.read(&mut buf)?;
+        for b in buf {
+            if b == 0_u8 {
+                break;
+            } else {
+                buf_offset += 1;
+            }
+        }
+
         match buf {
             [b'a', ..] | [b'A', ..] => {
-                c.seek(SeekFrom::Current(-4))?; // back to start
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_value);
             }
             [b'{', ..] => {
-                c.seek(SeekFrom::Current(-4))?; // back to start
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_loop);
             }
             [b'$', ..] | [b'f', ..] | [b'F', ..] => {
-                c.seek(SeekFrom::Current(-4))?; // back to start
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_float);
             }
             [b'd', ..] | [b'D', ..] => {
-                c.seek(SeekFrom::Current(-4))?; // back to start
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_digit);
             }
             [b'[', ..] => {
-                c.seek(SeekFrom::Current(-4))?; // back to start
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_cond);
             }
             _ => {
@@ -362,6 +370,7 @@ impl Tilde {
         let mut char_buf = [0u8; 3];
 
         //:= need to finish this
+        //:= need to re-write the logic, ~; ~:; should be the delimiter
         loop {
             // read text until the next '~'
             c.read_until(b'~', &mut buf)?;
@@ -387,7 +396,7 @@ impl Tilde {
                     return Ok(Tilde::new(total_len, TildeKind::Cond((result, cond_kind))));
                 }
             }
-            dbg!(c.position());
+            //dbg!(c.position());
             c.read(&mut char_buf)?;
 
             if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~]") {
@@ -420,9 +429,57 @@ impl Tilde {
         }
     }
 
-    //:= TODO: for cond
-    fn parse_vec(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
-        todo!()
+    fn parse_vec(
+        c: &mut Cursor<&'_ str>,
+        end_len: usize,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut bucket = vec![0; end_len].into_boxed_slice();
+        c.read_exact(&mut bucket)?;
+
+        let ss = String::from_utf8(bucket.as_ref().to_vec())?;
+        //dbg!(&ss);
+        let mut inner_c = Cursor::new(ss.as_str());
+        let mut buf = vec![];
+        let mut result = vec![];
+        let mut total_len = 0;
+
+        loop {
+            // read text until the next '~'
+            inner_c.read_until(b'~', &mut buf)?;
+
+            match buf.as_slice() {
+                [b'~'] => {
+                    inner_c.seek(SeekFrom::Current(-1))?;
+                }
+                [.., b'~'] => {
+                    inner_c.seek(SeekFrom::Current(-1))?;
+                    result.push(Tilde::new(
+                        buf.len() - 1,
+                        TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
+                    ));
+                    total_len += buf.len() - 1;
+                }
+                [] => {
+                    c.seek(SeekFrom::Current((end_len - total_len) as i64 * -1))?;
+                    return Ok(Tilde::new(total_len, TildeKind::VecTilde(result)));
+                }
+                [..] => {
+                    result.push(Tilde::new(
+                        buf.len(),
+                        TildeKind::Text(String::from_utf8(buf[..buf.len()].to_vec())?),
+                    ));
+                    total_len += buf.len();
+                    c.seek(SeekFrom::Current((end_len - total_len) as i64 * -1))?;
+                    return Ok(Tilde::new(total_len, TildeKind::VecTilde(result)));
+                }
+            }
+
+            let next = Tilde::parse(&mut inner_c)?;
+            total_len += next.len;
+            result.push(next);
+
+            buf.clear()
+        }
     }
 
     /// parse function for '~a'
@@ -618,6 +675,55 @@ mod test {
         //dbg!(f(&mut c));
 
         assert_eq!(Tilde::new(2, TildeKind::Va), f(&mut c)?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_vec() -> Result<(), Box<dyn std::error::Error>> {
+        let mut case = Cursor::new("~a and ~a~a~a");
+        assert_eq!(
+            Tilde::parse_vec(&mut case, 9)?,
+            Tilde::new(
+                9,
+                TildeKind::VecTilde(vec![
+                    Tilde {
+                        len: 2,
+                        value: TildeKind::Va
+                    },
+                    Tilde {
+                        len: 5,
+                        value: TildeKind::Text(String::from(" and "))
+                    },
+                    Tilde {
+                        len: 2,
+                        value: TildeKind::Va
+                    }
+                ])
+            )
+        );
+
+        //dbg!(&case.position());
+        let mut rest = vec![];
+        case.read_to_end(&mut rest)?;
+        assert_eq!(String::from_utf8(rest)?, "~a~a");
+
+        //
+        let mut case = Cursor::new("~a a");
+        assert!(Tilde::parse_vec(&mut case, 9).is_err());
+
+        //
+        let mut case = Cursor::new("a");
+        assert_eq!(
+            Tilde::parse_vec(&mut case, 1)?,
+            Tilde::new(
+                1,
+                TildeKind::VecTilde(vec![Tilde {
+                    len: 1,
+                    value: TildeKind::Text(String::from("a"))
+                }])
+            )
+        );
+
         Ok(())
     }
 
