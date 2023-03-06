@@ -34,9 +34,19 @@ enum ErrorKind {
 
 #[derive(Debug, PartialEq)]
 enum TildeCondKind {
-    Nil(bool), // ~[, bool for the last ~:;
-    Sharp,     // ~#[
-    At,        // ~@[
+    Nil(bool),   // ~[, bool for the last ~:;
+    Sharp(bool), // ~#[, bool for the last ~:;
+    At,          // ~@[
+}
+
+impl TildeCondKind {
+    fn to_true(&mut self) {
+        match self {
+            TildeCondKind::Nil(_) => *self = TildeCondKind::Nil(true),
+            TildeCondKind::Sharp(_) => *self = TildeCondKind::Sharp(true),
+            TildeCondKind::At => (),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -317,18 +327,26 @@ impl Tilde {
     /// parse the '~[~]'
     fn parse_cond(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut char_buf = [0u8; 3]; // three bytes
+        let mut total_len = 0;
+        let mut cond_kind;
         c.read(&mut char_buf)?;
+
         match char_buf {
             [b'~', b'[', ..] => {
-                c.seek(SeekFrom::Current(-3))?;
+                total_len += 2;
+                cond_kind = TildeCondKind::Nil(false);
+                c.seek(SeekFrom::Current(-1))?;
             }
             [b'~', b'#', b'['] => {
-                c.seek(SeekFrom::Current(-3))?;
+                total_len += 3;
+                cond_kind = TildeCondKind::Sharp(false);
             }
             [b'~', b'@', b'['] => {
-                c.seek(SeekFrom::Current(-3))?;
+                total_len += 3;
+                cond_kind = TildeCondKind::At;
             }
             _ => {
+                c.seek(SeekFrom::Current(-3))?;
                 return Err(TildeError::new(
                     ErrorKind::ParseError,
                     "should start with ~[, ~#[, ~@[",
@@ -339,12 +357,11 @@ impl Tilde {
 
         let mut result = vec![];
         let mut buf = vec![];
-        let mut total_len = 2;
-        let mut flag = false;
 
         // new buf
         let mut char_buf = [0u8; 3];
 
+        //:= need to finish this
         loop {
             // read text until the next '~'
             c.read_until(b'~', &mut buf)?;
@@ -367,32 +384,45 @@ impl Tilde {
                         TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
                     ));
                     total_len += buf.len();
-                    return Ok(Tilde::new(
-                        total_len,
-                        TildeKind::Cond((result, TildeCondKind::Nil(flag))),
-                    ));
+                    return Ok(Tilde::new(total_len, TildeKind::Cond((result, cond_kind))));
                 }
             }
-
+            dbg!(c.position());
             c.read(&mut char_buf)?;
 
             if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~]") {
-				return Ok(Tilde::new(total_len + 2, TildeKind::Cond((result,TildeCondKind::Nil(flag)))));
+				c.seek(SeekFrom::Current(-1))?;
+				return Ok(Tilde::new(total_len + 2, TildeKind::Cond((result,cond_kind))));
 			}
 
+            //:= TODO: ~; should be seperate symbol, need parse to Vectilde
             if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~;") {
 				c.seek(SeekFrom::Current(-1))?;
 				total_len+= 2;
-				flag = false;
+				buf.clear();
+				continue;
 			}
 
             if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~:;") {
 				total_len+= 3;
-				flag = true;
+				cond_kind.to_true();
+				buf.clear();
+				continue;
 			}
+
+            c.seek(SeekFrom::Current(-3))?;
+            let next = Tilde::parse(c)?;
+            total_len += next.len;
+            result.push(next);
+
             //dbg!(c.position());
             buf.clear()
         }
+    }
+
+    //:= TODO: for cond
+    fn parse_vec(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        todo!()
     }
 
     /// parse function for '~a'
@@ -664,6 +694,65 @@ mod test {
                         },
                     ],
                     TildeCondKind::Nil(true)
+                ))
+            )
+        );
+
+        let mut case = Cursor::new("~#[NONE~;~a~;~a and ~a~:;~a, ~a~]");
+
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(
+                33,
+                TildeKind::Cond((
+                    vec![
+                        Tilde {
+                            len: 4,
+                            value: TildeKind::Text(String::from("NONE"))
+                        },
+                        Tilde {
+                            len: 2,
+                            value: TildeKind::VecTilde(vec![Tilde {
+                                len: 2,
+                                value: TildeKind::Va
+                            }]),
+                        },
+                        Tilde {
+                            len: 9,
+                            value: TildeKind::VecTilde(vec![
+                                Tilde {
+                                    len: 2,
+                                    value: TildeKind::Va
+                                },
+                                Tilde {
+                                    len: 5,
+                                    value: TildeKind::Text(String::from(" and "))
+                                },
+                                Tilde {
+                                    len: 2,
+                                    value: TildeKind::Va,
+                                }
+                            ]),
+                        },
+                        Tilde {
+                            len: 6,
+                            value: TildeKind::VecTilde(vec![
+                                Tilde {
+                                    len: 2,
+                                    value: TildeKind::Va
+                                },
+                                Tilde {
+                                    len: 2,
+                                    value: TildeKind::Text(String::from(", "))
+                                },
+                                Tilde {
+                                    len: 2,
+                                    value: TildeKind::Va,
+                                }
+                            ]),
+                        },
+                    ],
+                    TildeCondKind::Sharp(true)
                 ))
             )
         );
