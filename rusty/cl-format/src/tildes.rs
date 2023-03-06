@@ -32,6 +32,13 @@ enum ErrorKind {
     RevealError,
 }
 
+#[derive(Debug, PartialEq)]
+enum TildeCondKind {
+    Nil(bool), // ~[, bool for the last ~:;
+    Sharp,     // ~#[
+    At,        // ~@[
+}
+
 #[derive(Debug)]
 struct TildeNull;
 
@@ -59,7 +66,7 @@ pub enum TildeKind {
 
     #[implTo(usize)]
     /// ~[ ~] condition
-    Cond((Vec<Tilde>, bool)),
+    Cond((Vec<Tilde>, TildeCondKind)),
 
     /// text inside the tilde
     Text(String),
@@ -120,13 +127,13 @@ impl TildeKindVa for f32 {
 
 impl TildeKindVa for String {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Err("un-implenmented yet".into())
+        Ok(format!("{}", *self))
     }
 }
 
 impl TildeKindVa for char {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Err("un-implenmented yet".into())
+        Ok(format!("{}", *self))
     }
 }
 
@@ -138,8 +145,6 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
                 //dbg!(&zip_pair);
                 let mut result = vec![];
                 for (tilde, arg) in zip_pair {
-                    //:= DEL: dbg!(tilde);
-                    //:= DEL: dbg!(arg);
                     result.push(tilde.reveal(*arg)?);
                 }
                 Ok(result.as_slice().concat())
@@ -152,15 +157,18 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
 impl TildeKindCond for usize {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
-            TildeKind::Cond((vv, true)) => match vv.get(*self) {
+            TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get(*self) {
+                Some(tt) => tt.reveal(&TildeNull),
+                None => match vv.last() {
+                    Some(tt) => tt.reveal(&TildeNull),
+                    None => Ok(String::new()),
+                },
+            },
+            TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get(*self) {
                 Some(tt) => tt.reveal(&TildeNull),
                 None => Ok(String::new()),
             },
-            TildeKind::Cond((vv, false)) => match vv.get(*self) {
-                Some(tt) => tt.reveal(&TildeNull),
-                None => Ok(String::new()),
-            },
-            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
         }
     }
 }
@@ -308,15 +316,25 @@ impl Tilde {
 
     /// parse the '~[~]'
     fn parse_cond(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut char_buf = [0u8; 2]; // two bytes
+        let mut char_buf = [0u8; 3]; // three bytes
         c.read(&mut char_buf)?;
-        if let Ok(s) = std::str::from_utf8(&char_buf) && s != "~[" {
-			c.seek(SeekFrom::Current(-2))?; // restore the location
-            return Err(
-				TildeError::new(
-					ErrorKind::ParseError,
-					"should start with ~[",
-				).into());
+        match char_buf {
+            [b'~', b'[', ..] => {
+                c.seek(SeekFrom::Current(-3))?;
+            }
+            [b'~', b'#', b'['] => {
+                c.seek(SeekFrom::Current(-3))?;
+            }
+            [b'~', b'@', b'['] => {
+                c.seek(SeekFrom::Current(-3))?;
+            }
+            _ => {
+                return Err(TildeError::new(
+                    ErrorKind::ParseError,
+                    "should start with ~[, ~#[, ~@[",
+                )
+                .into());
+            }
         }
 
         let mut result = vec![];
@@ -349,14 +367,17 @@ impl Tilde {
                         TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
                     ));
                     total_len += buf.len();
-                    return Ok(Tilde::new(total_len, TildeKind::Cond((result, flag))));
+                    return Ok(Tilde::new(
+                        total_len,
+                        TildeKind::Cond((result, TildeCondKind::Nil(flag))),
+                    ));
                 }
             }
 
             c.read(&mut char_buf)?;
 
             if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~]") {
-				return Ok(Tilde::new(total_len + 2, TildeKind::Cond((result,flag))));
+				return Ok(Tilde::new(total_len + 2, TildeKind::Cond((result,TildeCondKind::Nil(flag)))));
 			}
 
             if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~;") {
@@ -576,7 +597,7 @@ mod test {
 
         assert_eq!(
             Tilde::parse_cond(&mut case)?,
-            Tilde::new(4, TildeKind::Cond((Vec::new(), false)))
+            Tilde::new(4, TildeKind::Cond((Vec::new(), TildeCondKind::Nil(false))))
         );
 
         let mut case = Cursor::new("~[cero~]");
@@ -590,7 +611,7 @@ mod test {
                         len: 4,
                         value: TildeKind::Text(String::from("cero"))
                     }],
-                    false
+                    TildeCondKind::Nil(false)
                 ))
             ),
         );
@@ -616,7 +637,7 @@ mod test {
                             value: TildeKind::Text(String::from("dos"))
                         },
                     ],
-                    false
+                    TildeCondKind::Nil(false)
                 ))
             )
         );
@@ -642,7 +663,7 @@ mod test {
                             value: TildeKind::Text(String::from("dos"))
                         },
                     ],
-                    true
+                    TildeCondKind::Nil(true)
                 ))
             )
         );

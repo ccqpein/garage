@@ -162,6 +162,50 @@ mod test {
                 .collect::<Vec<_>>()
         );
 
+        //
+        let case = "~[cero~;uno~:;dos~]";
+        let cs = ControlStr::new(case)?;
+
+        let arg: Vec<&dyn TildeAble> = vec![&0_usize];
+        assert_eq!(
+            vec!["cero".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        let arg: Vec<&dyn TildeAble> = vec![&2_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        //
+        let arg: Vec<&dyn TildeAble> = vec![&3_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+        let arg: Vec<&dyn TildeAble> = vec![&4_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        let arg: Vec<&dyn TildeAble> = vec![&100_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
         Ok(())
     }
 }
