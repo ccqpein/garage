@@ -223,8 +223,6 @@ impl Tilde {
             return Err(TildeError::new(ErrorKind::ParseError, "should start with ~").into());
         }
 
-        //let mut offset = 1; // after ~
-
         // read until the tilde key char
         let mut buf = [0_u8; 3];
         let mut buf_offset = 1;
@@ -254,7 +252,7 @@ impl Tilde {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_digit);
             }
-            [b'[', ..] => {
+            [b'[', ..] | [b'#', b'[', ..] | [b':', b'[', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_cond);
             }
@@ -334,6 +332,7 @@ impl Tilde {
 
     /// parse the '~[~]'
     fn parse_cond(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        //dbg!(c.get_ref().to_string());
         let mut char_buf = [0u8; 3]; // three bytes
         let mut total_len = 0;
         let mut cond_kind;
@@ -363,70 +362,71 @@ impl Tilde {
             }
         }
 
-        let mut result = vec![];
-        let mut buf = vec![];
-
-        // new buf
-        let mut char_buf = [0u8; 3];
-
-        //:= need to finish this
-        //:= need to re-write the logic, ~; ~:; should be the delimiter
+        let mut bucket = vec![];
+        let mut one_byte = [0_u8; 1];
         loop {
-            // read text until the next '~'
-            c.read_until(b'~', &mut buf)?;
+            c.read_exact(&mut one_byte)?;
+            if let Some(x) = bucket.last() && *x == b'~' && one_byte[0] == b']'{
+				bucket.pop(); // bucket doesn't have ~] inside
+				break;
+			}
+            bucket.push(one_byte[0]);
+        }
 
-            match buf.as_slice() {
-                [b'~'] => {
-                    c.seek(SeekFrom::Current(-1))?;
-                }
-                [.., b'~'] => {
-                    c.seek(SeekFrom::Current(-1))?;
-                    result.push(Tilde::new(
-                        buf.len() - 1,
-                        TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
-                    ));
-                    total_len += buf.len() - 1;
-                }
-                [..] => {
-                    result.push(Tilde::new(
-                        buf.len() - 1,
-                        TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
-                    ));
-                    total_len += buf.len();
-                    return Ok(Tilde::new(total_len, TildeKind::Cond((result, cond_kind))));
+        total_len += 2 + bucket.len();
+
+        let mut result = vec![];
+        let mut inner_c = Cursor::new(std::str::from_utf8(&bucket)?);
+
+        let mut ind = 0;
+        let mut delimiters = vec![];
+        loop {
+            if ind == bucket.len() {
+                delimiters.push(ind);
+                break;
+            }
+            if bucket[ind] == b';' {
+                match bucket.get(0..ind) {
+                    Some([.., b'~', b':']) => {
+                        cond_kind.to_true();
+                        delimiters.push(ind - 2);
+                        delimiters.push(ind + 1);
+                    }
+                    Some([.., b'~']) => {
+                        delimiters.push(ind - 1);
+                        delimiters.push(ind + 1);
+                    }
+                    _ => (),
                 }
             }
-            //dbg!(c.position());
-            c.read(&mut char_buf)?;
 
-            if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~]") {
-				c.seek(SeekFrom::Current(-1))?;
-				return Ok(Tilde::new(total_len + 2, TildeKind::Cond((result,cond_kind))));
-			}
-
-            //:= TODO: ~; should be seperate symbol, need parse to Vectilde
-            if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~;") {
-				c.seek(SeekFrom::Current(-1))?;
-				total_len+= 2;
-				buf.clear();
-				continue;
-			}
-
-            if let Ok(s) = std::str::from_utf8(&char_buf) && s.starts_with("~:;") {
-				total_len+= 3;
-				cond_kind.to_true();
-				buf.clear();
-				continue;
-			}
-
-            c.seek(SeekFrom::Current(-3))?;
-            let next = Tilde::parse(c)?;
-            total_len += next.len;
-            result.push(next);
-
-            //dbg!(c.position());
-            buf.clear()
+            ind += 1;
         }
+
+        //dbg!(&delimiters);
+
+        for x in delimiters
+            .iter()
+            .enumerate()
+            .map(|(ind, v)| {
+                if ind == 0 {
+                    *v
+                } else {
+                    v - delimiters[ind - 1]
+                }
+            })
+            .collect::<Vec<_>>()
+            .as_slice()
+            .chunks(2)
+        {
+            //dbg!(&x);
+            result.push(Self::parse_vec(&mut inner_c, x[0])?);
+            if let Some(offset) = x.get(1) {
+                inner_c.seek(SeekFrom::Current(*offset as i64))?;
+            }
+        }
+
+        Ok(Tilde::new(total_len, TildeKind::Cond((result, cond_kind))))
     }
 
     fn parse_vec(
@@ -733,7 +733,16 @@ mod test {
 
         assert_eq!(
             Tilde::parse_cond(&mut case)?,
-            Tilde::new(4, TildeKind::Cond((Vec::new(), TildeCondKind::Nil(false))))
+            Tilde::new(
+                4,
+                TildeKind::Cond((
+                    vec![Tilde {
+                        len: 0,
+                        value: TildeKind::VecTilde(vec![])
+                    }],
+                    TildeCondKind::Nil(false)
+                ))
+            )
         );
 
         let mut case = Cursor::new("~[cero~]");
@@ -745,7 +754,10 @@ mod test {
                 TildeKind::Cond((
                     vec![Tilde {
                         len: 4,
-                        value: TildeKind::Text(String::from("cero"))
+                        value: TildeKind::VecTilde(vec![Tilde::new(
+                            4,
+                            TildeKind::Text(String::from("cero"))
+                        )]),
                     }],
                     TildeCondKind::Nil(false)
                 ))
@@ -762,15 +774,56 @@ mod test {
                     vec![
                         Tilde {
                             len: 4,
-                            value: TildeKind::Text(String::from("cero"))
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                4,
+                                TildeKind::Text(String::from("cero"))
+                            )])
                         },
                         Tilde {
                             len: 3,
-                            value: TildeKind::Text(String::from("uno"))
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                3,
+                                TildeKind::Text(String::from("uno"))
+                            )])
                         },
                         Tilde {
                             len: 3,
-                            value: TildeKind::Text(String::from("dos"))
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                3,
+                                TildeKind::Text(String::from("dos"))
+                            )])
+                        },
+                    ],
+                    TildeCondKind::Nil(false)
+                ))
+            )
+        );
+
+        let mut case = Cursor::new("~[cero~;uno~;~]");
+
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(
+                15,
+                TildeKind::Cond((
+                    vec![
+                        Tilde {
+                            len: 4,
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                4,
+                                TildeKind::Text(String::from("cero"))
+                            )])
+                        },
+                        Tilde {
+                            len: 3,
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                3,
+                                TildeKind::Text(String::from("uno"))
+                            )])
+                        },
+                        Tilde {
+                            len: 0,
+                            value: TildeKind::VecTilde(vec![])
                         },
                     ],
                     TildeCondKind::Nil(false)
@@ -788,15 +841,24 @@ mod test {
                     vec![
                         Tilde {
                             len: 4,
-                            value: TildeKind::Text(String::from("cero"))
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                4,
+                                TildeKind::Text(String::from("cero"))
+                            )])
                         },
                         Tilde {
                             len: 3,
-                            value: TildeKind::Text(String::from("uno"))
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                3,
+                                TildeKind::Text(String::from("uno"))
+                            )])
                         },
                         Tilde {
                             len: 3,
-                            value: TildeKind::Text(String::from("dos"))
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                3,
+                                TildeKind::Text(String::from("dos"))
+                            )])
                         },
                     ],
                     TildeCondKind::Nil(true)
@@ -814,14 +876,14 @@ mod test {
                     vec![
                         Tilde {
                             len: 4,
-                            value: TildeKind::Text(String::from("NONE"))
+                            value: TildeKind::VecTilde(vec![Tilde::new(
+                                4,
+                                TildeKind::Text(String::from("NONE"))
+                            )])
                         },
                         Tilde {
                             len: 2,
-                            value: TildeKind::VecTilde(vec![Tilde {
-                                len: 2,
-                                value: TildeKind::Va
-                            }]),
+                            value: TildeKind::VecTilde(vec![Tilde::new(2, TildeKind::Va)])
                         },
                         Tilde {
                             len: 9,
