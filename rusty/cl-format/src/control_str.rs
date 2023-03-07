@@ -6,6 +6,7 @@ use std::iter;
 /// the control string should including:
 /// 1. the whole string
 /// 2. the parsed tree
+#[derive(Debug)]
 struct ControlStr<'a> {
     inner: &'a str,
     tildes: Vec<((usize, usize), Tilde)>,
@@ -140,7 +141,7 @@ mod test {
         let case = "~[cero~;uno~;dos~]";
         let cs = ControlStr::new(case)?;
 
-        // dbg!(&cs.tildes[0]);
+        dbg!(&cs);
         // dbg!(cs
         //     .reveal_tildes(arg.into_iter())
         //     .map(|a| a)

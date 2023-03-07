@@ -106,7 +106,7 @@ impl TildeKind {
                 return a.format(self);
             }
             TildeKind::Text(s) => Ok(s.to_string()),
-            TildeKind::VecTilde(_) => todo!(),
+            TildeKind::VecTilde(_) => todo!(), //:= NEXT: here
             TildeKind::Cond(_) => {
                 let a = arg.into_tildekind_cond().ok_or::<TildeError>(
                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Loop").into(),
@@ -183,6 +183,9 @@ impl TildeKindCond for usize {
     }
 }
 
+//:= TODO: need to write the cond tilde impl,...
+//:= kind of same ad the ~@{
+
 /*=========================================================*/
 
 /// The tilde struct
@@ -244,7 +247,7 @@ impl Tilde {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_loop);
             }
-            [b'$', ..] | [b'f', ..] | [b'F', ..] => {
+            [b'$', ..] | [b'f', ..] | [b'F', ..] | [_, b'$', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_float);
             }
