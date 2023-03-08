@@ -50,7 +50,7 @@ impl TildeCondKind {
 }
 
 #[derive(Debug)]
-struct TildeNull;
+struct TildeNil;
 
 #[derive(Debug, PartialEq, TildeAble)]
 pub enum TildeKind {
@@ -67,7 +67,7 @@ pub enum TildeKind {
     //:= TODO: ~C
     //:= TODO: ~X
     //:= TODO: ~O
-    #[implTo(f32, char, String)]
+    #[implTo(f32, char, String, TildeNil)]
     /// ~a
     Va,
 
@@ -82,6 +82,7 @@ pub enum TildeKind {
     Text(String),
 
     /// vec
+    #[implTo(TildeNil)]
     VecTilde(Vec<Tilde>),
 }
 
@@ -106,10 +107,16 @@ impl TildeKind {
                 return a.format(self);
             }
             TildeKind::Text(s) => Ok(s.to_string()),
-            TildeKind::VecTilde(_) => todo!(), //:= NEXT: here
+            TildeKind::VecTilde(_) => {
+                //dbg!(&arg); //:= Nil
+                let a = arg.into_tildekind_vectilde().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to VecTilde").into(),
+                )?;
+                return a.format(self);
+            }
             TildeKind::Cond(_) => {
                 let a = arg.into_tildekind_cond().ok_or::<TildeError>(
-                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Loop").into(),
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
                 )?;
                 return a.format(self);
             }
@@ -123,8 +130,6 @@ impl TildeAble for Vec<&dyn TildeAble> {
         Some(self)
     }
 }
-
-impl TildeAble for TildeNull {}
 
 ////
 ////
@@ -144,6 +149,12 @@ impl TildeKindVa for String {
 impl TildeKindVa for char {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", *self))
+    }
+}
+
+impl TildeKindVa for TildeNil {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok("nil".into())
     }
 }
 
@@ -168,23 +179,55 @@ impl TildeKindCond for usize {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get(*self) {
-                Some(tt) => tt.reveal(&TildeNull),
+                Some(tt) => tt.reveal(&TildeNil), //:= it is TildeVec reveal
                 None => match vv.last() {
-                    Some(tt) => tt.reveal(&TildeNull),
+                    Some(tt) => tt.reveal(&TildeNil),
                     None => Ok(String::new()),
                 },
             },
             TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get(*self) {
-                Some(tt) => tt.reveal(&TildeNull),
+                Some(tt) => tt.reveal(&TildeNil),
                 None => Ok(String::new()),
             },
+            //:= more TildeCondKind below
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
+        }
+    }
+}
+
+impl TildeKindVecTilde for TildeNil {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::VecTilde(vv) => {
+                let mut result = vec![];
+                for t in vv {
+                    result.push(t.reveal(self)?);
+                }
+                Ok(result.as_slice().concat())
+            }
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
         }
     }
 }
 
 //:= TODO: need to write the cond tilde impl,...
 //:= kind of same ad the ~@{
+impl TildeKindVecTilde for Vec<&dyn TildeAble> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        dbg!(self);
+        match tkind {
+            TildeKind::VecTilde(vv) => {
+                let zip_pair = vv.iter().zip(self);
+                let mut result = vec![];
+                for (tilde, arg) in zip_pair {
+                    result.push(tilde.reveal(*arg)?);
+                }
+                Ok(result.as_slice().concat())
+            }
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
+        }
+    }
+}
 
 /*=========================================================*/
 

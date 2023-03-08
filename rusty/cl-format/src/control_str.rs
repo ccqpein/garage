@@ -137,15 +137,12 @@ mod test {
     }
 
     #[test]
-    fn test_reveal_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_reveal_normal_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
         let case = "~[cero~;uno~;dos~]";
         let cs = ControlStr::new(case)?;
 
-        dbg!(&cs);
-        // dbg!(cs
-        //     .reveal_tildes(arg.into_iter())
-        //     .map(|a| a)
-        //     .collect::<Vec<_>>());
+        //dbg!(&cs);
+
         let arg: Vec<&dyn TildeAble> = vec![&0_usize];
         assert_eq!(
             vec!["cero".to_string()],
@@ -166,6 +163,7 @@ mod test {
         //
         let case = "~[cero~;uno~:;dos~]";
         let cs = ControlStr::new(case)?;
+        //dbg!(&cs);
 
         let arg: Vec<&dyn TildeAble> = vec![&0_usize];
         assert_eq!(
@@ -206,6 +204,15 @@ mod test {
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_reveal_sharp_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~#[NONE~;~a~;~a and ~a~:;~a, ~a~]~#[~; and ~a~:;, ~a, etc~].";
+        let cs = ControlStr::new(case)?;
+        dbg!(cs);
 
         Ok(())
     }
