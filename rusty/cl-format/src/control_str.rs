@@ -52,14 +52,13 @@ impl<'a> ControlStr<'a> {
         &'cs self,
         args: impl Iterator<Item = &'s dyn TildeAble>,
     ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + 's>>> {
+        //:= TODO: zip isn't right, need catch how many arg left
         iter::zip(&self.tildes, args).map(|((_, tt), arg)| tt.reveal(arg))
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::any::{Any, TypeId};
-
     use super::*;
 
     #[test]
@@ -212,7 +211,15 @@ mod test {
     fn test_reveal_sharp_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
         let case = "~#[NONE~;~a~;~a and ~a~:;~a, ~a~]~#[~; and ~a~:;, ~a, etc~].";
         let cs = ControlStr::new(case)?;
-        dbg!(cs);
+        dbg!(&cs);
+
+        let arg: Vec<&dyn TildeAble> = vec![];
+        assert_eq!(
+            vec!["NONE".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
         Ok(())
     }

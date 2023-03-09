@@ -54,6 +54,7 @@ struct TildeNil;
 
 #[derive(Debug, PartialEq, TildeAble)]
 pub enum TildeKind {
+    #[implTo(char)]
     /// ~C ~:C
     Char,
 
@@ -108,18 +109,25 @@ impl TildeKind {
             }
             TildeKind::Text(s) => Ok(s.to_string()),
             TildeKind::VecTilde(_) => {
-                //dbg!(&arg); //:= Nil
                 let a = arg.into_tildekind_vectilde().ok_or::<TildeError>(
                     TildeError::new(ErrorKind::RevealError, "cannot reveal to VecTilde").into(),
                 )?;
                 return a.format(self);
             }
-            TildeKind::Cond(_) => {
-                let a = arg.into_tildekind_cond().ok_or::<TildeError>(
-                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
-                )?;
-                return a.format(self);
-            }
+            TildeKind::Cond((_, kind)) => match kind {
+                TildeCondKind::Nil(_) => {
+                    let a = arg.into_tildekind_cond().ok_or::<TildeError>(
+                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
+                    )?;
+                    return a.format(self);
+                }
+                TildeCondKind::Sharp(_) => {
+                    //:= TODO: sharp need to know how many args left
+                    //:= TODO: the true/false flag
+                    todo!()
+                }
+                TildeCondKind::At => todo!(),
+            },
         }
     }
 }
@@ -134,6 +142,16 @@ impl TildeAble for Vec<&dyn TildeAble> {
 ////
 ////
 /// impl, re-define the format method for over writing the default method
+impl TildeKindChar for char {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        if let TildeKind::Char = tkind {
+            Ok(format!("'{}'", self))
+        } else {
+            Err(TildeError::new(ErrorKind::RevealError, "cannot format to Char").into())
+        }
+    }
+}
+
 impl TildeKindVa for f32 {
     fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", *self))
@@ -195,6 +213,20 @@ impl TildeKindCond for usize {
     }
 }
 
+// impl TildeKindCond for char {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         match tkind {
+//             TildeKind::Cond((_, TildeCondKind::Nil(_))) => {
+//                 Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond nil").into())
+//             }
+//             TildeKind::Cond((vv, TildeCondKind::Sharp(true))) => vv,
+//             TildeKind::Cond((_, TildeCondKind::Sharp(false))) => {}
+
+//             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
+//         }
+//     }
+// }
+
 impl TildeKindVecTilde for TildeNil {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
@@ -250,6 +282,17 @@ impl Tilde {
     pub fn reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
         self.value.match_reveal(arg)
     }
+
+    pub fn reveal_args<'a>(
+        &self,
+        args: impl Iterator<Item = &'a dyn TildeAble>,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(String::new())
+    }
+
+    // parse functions below
+    //
+    //
 
     /// start from '~' to the key char of tilde kind
     fn scan_for_kind(
