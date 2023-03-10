@@ -48,180 +48,181 @@ impl<'a> ControlStr<'a> {
         }
     }
 
-    // fn reveal_tildes<'s, 'cs: 's>(
-    //     &'cs self,
-    //     args: impl Iterator<Item = &'s dyn TildeAble>,
-    // ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + 's>>> {
-    //     //:= TODO: zip isn't right, need catch how many arg left
-    //     //iter::zip(&self.tildes, args).map(|((_, tt), arg)| tt.reveal(arg))
-    //     todo!()
-    // }
+    fn reveal_tildes<'s, 'cs: 's>(
+        &'cs mut self,
+        args: impl Iterator<Item = &'s dyn TildeAble>,
+    ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + 's>>> {
+        let mut args = args.collect();
+        self.tildes
+            .iter_mut()
+            .map(move |tilde| tilde.1.reveal_args(&mut args))
+    }
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::*;
+#[cfg(test)]
+mod test {
+    use super::*;
 
-//     #[test]
-//     fn test_control_str_scan() -> Result<(), Box<dyn std::error::Error>> {
-//         let case = "hello wor~{~a~}";
-//         let c = Cursor::new(case);
+    #[test]
+    fn test_control_str_scan() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "hello wor~{~a~}";
+        let c = Cursor::new(case);
 
-//         assert_eq!(
-//             ControlStr::scan(c)?,
-//             vec![(
-//                 (9, 15),
-//                 Tilde::new(6, TildeKind::Loop(vec![Tilde::new(2, TildeKind::Va)]))
-//             )]
-//         );
+        assert_eq!(
+            ControlStr::scan(c)?,
+            vec![(
+                (9, 15),
+                Tilde::new(6, TildeKind::Loop(vec![Tilde::new(2, TildeKind::Va)]))
+            )]
+        );
 
-//         let case = "~{~5$~}";
-//         let c = Cursor::new(case);
+        let case = "~{~5$~}";
+        let c = Cursor::new(case);
 
-//         assert_eq!(
-//             ControlStr::scan(c)?,
-//             vec![(
-//                 (0, 7),
-//                 Tilde::new(
-//                     7,
-//                     TildeKind::Loop(vec![Tilde::new(3, TildeKind::Float(Some("5".to_string())))])
-//                 )
-//             )]
-//         );
+        assert_eq!(
+            ControlStr::scan(c)?,
+            vec![(
+                (0, 7),
+                Tilde::new(
+                    7,
+                    TildeKind::Loop(vec![Tilde::new(3, TildeKind::Float(Some("5".to_string())))])
+                )
+            )]
+        );
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     #[test]
-//     fn test_reveal_normal_tildes() -> Result<(), Box<dyn std::error::Error>> {
-//         let case = "hello wor~a";
-//         let cs = ControlStr::new(case)?;
-//         let arg: &dyn TildeAble = &13_f32;
-//         dbg!(arg.into_tildekind_va());
+    #[test]
+    fn test_reveal_normal_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "hello wor~a";
+        let mut cs = ControlStr::new(case)?;
+        let arg: &dyn TildeAble = &13_f32;
+        dbg!(arg.into_tildekind_va());
 
-//         let result: Vec<String> = vec!["13".to_string()];
+        let result: Vec<String> = vec!["13".to_string()];
 
-//         assert_eq!(
-//             result,
-//             cs.reveal_tildes(vec![arg].into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
-//         Ok(())
-//     }
+        assert_eq!(
+            result,
+            cs.reveal_tildes(vec![arg].into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+        Ok(())
+    }
 
-//     #[test]
-//     fn test_reveal_loop_tildes() -> Result<(), Box<dyn std::error::Error>> {
-//         let case = "hello wor~{~a~}~a";
-//         let cs = ControlStr::new(case)?;
-//         let arg0: &dyn TildeAble = &13_f32;
-//         let arg1: &dyn TildeAble = &14_f32;
-//         let arg2: &dyn TildeAble = &15_f32;
-//         let arg00: Vec<&dyn TildeAble> = vec![arg0, arg1];
-//         let arg: Vec<&dyn TildeAble> = vec![&arg00, arg2];
+    #[test]
+    fn test_reveal_loop_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "hello wor~{~a~}~a";
+        let mut cs = ControlStr::new(case)?;
+        let arg0: &dyn TildeAble = &13_f32;
+        let arg1: &dyn TildeAble = &14_f32;
+        let arg2: &dyn TildeAble = &15_f32;
+        let arg00: Vec<&dyn TildeAble> = vec![arg0, arg1];
+        let arg: Vec<&dyn TildeAble> = vec![&arg00, arg2];
 
-//         let result: Vec<String> = vec!["1314".to_string(), "15".to_string()];
-//         // dbg!(&cs.tildes[0]);
-//         // dbg!(cs
-//         //     .reveal_tildes(arg.into_iter())
-//         //     .map(|a| a)
-//         //     .collect::<Vec<_>>());
+        let result: Vec<String> = vec!["1314".to_string(), "15".to_string()];
+        // dbg!(&cs.tildes[0]);
+        // dbg!(cs
+        //     .reveal_tildes(arg.into_iter())
+        //     .map(|a| a)
+        //     .collect::<Vec<_>>());
 
-//         assert_eq!(
-//             result,
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
-//         Ok(())
-//     }
+        assert_eq!(
+            result,
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+        Ok(())
+    }
 
-//     #[test]
-//     fn test_reveal_normal_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
-//         let case = "~[cero~;uno~;dos~]";
-//         let cs = ControlStr::new(case)?;
+    #[test]
+    fn test_reveal_normal_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~[cero~;uno~;dos~]";
+        let mut cs = ControlStr::new(case)?;
 
-//         //dbg!(&cs);
+        //dbg!(&cs);
 
-//         let arg: Vec<&dyn TildeAble> = vec![&0_usize];
-//         assert_eq!(
-//             vec!["cero".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
+        let arg: Vec<&dyn TildeAble> = vec![&0_usize];
+        assert_eq!(
+            vec!["cero".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
-//         //
-//         let arg: Vec<&dyn TildeAble> = vec![&1_usize];
-//         assert_eq!(
-//             vec!["uno".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
+        //
+        let arg: Vec<&dyn TildeAble> = vec![&1_usize];
+        assert_eq!(
+            vec!["uno".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
-//         //
-//         let case = "~[cero~;uno~:;dos~]";
-//         let cs = ControlStr::new(case)?;
-//         //dbg!(&cs);
+        //
+        let case = "~[cero~;uno~:;dos~]";
+        let mut cs = ControlStr::new(case)?;
+        //dbg!(&cs);
 
-//         let arg: Vec<&dyn TildeAble> = vec![&0_usize];
-//         assert_eq!(
-//             vec!["cero".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
+        let arg: Vec<&dyn TildeAble> = vec![&0_usize];
+        assert_eq!(
+            vec!["cero".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
-//         let arg: Vec<&dyn TildeAble> = vec![&2_usize];
-//         assert_eq!(
-//             vec!["dos".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
+        let arg: Vec<&dyn TildeAble> = vec![&2_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
-//         //
-//         let arg: Vec<&dyn TildeAble> = vec![&3_usize];
-//         assert_eq!(
-//             vec!["dos".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
-//         let arg: Vec<&dyn TildeAble> = vec![&4_usize];
-//         assert_eq!(
-//             vec!["dos".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
+        //
+        let arg: Vec<&dyn TildeAble> = vec![&3_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+        let arg: Vec<&dyn TildeAble> = vec![&4_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
-//         let arg: Vec<&dyn TildeAble> = vec![&100_usize];
-//         assert_eq!(
-//             vec!["dos".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
+        let arg: Vec<&dyn TildeAble> = vec![&100_usize];
+        assert_eq!(
+            vec!["dos".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     #[test]
-//     fn test_reveal_sharp_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
-//         let case = "~#[NONE~;~a~;~a and ~a~:;~a, ~a~]~#[~; and ~a~:;, ~a, etc~].";
-//         let cs = ControlStr::new(case)?;
-//         dbg!(&cs);
+    #[test]
+    fn test_reveal_sharp_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~#[NONE~;~a~;~a and ~a~:;~a, ~a~]~#[~; and ~a~:;, ~a, etc~].";
+        let mut cs = ControlStr::new(case)?;
+        dbg!(&cs);
 
-//         let arg: Vec<&dyn TildeAble> = vec![];
-//         assert_eq!(
-//             vec!["NONE".to_string()],
-//             cs.reveal_tildes(arg.into_iter())
-//                 .map(|a| a.unwrap())
-//                 .collect::<Vec<_>>()
-//         );
+        let arg: Vec<&dyn TildeAble> = vec![];
+        assert_eq!(
+            vec!["NONE".to_string(), "".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}
