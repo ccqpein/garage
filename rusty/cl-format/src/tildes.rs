@@ -1,9 +1,10 @@
 use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
-use std::ops::Range;
+use std::ops::{DerefMut, Range};
 
 use cl_format_macros::*;
+use lazy_static::__Deref;
 
 #[derive(Debug)]
 struct TildeError {
@@ -160,62 +161,70 @@ impl TildeKind {
         }
     }
 
-    pub fn match_reveal_args(
-        &self,
-        arg: Vec<&dyn TildeAble>,
+    // pub fn match_reveal_args(
+    //     mut self: &mut Self,
+    //     mut arg: Vec<&dyn TildeAble>,
+    // ) -> Result<String, Box<dyn std::error::Error>> {
+    //     match self {
+    //         TildeKind::Char => todo!(),
+    //         TildeKind::Float(_) => todo!(),
+    //         TildeKind::Digit(_) => todo!(),
+    //         TildeKind::Va => {
+    //             arg.get_mut(0)
+    //                 .unwrap()
+    //                 .into_tildekind_va()
+    //                 .ok_or::<TildeError>(
+    //                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
+    //                 )?
+    //                 .format(self)
+
+    //             //return a.format(self);
+    //         }
+    //         TildeKind::Loop(_) => {
+    //             let a = arg[0].into_tildekind_loop().ok_or::<TildeError>(
+    //                 TildeError::new(ErrorKind::RevealError, "cannot reveal to Loop").into(),
+    //             )?;
+
+    //             return a.format(self);
+    //         }
+    //         TildeKind::Text(s) => Ok(s.to_string()),
+    //         TildeKind::VecTilde(_) => {
+    //             let a = arg.into_tildekind_vectilde().ok_or::<TildeError>(
+    //                 TildeError::new(ErrorKind::RevealError, "cannot reveal to VecTilde").into(),
+    //             )?;
+    //             return a.format(self);
+    //         }
+    //         TildeKind::Cond((_, kind)) => match kind {
+    //             TildeCondKind::Nil(_) => {
+    //                 let a = arg[0].into_tildekind_cond().ok_or::<TildeError>(
+    //                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
+    //                 )?;
+    //                 return a.format(self);
+    //             }
+    //             TildeCondKind::Sharp(_) => {
+    //                 // arg includes all arg cond statement need
+    //                 let a = arg.into_tildekind_cond().ok_or::<TildeError>(
+    //                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
+    //                 )?;
+    //                 dbg!(&a);
+    //                 return a.format(self);
+    //             }
+    //             TildeCondKind::At => todo!(),
+    //         },
+    //     }
+    // }
+
+    pub fn match_reveal(
+        &mut self,
+        arg: &dyn TildeAble,
     ) -> Result<String, Box<dyn std::error::Error>> {
         match self {
             TildeKind::Char => todo!(),
             TildeKind::Float(_) => todo!(),
             TildeKind::Digit(_) => todo!(),
             TildeKind::Va => {
-                let a = arg[0].into_tildekind_va().ok_or::<TildeError>(
-                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
-                )?;
-
-                return a.format(self);
-            }
-            TildeKind::Loop(_) => {
-                let a = arg[0].into_tildekind_loop().ok_or::<TildeError>(
-                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Loop").into(),
-                )?;
-
-                return a.format(self);
-            }
-            TildeKind::Text(s) => Ok(s.to_string()),
-            TildeKind::VecTilde(_) => {
-                let a = arg.into_tildekind_vectilde().ok_or::<TildeError>(
-                    TildeError::new(ErrorKind::RevealError, "cannot reveal to VecTilde").into(),
-                )?;
-                return a.format(self);
-            }
-            TildeKind::Cond((_, kind)) => match kind {
-                TildeCondKind::Nil(_) => {
-                    let a = arg[0].into_tildekind_cond().ok_or::<TildeError>(
-                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
-                    )?;
-                    return a.format(self);
-                }
-                TildeCondKind::Sharp(_) => {
-                    // arg includes all arg cond statement need
-                    let a = arg.into_tildekind_cond().ok_or::<TildeError>(
-                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
-                    )?;
-                    dbg!(&a);
-                    return a.format(self);
-                }
-                TildeCondKind::At => todo!(),
-            },
-        }
-    }
-
-    pub fn match_reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
-        match self {
-            TildeKind::Char => todo!(),
-            TildeKind::Float(_) => todo!(),
-            TildeKind::Digit(_) => todo!(),
-            TildeKind::Va => {
-                dbg!(arg);
+                //dbg!(arg);
+                //dbg!(&self);
                 let a = arg.into_tildekind_va().ok_or::<TildeError>(
                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
                 )?;
@@ -240,14 +249,16 @@ impl TildeKind {
             TildeKind::Cond((_, kind)) => match kind {
                 TildeCondKind::Nil(_) => {
                     let a = arg.into_tildekind_cond().ok_or::<TildeError>(
-                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
+                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond Nil").into(),
                     )?;
                     return a.format(self);
                 }
                 TildeCondKind::Sharp(_) => {
-                    //:= TODO: sharp need to know how many args left
-                    //:= TODO: the true/false flag
-                    todo!()
+                    let a = arg.into_tildekind_cond().ok_or::<TildeError>(
+                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond Sharp")
+                            .into(),
+                    )?;
+                    return a.format(self);
                 }
                 TildeCondKind::At => todo!(),
             },
@@ -256,7 +267,25 @@ impl TildeKind {
 }
 
 // impl mamually
+// impl TildeAble for Vec<&dyn TildeAble> {
+//     fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
+//         Some(self)
+//     }
+// }
+
 impl TildeAble for Vec<&dyn TildeAble> {
+    fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
+        Some(self)
+    }
+
     fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
         Some(self)
     }
@@ -270,11 +299,45 @@ impl TildeAble for Vec<&dyn TildeAble> {
     }
 }
 
+// impl TildeAble for &dyn TildeAble {
+//     fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar> {
+//         Some(*self)
+//     }
+
+//     fn into_tildekind_float(&self) -> Option<&dyn TildeKindFloat> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_digit(&self) -> Option<&dyn TildeKindDigit> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_text(&self) -> Option<&dyn TildeKindText> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
+//         Some(self)
+//     }
+// }
+
 ////
 ////
 /// impl, re-define the format method for over writing the default method
 impl TildeKindChar for char {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         if let TildeKind::Char = tkind {
             Ok(format!("'{}'", self))
         } else {
@@ -284,46 +347,58 @@ impl TildeKindChar for char {
 }
 
 impl TildeKindVa for i64 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", *self))
+    fn format(&self, _: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for f32 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", *self))
+    fn format(&self, _: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for String {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", *self))
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for char {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", *self))
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for TildeNil {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok("nil".into())
     }
 }
 
+impl TildeKindVa for Vec<&dyn TildeAble> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::Va => {
+                tkind.match_reveal(*self.get(0).ok_or::<String>("empty vec to get".into())?)
+            }
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Va").into()),
+        }
+    }
+}
+
 impl TildeKindLoop for Vec<&dyn TildeAble> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Loop(vv) => {
-                let zip_pair = vv.iter().cycle().zip(self);
-                //dbg!(&zip_pair);
-                let mut result = vec![];
-                for (tilde, arg) in zip_pair {
-                    result.push(tilde.reveal(*arg)?);
-                }
-                Ok(result.as_slice().concat())
+                // let zip_pair = vv.iter().cycle().zip(self);
+                // //dbg!(&zip_pair);
+                // let mut result = vec![];
+                // for (tilde, arg) in zip_pair {
+                //     result.push(tilde.reveal_args(*arg)?);
+                // }
+                // Ok(result.as_slice().concat())
+                todo!()
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
         }
@@ -331,16 +406,16 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
 }
 
 impl TildeKindCond for usize {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
-            TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get(*self) {
+            TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get_mut(*self) {
                 Some(tt) => tt.reveal(&TildeNil), //:= it is TildeVec reveal
                 None => match vv.last() {
-                    Some(tt) => tt.reveal(&TildeNil),
+                    Some(tt) => todo!(), //tt.reveal_args(&mut vec![&TildeNil]),
                     None => Ok(String::new()),
                 },
             },
-            TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get(*self) {
+            TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get_mut(*self) {
                 Some(tt) => tt.reveal(&TildeNil),
                 None => Ok(String::new()),
             },
@@ -351,21 +426,21 @@ impl TildeKindCond for usize {
 }
 
 impl TildeKindCond for Vec<&dyn TildeAble> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Sharp(ind))) => {
-                dbg!(&vv[*ind]);
-                dbg!(self);
-                //vv[*ind].reveal_args(&mut VecDeque::from(self.clone()))
+                //dbg!(&vv[*ind]);
+                //dbg!(self);
                 (vv[*ind]).reveal(self)
             }
+            TildeKind::Cond((vv, TildeCondKind::Nil(_))) => tkind.match_reveal(self[0]),
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
         }
     }
 }
 
 impl TildeKindVecTilde for TildeNil {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::VecTilde(vv) => {
                 let mut result = vec![];
@@ -380,23 +455,25 @@ impl TildeKindVecTilde for TildeNil {
 }
 
 impl TildeKindVecTilde for Vec<&dyn TildeAble> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        dbg!(self);
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        //dbg!(self);
         match tkind {
             TildeKind::VecTilde(vv) => {
                 let mut result = vec![];
-                let mut s = 0;
+                let mut start = 0;
                 for v in vv {
-                    let c = v.catch_able()?.as_n()?;
-                    result.push(v.reveal(&self[s..c].to_vec())?);
-                    dbg!(c);
-                    s += c;
+                    match v.catch_able()? {
+                        CatchCount::N(n) if n == 0 => result.push(v.reveal(&TildeNil)?),
+                        CatchCount::N(n) => {
+                            let aa = self.get(start..start + n).unwrap().to_vec();
+                            //dbg!(&aa);
+                            result.push(v.reveal(&aa)?);
+                            start += n;
+                        }
+                        CatchCount::R(_) => todo!(),
+                    }
                 }
-                // let zip_pair = vv.iter().zip(self);
-                // let mut result = vec![];
-                // for (tilde, arg) in zip_pair {
-                //     result.push(tilde.reveal(*arg)?);
-                // }
+
                 Ok(result.as_slice().concat())
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
@@ -427,19 +504,16 @@ impl Tilde {
         self.value.catch_able()
     }
 
-    pub fn reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn reveal(&mut self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
         self.value.match_reveal(arg)
     }
 
+    /// entry function from outside, groups args to tilde
     pub fn reveal_args<'a>(
         &mut self,
         //mut args: impl Iterator<Item = &'a dyn TildeAble>,
-        mut args: Vec<&dyn TildeAble>,
+        args: &mut Vec<&dyn TildeAble>,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        // let rest_args_count = match args.size_hint() {
-        //     (_, Some(a)) => a,
-        //     (_, None) => 0,
-        // };
         let rest_args_count = args.len();
 
         // the count of args that catch
@@ -474,8 +548,8 @@ impl Tilde {
         };
 
         let a = args.drain(0..can_catch);
-
-        self.value.match_reveal_args(a.collect())
+        //dbg!(&a);
+        self.value.match_reveal(&a.collect::<Vec<_>>())
     }
 
     /*
@@ -1217,14 +1291,23 @@ mod test {
     fn test_reveal_cond() -> Result<(), Box<dyn std::error::Error>> {
         let mut case = Cursor::new("~[cero~;uno~:;dos~]");
         let mut t = Tilde::parse_cond(&mut case)?;
-        let args: Vec<&dyn TildeAble> = vec![&0_usize];
+        let mut args: Vec<&dyn TildeAble> = vec![&0_usize];
         //dbg!(t.reveal_args(args.into_iter()));
-        dbg!(t.reveal_args(args));
+        dbg!(t.reveal_args(&mut args));
 
         let mut case = Cursor::new("~#[NONE~;first: ~a~;~a and ~a~:;~a, ~a~]");
-        let mut t = Tilde::parse_cond(&mut case)?;
-        let args: Vec<&dyn TildeAble> = vec![&1_i64];
-        dbg!(t.reveal_args(args));
+        let mut t = Tilde::parse_cond(&mut case.clone())?;
+        let mut args: Vec<&dyn TildeAble> = vec![&1_i64];
+        dbg!(t.reveal_args(&mut args));
+
+        let mut t = Tilde::parse_cond(&mut case.clone())?;
+        let mut args: Vec<&dyn TildeAble> = vec![&2_i64, &2_i64];
+        dbg!(t.reveal_args(&mut args));
+
+        let mut t = Tilde::parse_cond(&mut case.clone())?;
+        let mut args: Vec<&dyn TildeAble> = vec![&3_i64, &3_i64, &3_i64];
+        dbg!(t.reveal_args(&mut args));
+        dbg!(args);
 
         Ok(())
     }
