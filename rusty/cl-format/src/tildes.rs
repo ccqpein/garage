@@ -35,7 +35,7 @@ enum ErrorKind {
     RevealError,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum TildeCondKind {
     Nil(bool),    // ~[, bool for the last ~:;
     Sharp(usize), // ~#[, usize for which one need to use to format
@@ -97,7 +97,7 @@ impl From<&'_ [usize]> for CatchCount {
 #[derive(Debug)]
 struct TildeNil;
 
-#[derive(Debug, PartialEq, TildeAble)]
+#[derive(Debug, PartialEq, TildeAble, Clone)]
 pub enum TildeKind {
     #[implTo(char)]
     /// ~C ~:C
@@ -192,28 +192,22 @@ impl TildeKind {
 
                 return a.format(self);
             }
-            TildeKind::Cond((_, kind)) => match kind {
-                TildeCondKind::Nil(_) => {
-                    let a = arg.into_tildekind_cond().ok_or::<TildeError>(
-                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond Nil").into(),
-                    )?;
-                    return a.format(self);
-                }
-                TildeCondKind::Sharp(_) => {
-                    let a = arg.into_tildekind_cond().ok_or::<TildeError>(
-                        TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond Sharp")
-                            .into(),
-                    )?;
-                    return a.format(self);
-                }
-                TildeCondKind::At => todo!(),
-            },
+            TildeKind::Cond((_, _)) => {
+                let a = arg.into_tildekind_cond().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
+                )?;
+                return a.format(self);
+            }
         }
     }
 }
 
 /// impl mamually
 impl TildeAble for Vec<&dyn TildeAble> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
         Some(self)
     }
@@ -288,16 +282,25 @@ impl TildeKindVa for Vec<&dyn TildeAble> {
 impl TildeKindLoop for Vec<&dyn TildeAble> {
     fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
+            // self[0] is the Vec<&dyn TildeAble> of loop
             TildeKind::Loop(vv) => {
-                // let zip_pair = vv.iter().cycle().zip(self);
-                // //dbg!(&zip_pair);
-                // let mut result = vec![];
-                // for (tilde, arg) in zip_pair {
-                //     result.push(tilde.reveal_args(*arg)?);
-                // }
-                // Ok(result.as_slice().concat())
+                //dbg!(&self);
+                //dbg!(&tkind);
+                let rest_len = self[0].len();
+                let one_loop_catch_num = vv
+                    .iter()
+                    .map(|v| v.catch_able().unwrap().as_n().unwrap())
+                    .sum::<usize>();
 
-                todo!()
+                let mut new_vv = vec![];
+                for _ in 0..rest_len / one_loop_catch_num {
+                    let mut temp = vv.clone();
+                    new_vv.append(&mut temp)
+                }
+
+                let mut k = TildeKind::VecTilde(new_vv.to_vec());
+
+                k.match_reveal(self[0])
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
         }
@@ -309,10 +312,13 @@ impl TildeKindCond for usize {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get_mut(*self) {
                 Some(tt) => tt.reveal(&TildeNil),
-                None => match vv.last() {
-                    Some(tt) => todo!(), //tt.reveal_args(&mut vec![&TildeNil]),
-                    None => Ok(String::new()),
-                },
+                None => {
+                    let last = vv.len() - 1;
+                    match vv.get_mut(last) {
+                        Some(tt) => tt.reveal(&TildeNil),
+                        None => Ok(String::new()),
+                    }
+                }
             },
             TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get_mut(*self) {
                 Some(tt) => tt.reveal(&TildeNil),
@@ -383,7 +389,7 @@ impl TildeKindVecTilde for Vec<&dyn TildeAble> {
 /*=========================================================*/
 
 /// The tilde struct
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Tilde {
     len: usize,
     value: TildeKind,
@@ -410,7 +416,7 @@ impl Tilde {
     /// entry function from outside, groups args to tilde
     pub fn reveal_args<'a>(
         &mut self,
-        args: &mut Vec<&dyn TildeAble>,
+        args: &mut Vec<&dyn TildeAble>, //:= can be &[]?
     ) -> Result<String, Box<dyn std::error::Error>> {
         let rest_args_count = args.len();
 
@@ -1191,20 +1197,24 @@ mod test {
         let mut t = Tilde::parse_cond(&mut case)?;
         let mut args: Vec<&dyn TildeAble> = vec![&0_usize];
         //dbg!(t.reveal_args(args.into_iter()));
-        dbg!(t.reveal_args(&mut args));
+        //dbg!(t.reveal_args(&mut args));
+        assert_eq!("cero".to_string(), t.reveal_args(&mut args).unwrap());
 
-        let mut case = Cursor::new("~#[NONE~;first: ~a~;~a and ~a~:;~a, ~a~]");
+        let case = Cursor::new("~#[NONE~;first: ~a~;~a and ~a~:;~a, ~a~]");
         let mut t = Tilde::parse_cond(&mut case.clone())?;
         let mut args: Vec<&dyn TildeAble> = vec![&1_i64];
-        dbg!(t.reveal_args(&mut args));
+        //dbg!(t.reveal_args(&mut args));
+        assert_eq!("first: 1".to_string(), t.reveal_args(&mut args).unwrap());
 
         let mut t = Tilde::parse_cond(&mut case.clone())?;
         let mut args: Vec<&dyn TildeAble> = vec![&2_i64, &2_i64];
-        dbg!(t.reveal_args(&mut args));
+        //dbg!(t.reveal_args(&mut args));
+        assert_eq!("2 and 2".to_string(), t.reveal_args(&mut args).unwrap());
 
         let mut t = Tilde::parse_cond(&mut case.clone())?;
         let mut args: Vec<&dyn TildeAble> = vec![&3_i64, &3_i64, &3_i64];
-        dbg!(t.reveal_args(&mut args));
+        //dbg!(t.reveal_args(&mut args));
+        assert_eq!("3, 3".to_string(), t.reveal_args(&mut args).unwrap());
         dbg!(args);
 
         Ok(())

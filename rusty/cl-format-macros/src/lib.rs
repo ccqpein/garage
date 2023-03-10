@@ -36,6 +36,7 @@ Will generate:
 ```rust
 /// all default method is return none.
 trait TildeAble {
+    fn len(&self) -> usize;
     fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar>{None}
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa>{None}
     // and all other fields...
@@ -128,12 +129,24 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
     let mut result = vec![];
 
     // trait TildeAble defination
-    let tilde_able_trait = quote! {pub trait TildeAble:Debug {#(#all_default_methods)*}};
+    let tilde_able_trait = quote! {
+        pub trait TildeAble:Debug {
+            fn len(&self) -> usize;
+            #(#all_default_methods)*
+        }
+    };
 
     let mut auto_impl_for_types = types_impl_methods
         .iter()
         .map(|(ty, methods)| {
-            quote! {impl TildeAble for #ty {#(#methods)*}}
+            quote! {
+                impl TildeAble for #ty {
+                    fn len(&self) -> usize {
+                        1
+                    }
+                    #(#methods)*
+                }
+            }
         })
         .collect();
 

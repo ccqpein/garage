@@ -128,6 +128,7 @@ mod test {
         //     .map(|a| a)
         //     .collect::<Vec<_>>());
 
+        //dbg!(&cs);
         assert_eq!(
             result,
             cs.reveal_tildes(arg.into_iter())
@@ -182,7 +183,7 @@ mod test {
                 .collect::<Vec<_>>()
         );
 
-        //
+        //dbg!(&cs);
         let arg: Vec<&dyn TildeAble> = vec![&3_usize];
         assert_eq!(
             vec!["dos".to_string()],
@@ -190,6 +191,8 @@ mod test {
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
         );
+
+        //dbg!(&cs);
         let arg: Vec<&dyn TildeAble> = vec![&4_usize];
         assert_eq!(
             vec!["dos".to_string()],
