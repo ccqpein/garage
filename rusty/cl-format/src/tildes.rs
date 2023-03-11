@@ -47,7 +47,7 @@ impl TildeCondKind {
         match self {
             TildeCondKind::Nil(_) => *self = TildeCondKind::Nil(true),
             TildeCondKind::Sharp(_) => (),
-            TildeCondKind::At => (),
+            TildeCondKind::At => (), // None is nil
         }
     }
 }
@@ -141,13 +141,12 @@ impl TildeKind {
             TildeKind::Digit(_) => Ok(1.into()),
             TildeKind::Va => Ok(1.into()),
             TildeKind::Loop(_) => Ok(1.into()),
-            TildeKind::Cond((vv, TildeCondKind::Nil(_))) => Ok(1.into()),
-            TildeKind::Cond((vv, a @ TildeCondKind::Sharp(_))) => Ok(vv
+            TildeKind::Cond((vv, TildeCondKind::Sharp(_))) => Ok(vv
                 .iter()
                 .map(|v| v.catch_able().unwrap().as_n().unwrap())
                 .collect::<Vec<_>>()
                 .into()),
-
+            TildeKind::Cond((_, _)) => Ok(1.into()),
             TildeKind::Text(_) => Ok(0.into()),
             TildeKind::VecTilde(vv) => {
                 let mut s = 0;
@@ -221,6 +220,19 @@ impl TildeAble for Vec<&dyn TildeAble> {
     }
 
     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
+        Some(self)
+    }
+}
+
+impl TildeAble for Option<&dyn TildeAble> {
+    fn len(&self) -> usize {
+        match self {
+            Some(_) => 1,
+            None => 0,
+        }
+    }
+
+    fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
         Some(self)
     }
 }
@@ -324,7 +336,6 @@ impl TildeKindCond for usize {
                 Some(tt) => tt.reveal(&TildeNil),
                 None => Ok(String::new()),
             },
-            //:= more TildeCondKind below
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
         }
     }
@@ -338,8 +349,23 @@ impl TildeKindCond for Vec<&dyn TildeAble> {
                 //dbg!(self);
                 (vv[*ind]).reveal(self)
             }
-            TildeKind::Cond((vv, TildeCondKind::Nil(_))) => tkind.match_reveal(self[0]),
-            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
+            TildeKind::Cond((_, _)) => tkind.match_reveal(self[0]),
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
+        }
+    }
+}
+
+impl TildeKindCond for Option<&dyn TildeAble> {
+    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::Cond((vv, TildeCondKind::At)) => match self {
+                Some(a) => {
+                    let mut k = TildeKind::VecTilde(vv.clone());
+                    k.match_reveal(*a)
+                }
+                None => Ok(String::new()),
+            },
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
         }
     }
 }
@@ -1186,6 +1212,57 @@ mod test {
         assert_eq!(
             Tilde::parse_cond(&mut case)?.catch_able()?,
             vec![0_usize, 1, 2, 2].into()
+        );
+
+        let mut case = Cursor::new("~@[x = ~a ~]~@[y = ~a~]");
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(
+                12,
+                TildeKind::Cond((
+                    vec![Tilde {
+                        len: 7,
+                        value: TildeKind::VecTilde(vec![
+                            Tilde {
+                                len: 4,
+                                value: TildeKind::Text("x = ".into())
+                            },
+                            Tilde {
+                                len: 2,
+                                value: TildeKind::Va
+                            },
+                            Tilde {
+                                len: 1,
+                                value: TildeKind::Text(" ".into())
+                            }
+                        ])
+                    }],
+                    TildeCondKind::At
+                ))
+            )
+        );
+
+        assert_eq!(
+            Tilde::parse_cond(&mut case)?,
+            Tilde::new(
+                11,
+                TildeKind::Cond((
+                    vec![Tilde {
+                        len: 6,
+                        value: TildeKind::VecTilde(vec![
+                            Tilde {
+                                len: 4,
+                                value: TildeKind::Text("y = ".into())
+                            },
+                            Tilde {
+                                len: 2,
+                                value: TildeKind::Va
+                            },
+                        ])
+                    }],
+                    TildeCondKind::At
+                ))
+            )
         );
 
         Ok(())
