@@ -348,14 +348,7 @@ impl ChatGPT {
         let content = &response_from_chat_gpt["choices"][0]["message"]["content"];
 
         let result = if !role.is_null() && !content.is_null() {
-            let deliver_msg = format!(
-                "{}",
-                content
-                    .to_string()
-                    .replace("\\n", "\n")
-                    .trim_start_matches(['\n', ',', ' ', '"'])
-                    .trim_end_matches(['"'])
-            );
+            let deliver_msg = trim_string_helper(content.to_string())?;
 
             debug!("delivery msg: {}", deliver_msg);
 
@@ -417,6 +410,33 @@ impl ChatGPT {
     //:= TODO
     /// clean the message older than 3600 * 24 * 5
     async fn clean_table() {}
+}
+
+fn trim_string_helper(s: String) -> Result<String, String> {
+    let s = s.replace("\\n", "\n").replace(r#"\""#, r#"""#);
+    let mut result = vec![];
+    let mut flag = false;
+    for b in s.bytes() {
+        if flag {
+            result.push(b);
+            continue;
+        }
+        if b == b'"' {
+            flag = true
+        }
+    }
+
+    let end = result.iter().enumerate().rfind(|(ind, b)| **b == b'"');
+    let result = match end {
+        Some((e, _)) => String::from_utf8(result[0..e].to_vec()).map_err(|e| e.to_string())?,
+        None => String::from_utf8(result).map_err(|e| e.to_string())?,
+    };
+
+    Ok(result
+        .replace("\\n", "\n")
+        .replace(r#"\""#, r#"""#)
+        .trim_start_matches(['\n', ',', ' '])
+        .to_string())
 }
 
 #[async_trait]
@@ -633,10 +653,23 @@ impl AppConsumer for ChatGPTInputConsumer {
 mod test {
     //use super::*;
 
+    use super::trim_string_helper;
+
     #[test]
     fn test_clean_text() {
         let a = "a\\nb";
         dbg!(a.replace(r"\\n", r"\n"));
         println!("{}", a.replace("\\n", "\n"));
+    }
+
+    #[test]
+    fn test_trim_string_helper() -> Result<(), Box<dyn std::error::Error>> {
+        let a = r#""  content ""#.to_string();
+        assert_eq!(trim_string_helper(a)?, "content".to_string());
+
+        let a = r#""  "content" ""#.to_string();
+        assert_eq!(trim_string_helper(a)?, r#""content" "#.to_string());
+
+        Ok(())
     }
 }
