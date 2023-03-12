@@ -72,7 +72,10 @@ mod test {
             ControlStr::scan(c)?,
             vec![(
                 (9, 15),
-                Tilde::new(6, TildeKind::Loop(vec![Tilde::new(2, TildeKind::Va)]))
+                Tilde::new(
+                    6,
+                    TildeKind::Loop((vec![Tilde::new(2, TildeKind::Va)], TildeLoopKind::Nil))
+                )
             )]
         );
 
@@ -85,7 +88,10 @@ mod test {
                 (0, 7),
                 Tilde::new(
                     7,
-                    TildeKind::Loop(vec![Tilde::new(3, TildeKind::Float(Some("5".to_string())))])
+                    TildeKind::Loop((
+                        vec![Tilde::new(3, TildeKind::Float(Some("5".to_string())))],
+                        TildeLoopKind::Nil
+                    ))
                 )
             )]
         );
@@ -129,6 +135,17 @@ mod test {
         //     .collect::<Vec<_>>());
 
         //dbg!(&cs);
+        assert_eq!(
+            result,
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        let case = "hello, ~@{~a~^, ~}";
+        let mut cs = ControlStr::new(case)?;
+        let arg: Vec<&dyn TildeAble> = vec![&1_i64, &2_i64, &3_i64];
+        let result: Vec<String> = vec!["1, 2, 3".to_string()];
         assert_eq!(
             result,
             cs.reveal_tildes(arg.into_iter())
@@ -221,6 +238,36 @@ mod test {
         let arg: Vec<&dyn TildeAble> = vec![];
         assert_eq!(
             vec!["NONE".to_string(), "".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_reveal_at_cond_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~@[x = ~a ~]~@[y = ~a~]";
+        let mut cs = ControlStr::new(case)?;
+        //dbg!(&cs);
+
+        let arg: Vec<&dyn TildeAble> = vec![&Some(&1_i64 as &dyn TildeAble), &None];
+        assert_eq!(
+            vec!["x = 1 ".to_string(), "".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        let case = "~@[x = ~a ~]~@[y = ~a~]";
+        let mut cs = ControlStr::new(case)?;
+        let arg: Vec<&dyn TildeAble> = vec![
+            &Some(&1_i64 as &dyn TildeAble),
+            &Some(&2_usize as &dyn TildeAble),
+        ];
+        assert_eq!(
+            vec!["x = 1 ".to_string(), "y = 2".to_string()],
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()

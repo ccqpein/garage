@@ -1,10 +1,7 @@
-use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
-use std::ops::{DerefMut, Range};
 
 use cl_format_macros::*;
-use lazy_static::__Deref;
 
 #[derive(Debug)]
 struct TildeError {
@@ -42,6 +39,12 @@ enum TildeCondKind {
     At,           // ~@[
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum TildeLoopKind {
+    Nil, // ~{~}
+    At,  // ~@{~}
+}
+
 impl TildeCondKind {
     fn to_true(&mut self) {
         match self {
@@ -56,6 +59,7 @@ impl TildeCondKind {
 enum CatchCount {
     N(usize),
     R(Vec<usize>),
+    All,
 }
 
 impl CatchCount {
@@ -113,12 +117,16 @@ pub enum TildeKind {
     //:= TODO: ~C
     //:= TODO: ~X
     //:= TODO: ~O
-    #[implTo(f32, char, String, TildeNil, i64)]
+    #[implTo(f32, char, String, TildeNil, i64, usize)]
     /// ~a
     Va,
 
+    //:= next: add the loopkind
     /// loop
-    Loop(Vec<Tilde>),
+    Loop((Vec<Tilde>, TildeLoopKind)),
+
+    /// loop stop, ~^
+    LoopEnd,
 
     #[implTo(usize)]
     /// ~[ ~] condition
@@ -140,7 +148,9 @@ impl TildeKind {
             TildeKind::Float(_) => Ok(1.into()),
             TildeKind::Digit(_) => Ok(1.into()),
             TildeKind::Va => Ok(1.into()),
-            TildeKind::Loop(_) => Ok(1.into()),
+            TildeKind::Loop((_, TildeLoopKind::Nil)) => Ok(1.into()),
+            // catch all for ~@{
+            TildeKind::Loop((vv, TildeLoopKind::At)) => Ok(CatchCount::All),
             TildeKind::Cond((vv, TildeCondKind::Sharp(_))) => Ok(vv
                 .iter()
                 .map(|v| v.catch_able().unwrap().as_n().unwrap())
@@ -155,7 +165,7 @@ impl TildeKind {
                 }
                 Ok(s.into())
             }
-            _ => todo!(),
+            TildeKind::LoopEnd => Ok(0.into()),
         }
     }
 
@@ -163,13 +173,13 @@ impl TildeKind {
         &mut self,
         arg: &dyn TildeAble,
     ) -> Result<String, Box<dyn std::error::Error>> {
+        //dbg!(arg);
+        //dbg!(&self);
         match self {
             TildeKind::Char => todo!(),
             TildeKind::Float(_) => todo!(),
             TildeKind::Digit(_) => todo!(),
             TildeKind::Va => {
-                //dbg!(arg);
-                //dbg!(&self);
                 let a = arg.into_tildekind_va().ok_or::<TildeError>(
                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
                 )?;
@@ -182,6 +192,9 @@ impl TildeKind {
                 )?;
 
                 return a.format(self);
+            }
+            TildeKind::LoopEnd => {
+                Err(TildeError::new(ErrorKind::RevealError, "loop end cannot reveal").into())
             }
             TildeKind::Text(s) => Ok(s.to_string()),
             TildeKind::VecTilde(_) => {
@@ -256,6 +269,12 @@ impl TildeKindVa for i64 {
     }
 }
 
+impl TildeKindVa for usize {
+    fn format(&self, _: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
+    }
+}
+
 impl TildeKindVa for f32 {
     fn format(&self, _: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", self))
@@ -295,24 +314,36 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
     fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             // self[0] is the Vec<&dyn TildeAble> of loop
-            TildeKind::Loop(vv) => {
-                //dbg!(&self);
-                //dbg!(&tkind);
-                let rest_len = self[0].len();
-                let one_loop_catch_num = vv
-                    .iter()
-                    .map(|v| v.catch_able().unwrap().as_n().unwrap())
-                    .sum::<usize>();
+            TildeKind::Loop((vv, TildeLoopKind::Nil)) => {
+                let mut new_kind = tkind.clone();
+                match &mut new_kind {
+                    TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
+                    _ => unreachable!(),
+                };
 
-                let mut new_vv = vec![];
-                for _ in 0..rest_len / one_loop_catch_num {
-                    let mut temp = vv.clone();
-                    new_vv.append(&mut temp)
+                new_kind.match_reveal(self[0])
+            }
+            TildeKind::Loop((vv, TildeLoopKind::At)) => {
+                let mut new_args = self.clone();
+                let mut result = vec![];
+
+                'a: loop {
+                    for t in &mut *vv {
+                        if let TildeKind::LoopEnd = t.value {
+                            if new_args.len() != 0 {
+                                continue;
+                            } else {
+                                break 'a;
+                            }
+                        }
+                        result.push(t.reveal_args(&mut new_args)?);
+                    }
+                    if new_args.len() == 0 {
+                        break;
+                    }
                 }
 
-                let mut k = TildeKind::VecTilde(new_vv.to_vec());
-
-                k.match_reveal(self[0])
+                Ok(result.as_slice().concat())
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
         }
@@ -344,11 +375,7 @@ impl TildeKindCond for usize {
 impl TildeKindCond for Vec<&dyn TildeAble> {
     fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
-            TildeKind::Cond((vv, TildeCondKind::Sharp(ind))) => {
-                //dbg!(&vv[*ind]);
-                //dbg!(self);
-                (vv[*ind]).reveal(self)
-            }
+            TildeKind::Cond((vv, TildeCondKind::Sharp(ind))) => (vv[*ind]).reveal(self),
             TildeKind::Cond((_, _)) => tkind.match_reveal(self[0]),
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
         }
@@ -361,7 +388,8 @@ impl TildeKindCond for Option<&dyn TildeAble> {
             TildeKind::Cond((vv, TildeCondKind::At)) => match self {
                 Some(a) => {
                     let mut k = TildeKind::VecTilde(vv.clone());
-                    k.match_reveal(*a)
+                    // VecTilde need the vec
+                    k.match_reveal(&vec![*a])
                 }
                 None => Ok(String::new()),
             },
@@ -402,6 +430,13 @@ impl TildeKindVecTilde for Vec<&dyn TildeAble> {
                             start += n;
                         }
                         CatchCount::R(_) => todo!(),
+                        _ => {
+                            return Err(TildeError::new(
+                                ErrorKind::RevealError,
+                                "cannot format to VecTilde catchable",
+                            )
+                            .into())
+                        }
                     }
                 }
 
@@ -442,7 +477,7 @@ impl Tilde {
     /// entry function from outside, groups args to tilde
     pub fn reveal_args<'a>(
         &mut self,
-        args: &mut Vec<&dyn TildeAble>, //:= can be &[]?
+        args: &mut Vec<&dyn TildeAble>, //:= can be &[]? or RefCell for avoiding the borrow check?
     ) -> Result<String, Box<dyn std::error::Error>> {
         let rest_args_count = args.len();
 
@@ -475,6 +510,7 @@ impl Tilde {
                     .max()
                     .ok_or::<String>("cannot get the largest catch number".into())?,
             },
+            CatchCount::All => args.len(),
         };
 
         let a = args.drain(0..can_catch);
@@ -523,7 +559,7 @@ impl Tilde {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_value);
             }
-            [b'{', ..] => {
+            [b'{', ..] | [b'@', b'{', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_loop);
             }
@@ -535,9 +571,14 @@ impl Tilde {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_digit);
             }
-            [b'[', ..] | [b'#', b'[', ..] | [b':', b'[', ..] => {
+            //:= TODO: forget the ~:[
+            [b'[', ..] | [b'#', b'[', ..] | [b':', b'[', ..] | [b'@', b'[', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_cond);
+            }
+            [b'^', ..] => {
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
+                return Ok(box Self::parse_loop_end);
             }
             _ => {
                 return Err(
@@ -555,20 +596,30 @@ impl Tilde {
 
     /// parse function for '~{~}'
     fn parse_loop(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut char_buf = [0u8; 2]; // two bytes
+        let mut char_buf = [0u8; 3]; // three bytes
         c.read(&mut char_buf)?;
-        if let Ok(s) = std::str::from_utf8(&char_buf) && s != "~{" {
-			c.seek(SeekFrom::Current(-2))?; // restore the location
-            return Err(
-				TildeError::new(
-					ErrorKind::ParseError,
-					"should start with ~{",
-				).into());
+
+        let mut loop_kind = TildeLoopKind::Nil;
+        let mut total_len = 0;
+        match char_buf {
+            [b'~', b'{', ..] => {
+                total_len += 2;
+                c.seek(SeekFrom::Current(-1))?;
+            }
+            [b'~', b'@', b'{'] => {
+                total_len += 3;
+                loop_kind = TildeLoopKind::At;
+            }
+
+            _ => {
+                c.seek(SeekFrom::Current(-3))?;
+                return Err(TildeError::new(ErrorKind::ParseError, "should start with ~{").into());
+            }
         }
 
         let mut result = vec![];
         let mut buf = vec![];
-        let mut total_len = 2;
+        let mut char_buf = [0u8; 2];
 
         loop {
             // read text until the next '~'
@@ -592,18 +643,18 @@ impl Tilde {
                         TildeKind::Text(String::from_utf8(buf[..buf.len() - 1].to_vec())?),
                     ));
                     total_len += buf.len();
-                    return Ok(Tilde::new(total_len, TildeKind::Loop(result)));
+                    return Ok(Tilde::new(total_len, TildeKind::Loop((result, loop_kind))));
                 }
             }
 
             c.read(&mut char_buf)?;
 
             if let Ok(s) = std::str::from_utf8(&char_buf) && s == "~}" {
-				return Ok(Tilde::new(total_len + 2, TildeKind::Loop(result)));
+				return Ok(Tilde::new(total_len + 2, TildeKind::Loop((result, loop_kind))));
 			}
 
             c.seek(SeekFrom::Current(-2))?;
-            //dbg!(c.position());
+            //dbg!(&c);
             // read the tilde
             let next = Tilde::parse(c)?;
             total_len += next.len;
@@ -613,9 +664,23 @@ impl Tilde {
         }
     }
 
+    /// parse the ~^ in loop
+    fn parse_loop_end(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut char_buf = [0u8; 2]; // three bytes
+        c.read(&mut char_buf)?;
+        if char_buf != *b"~^" {
+            c.seek(SeekFrom::Current(-2))?;
+            return Err(TildeError::new(ErrorKind::ParseError, "should start with ~^").into());
+        }
+
+        Ok(Tilde {
+            len: 2,
+            value: TildeKind::LoopEnd,
+        })
+    }
+
     /// parse the '~[~]'
     fn parse_cond(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
-        //dbg!(c.get_ref().to_string());
         let mut char_buf = [0u8; 3]; // three bytes
         let mut total_len = 0;
         let mut cond_kind;
@@ -861,7 +926,7 @@ mod test {
 
         assert_eq!(
             Tilde::parse_loop(&mut case)?,
-            Tilde::new(4, TildeKind::Loop(Vec::new()))
+            Tilde::new(4, TildeKind::Loop((Vec::new(), TildeLoopKind::Nil)))
         );
 
         let mut case = Cursor::new("~{a bc~}");
@@ -870,10 +935,13 @@ mod test {
             Tilde::parse_loop(&mut case)?,
             Tilde::new(
                 8,
-                TildeKind::Loop(vec![Tilde {
-                    len: 4,
-                    value: TildeKind::Text(String::from("a bc"))
-                }])
+                TildeKind::Loop((
+                    vec![Tilde {
+                        len: 4,
+                        value: TildeKind::Text(String::from("a bc"))
+                    }],
+                    TildeLoopKind::Nil
+                ))
             ),
         );
 
@@ -883,16 +951,19 @@ mod test {
             Tilde::parse_loop(&mut case)?,
             Tilde::new(
                 10,
-                TildeKind::Loop(vec![
-                    Tilde {
-                        len: 4,
-                        value: TildeKind::Text(String::from("a bc"))
-                    },
-                    Tilde {
-                        len: 2,
-                        value: TildeKind::Va,
-                    }
-                ])
+                TildeKind::Loop((
+                    vec![
+                        Tilde {
+                            len: 4,
+                            value: TildeKind::Text(String::from("a bc"))
+                        },
+                        Tilde {
+                            len: 2,
+                            value: TildeKind::Va,
+                        }
+                    ],
+                    TildeLoopKind::Nil
+                ))
             )
         );
 
@@ -902,20 +973,65 @@ mod test {
             Tilde::parse_loop(&mut case)?,
             Tilde::new(
                 12,
-                TildeKind::Loop(vec![
-                    Tilde {
+                TildeKind::Loop((
+                    vec![
+                        Tilde {
+                            len: 2,
+                            value: TildeKind::Va,
+                        },
+                        Tilde {
+                            len: 4,
+                            value: TildeKind::Text(String::from("a bc"))
+                        },
+                        Tilde {
+                            len: 2,
+                            value: TildeKind::Va,
+                        }
+                    ],
+                    TildeLoopKind::Nil
+                ))
+            )
+        );
+
+        let mut case = Cursor::new("~@{~a~}");
+
+        assert_eq!(
+            Tilde::parse_loop(&mut case)?,
+            Tilde::new(
+                7,
+                TildeKind::Loop((
+                    vec![Tilde {
                         len: 2,
                         value: TildeKind::Va,
-                    },
-                    Tilde {
-                        len: 4,
-                        value: TildeKind::Text(String::from("a bc"))
-                    },
-                    Tilde {
-                        len: 2,
-                        value: TildeKind::Va,
-                    }
-                ])
+                    },],
+                    TildeLoopKind::At
+                ))
+            )
+        );
+
+        let mut case = Cursor::new("~@{~a~^, ~}");
+
+        assert_eq!(
+            Tilde::parse_loop(&mut case)?,
+            Tilde::new(
+                11,
+                TildeKind::Loop((
+                    vec![
+                        Tilde {
+                            len: 2,
+                            value: TildeKind::Va,
+                        },
+                        Tilde {
+                            len: 2,
+                            value: TildeKind::LoopEnd,
+                        },
+                        Tilde {
+                            len: 2,
+                            value: TildeKind::Text(", ".to_string()),
+                        }
+                    ],
+                    TildeLoopKind::At
+                ))
             )
         );
 
@@ -1242,6 +1358,7 @@ mod test {
             )
         );
 
+        // parse the second part
         assert_eq!(
             Tilde::parse_cond(&mut case)?,
             Tilde::new(
