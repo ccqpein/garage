@@ -57,8 +57,11 @@ impl TildeCondKind {
 
 #[derive(PartialEq, Debug)]
 enum CatchCount {
+    /// how many args it can take
     N(usize),
+    /// return several numbers (not has to the numbers of args can catch)
     R(Vec<usize>),
+    /// all args
     All,
 }
 
@@ -121,7 +124,6 @@ pub enum TildeKind {
     /// ~a
     Va,
 
-    //:= next: add the loopkind
     /// loop
     Loop((Vec<Tilde>, TildeLoopKind)),
 
@@ -151,11 +153,10 @@ impl TildeKind {
             TildeKind::Loop((_, TildeLoopKind::Nil)) => Ok(1.into()),
             // catch all for ~@{
             TildeKind::Loop((vv, TildeLoopKind::At)) => Ok(CatchCount::All),
-            TildeKind::Cond((vv, TildeCondKind::Sharp(_))) => Ok(vv
-                .iter()
-                .map(|v| v.catch_able().unwrap().as_n().unwrap())
-                .collect::<Vec<_>>()
-                .into()),
+            TildeKind::Cond((vv, TildeCondKind::Sharp(_))) => {
+                // how many args need to be catched depending on how many left
+                Ok((0..vv.len()).collect::<Vec<_>>().into())
+            }
             TildeKind::Cond((_, _)) => Ok(1.into()),
             TildeKind::Text(_) => Ok(0.into()),
             TildeKind::VecTilde(vv) => {
@@ -173,8 +174,8 @@ impl TildeKind {
         &mut self,
         arg: &dyn TildeAble,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        //dbg!(arg);
-        //dbg!(&self);
+        dbg!(arg);
+        dbg!(&self);
         match self {
             TildeKind::Char => todo!(),
             TildeKind::Float(_) => todo!(),
@@ -314,7 +315,7 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
     fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             // self[0] is the Vec<&dyn TildeAble> of loop
-            TildeKind::Loop((vv, TildeLoopKind::Nil)) => {
+            TildeKind::Loop((_, TildeLoopKind::Nil)) => {
                 let mut new_kind = tkind.clone();
                 match &mut new_kind {
                     TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
@@ -338,6 +339,7 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
                         }
                         result.push(t.reveal_args(&mut new_args)?);
                     }
+                    dbg!(&new_args);
                     if new_args.len() == 0 {
                         break;
                     }
@@ -389,6 +391,7 @@ impl TildeKindCond for Option<&dyn TildeAble> {
                 Some(a) => {
                     let mut k = TildeKind::VecTilde(vv.clone());
                     // VecTilde need the vec
+                    // TildeCondKind::At only accept one arg
                     k.match_reveal(&vec![*a])
                 }
                 None => Ok(String::new()),
@@ -418,28 +421,11 @@ impl TildeKindVecTilde for Vec<&dyn TildeAble> {
         //dbg!(self);
         match tkind {
             TildeKind::VecTilde(vv) => {
+                let mut new_args = self.clone();
                 let mut result = vec![];
-                let mut start = 0;
-                for v in vv {
-                    match v.catch_able()? {
-                        CatchCount::N(n) if n == 0 => result.push(v.reveal(&TildeNil)?),
-                        CatchCount::N(n) => {
-                            let aa = self.get(start..start + n).unwrap().to_vec();
-                            //dbg!(&aa);
-                            result.push(v.reveal(&aa)?);
-                            start += n;
-                        }
-                        CatchCount::R(_) => todo!(),
-                        _ => {
-                            return Err(TildeError::new(
-                                ErrorKind::RevealError,
-                                "cannot format to VecTilde catchable",
-                            )
-                            .into())
-                        }
-                    }
+                for t in &mut *vv {
+                    result.push(t.reveal_args(&mut new_args)?);
                 }
-
                 Ok(result.as_slice().concat())
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
@@ -479,8 +465,8 @@ impl Tilde {
         &mut self,
         args: &mut Vec<&dyn TildeAble>, //:= can be &[]? or RefCell for avoiding the borrow check?
     ) -> Result<String, Box<dyn std::error::Error>> {
+        dbg!(&args);
         let rest_args_count = args.len();
-
         // the count of args that catch
         let can_catch = match &self.catch_able()? {
             CatchCount::N(a) => *a,
@@ -488,20 +474,11 @@ impl Tilde {
                 TildeKind::Cond((vv, a @ TildeCondKind::Sharp(_))) => {
                     if rest_args_count > cr.max()? {
                         *a = TildeCondKind::Sharp(vv.len() - 1);
-                        *rr.last().unwrap()
+                        vv[vv.len() - 1].catch_able()?.as_n()?
                     } else {
-                        let it = rr.iter().enumerate().map(|(ind, v)| (ind, v));
-
-                        let mut largest = 0;
-                        let mut largest_ind = 0;
-                        for (ind, i) in it {
-                            if *i > largest && *i <= rest_args_count {
-                                largest = *i;
-                                largest_ind = ind;
-                            }
-                        }
-                        *a = TildeCondKind::Sharp(largest_ind);
-                        largest
+                        *a = TildeCondKind::Sharp(rest_args_count);
+                        // return all for the next step
+                        vv[rest_args_count].catch_able()?.as_n()?
                     }
                 }
                 _ => *rr
@@ -1327,7 +1304,7 @@ mod test {
         let mut case = Cursor::new("~#[NONE~;~a~;~a and ~a~:;~a, ~a~]");
         assert_eq!(
             Tilde::parse_cond(&mut case)?.catch_able()?,
-            vec![0_usize, 1, 2, 2].into()
+            vec![0_usize, 1, 2, 3].into()
         );
 
         let mut case = Cursor::new("~@[x = ~a ~]~@[y = ~a~]");
