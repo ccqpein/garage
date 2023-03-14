@@ -162,7 +162,11 @@ impl TildeKind {
             TildeKind::VecTilde(vv) => {
                 let mut s = 0;
                 for v in vv {
-                    s += v.catch_able()?.as_n()?;
+                    s += match v.catch_able()? {
+                        CatchCount::N(n) => n,
+                        CatchCount::R(_) => panic!("cannot get Catchable::N in Vec"),
+                        CatchCount::All => return Ok(CatchCount::All),
+                    };
                 }
                 Ok(s.into())
             }
@@ -465,6 +469,7 @@ impl Tilde {
         &mut self,
         args: &mut Vec<&dyn TildeAble>, //:= can be &[]? or RefCell for avoiding the borrow check?
     ) -> Result<String, Box<dyn std::error::Error>> {
+        dbg!(&self);
         dbg!(&args);
         let rest_args_count = args.len();
         // the count of args that catch
@@ -474,11 +479,20 @@ impl Tilde {
                 TildeKind::Cond((vv, a @ TildeCondKind::Sharp(_))) => {
                     if rest_args_count > cr.max()? {
                         *a = TildeCondKind::Sharp(vv.len() - 1);
-                        vv[vv.len() - 1].catch_able()?.as_n()?
+                        match vv[vv.len() - 1].catch_able()? {
+                            CatchCount::N(n) => n,
+                            CatchCount::R(_) => panic!(),
+                            CatchCount::All => args.len(),
+                        }
                     } else {
                         *a = TildeCondKind::Sharp(rest_args_count);
                         // return all for the next step
-                        vv[rest_args_count].catch_able()?.as_n()?
+                        dbg!(&vv[rest_args_count]);
+                        match vv[rest_args_count].catch_able()? {
+                            CatchCount::N(n) => n,
+                            CatchCount::R(_) => panic!(),
+                            CatchCount::All => args.len(),
+                        }
                     }
                 }
                 _ => *rr
@@ -490,6 +504,7 @@ impl Tilde {
             CatchCount::All => args.len(),
         };
 
+        dbg!(&can_catch);
         let a = args.drain(0..can_catch);
         //dbg!(&a);
         self.value.match_reveal(&a.collect::<Vec<_>>())
@@ -567,6 +582,7 @@ impl Tilde {
 
     /// cursor should located on '~'
     pub fn parse(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        dbg!(&c);
         let parser = Self::scan_for_kind(c)?;
         parser(c)
     }
@@ -687,67 +703,64 @@ impl Tilde {
             }
         }
 
-        let mut bucket = vec![];
+        let mut buffer = vec![];
         let mut one_byte = [0_u8; 1];
+
+        let mut cache = vec![];
+        let mut result: Vec<Tilde> = vec![];
+
         loop {
             c.read_exact(&mut one_byte)?;
-            if let Some(x) = bucket.last() && *x == b'~' && one_byte[0] == b']'{
-				bucket.pop(); // bucket doesn't have ~] inside
-				break;
-			}
-            bucket.push(one_byte[0]);
-        }
-
-        total_len += 2 + bucket.len();
-
-        let mut result = vec![];
-        let mut inner_c = Cursor::new(std::str::from_utf8(&bucket)?);
-
-        let mut ind = 0;
-        let mut delimiters = vec![];
-        loop {
-            if ind == bucket.len() {
-                delimiters.push(ind);
+            if one_byte == [0] {
                 break;
             }
-            if bucket[ind] == b';' {
-                match bucket.get(0..ind) {
-                    Some([.., b'~', b':']) => {
-                        cond_kind.to_true();
-                        delimiters.push(ind - 2);
-                        delimiters.push(ind + 1);
-                    }
-                    Some([.., b'~']) => {
-                        delimiters.push(ind - 1);
-                        delimiters.push(ind + 1);
-                    }
-                    _ => (),
+
+            if one_byte == [b'~'] {
+                if !buffer.is_empty() {
+                    cache.push(Tilde {
+                        len: buffer.len(),
+                        value: TildeKind::Text(String::from_utf8(buffer.clone())?),
+                    });
+                    buffer.clear();
                 }
-            }
 
-            ind += 1;
-        }
-
-        //dbg!(&delimiters);
-
-        for x in delimiters
-            .iter()
-            .enumerate()
-            .map(|(ind, v)| {
-                if ind == 0 {
-                    *v
-                } else {
-                    v - delimiters[ind - 1]
+                one_byte[0] = 0;
+                c.read_exact(&mut one_byte)?;
+                match one_byte {
+                    [b':'] => {
+                        one_byte[0] = 0;
+                        c.read_exact(&mut one_byte)?;
+                        if one_byte == [b';'] {
+                            let cache_len = cache.iter().map(|t: &Tilde| t.len()).sum::<usize>();
+                            result.push(Tilde::new(cache_len, TildeKind::VecTilde(cache.clone())));
+                            cond_kind.to_true();
+                            cache.clear();
+                            total_len += 3 + cache_len;
+                        } else {
+                            panic!()
+                        }
+                    }
+                    [b';'] => {
+                        let cache_len = cache.iter().map(|t: &Tilde| t.len()).sum::<usize>();
+                        result.push(Tilde::new(cache_len, TildeKind::VecTilde(cache.clone())));
+                        cache.clear();
+                        total_len += 2 + cache_len;
+                    }
+                    [b']'] => {
+                        let cache_len = cache.iter().map(|t: &Tilde| t.len()).sum::<usize>();
+                        result.push(Tilde::new(cache_len, TildeKind::VecTilde(cache.clone())));
+                        total_len += 2 + cache_len;
+                        break;
+                    }
+                    _ => {
+                        c.seek(SeekFrom::Current(-2))?;
+                        let c = Self::parse(c)?;
+                        cache.push(c);
+                    }
                 }
-            })
-            .collect::<Vec<_>>()
-            .as_slice()
-            .chunks(2)
-        {
-            //dbg!(&x);
-            result.push(Self::parse_vec(&mut inner_c, x[0])?);
-            if let Some(offset) = x.get(1) {
-                inner_c.seek(SeekFrom::Current(*offset as i64))?;
+                one_byte[0] = 0;
+            } else {
+                buffer.push(one_byte[0]);
             }
         }
 
