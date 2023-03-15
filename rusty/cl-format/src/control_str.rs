@@ -226,6 +226,37 @@ mod test {
                 .collect::<Vec<_>>()
         );
 
+        let case = "~#[NONE~;first: ~a~;~a and ~a~:;~a, ~a~]";
+        let mut cs = ControlStr::new(case)?;
+        let mut args: Vec<&dyn TildeAble> = vec![&1_i64];
+        //dbg!(t.reveal_args(&mut args));
+        assert_eq!(
+            vec!["first: 1".to_string()],
+            cs.reveal_tildes(args.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        let mut cs = ControlStr::new(case)?;
+        let mut args: Vec<&dyn TildeAble> = vec![&2_i64, &2_i64];
+        //dbg!(t.reveal_args(&mut args));
+        assert_eq!(
+            vec!["2 and 2".to_string()],
+            cs.reveal_tildes(args.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        let mut cs = ControlStr::new(case)?;
+        let mut args: Vec<&dyn TildeAble> = vec![&3_i64, &3_i64, &3_i64];
+        //dbg!(t.reveal_args(&mut args));
+        assert_eq!(
+            vec!["3, 3".to_string()],
+            cs.reveal_tildes(args.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
         Ok(())
     }
 

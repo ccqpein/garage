@@ -477,6 +477,7 @@ impl Tilde {
             CatchCount::N(a) => *a,
             cr @ CatchCount::R(rr) => match &mut self.value {
                 TildeKind::Cond((vv, a @ TildeCondKind::Sharp(_))) => {
+                    //:= if there isn't sharp, I don't need to use mut borrow
                     if rest_args_count > cr.max()? {
                         *a = TildeCondKind::Sharp(vv.len() - 1);
                         match vv[vv.len() - 1].catch_able()? {
@@ -1371,35 +1372,6 @@ mod test {
                 ))
             )
         );
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_reveal_cond() -> Result<(), Box<dyn std::error::Error>> {
-        let mut case = Cursor::new("~[cero~;uno~:;dos~]");
-        let mut t = Tilde::parse_cond(&mut case)?;
-        let mut args: Vec<&dyn TildeAble> = vec![&0_usize];
-        //dbg!(t.reveal_args(args.into_iter()));
-        //dbg!(t.reveal_args(&mut args));
-        assert_eq!("cero".to_string(), t.reveal_args(&mut args).unwrap());
-
-        let case = Cursor::new("~#[NONE~;first: ~a~;~a and ~a~:;~a, ~a~]");
-        let mut t = Tilde::parse_cond(&mut case.clone())?;
-        let mut args: Vec<&dyn TildeAble> = vec![&1_i64];
-        //dbg!(t.reveal_args(&mut args));
-        assert_eq!("first: 1".to_string(), t.reveal_args(&mut args).unwrap());
-
-        let mut t = Tilde::parse_cond(&mut case.clone())?;
-        let mut args: Vec<&dyn TildeAble> = vec![&2_i64, &2_i64];
-        //dbg!(t.reveal_args(&mut args));
-        assert_eq!("2 and 2".to_string(), t.reveal_args(&mut args).unwrap());
-
-        let mut t = Tilde::parse_cond(&mut case.clone())?;
-        let mut args: Vec<&dyn TildeAble> = vec![&3_i64, &3_i64, &3_i64];
-        //dbg!(t.reveal_args(&mut args));
-        assert_eq!("3, 3".to_string(), t.reveal_args(&mut args).unwrap());
-        dbg!(args);
 
         Ok(())
     }
