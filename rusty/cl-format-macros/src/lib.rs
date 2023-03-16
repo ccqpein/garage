@@ -1,4 +1,4 @@
-#![doc = r"The macros here should auto generate several traits and the major TildeAble trait.
+#![doc = r#"The macros here should auto generate several traits and the major TildeAble trait.
 
 For example:
 
@@ -64,11 +64,20 @@ impl TildeAble for String {
     }
 }
 
-trait TildeKindChar {}
-trait TildeKindVa {}
+trait TildeKindChar {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Err("un-implenmented yet".into())
+    }
+}
+
+trait TildeKindVa {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Err("un-implenmented yet".into())
+    }
+}
 
 ```
-"]
+"#]
 
 use std::{collections::HashMap, error::Error};
 

@@ -57,8 +57,7 @@ impl<'a> ControlStr<'a> {
         let args = RefCell::new(args.collect::<VecDeque<_>>());
         self.tildes
             .iter_mut()
-            //.map(move |tilde| tilde.1.reveal_args(&mut args))
-            .map(move |tilde| tilde.1.reveal_args_2(&args))
+            .map(move |tilde| tilde.1.reveal_args(&args))
     }
 }
 
