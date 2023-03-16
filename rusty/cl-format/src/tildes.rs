@@ -1,3 +1,6 @@
+use std::borrow::Borrow;
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
@@ -55,51 +58,51 @@ impl TildeCondKind {
     }
 }
 
-#[derive(PartialEq, Debug)]
-enum CatchCount {
-    /// how many args it can take
-    N(usize),
-    /// return several numbers (not has to the numbers of args can catch)
-    R(Vec<usize>),
-    /// all args
-    All,
-}
+// #[derive(PartialEq, Debug)]
+// enum CatchCount {
+//     /// how many args it can take
+//     N(usize),
+//     /// return several numbers (not has to the numbers of args can catch)
+//     R(Vec<usize>),
+//     /// all args
+//     All,
+// }
 
-impl CatchCount {
-    fn as_n(&self) -> Result<usize, Box<dyn std::error::Error>> {
-        if let Self::N(a) = self {
-            Ok(*a)
-        } else {
-            Err("cannot as N".into())
-        }
-    }
+// impl CatchCount {
+//     fn as_n(&self) -> Result<usize, Box<dyn std::error::Error>> {
+//         if let Self::N(a) = self {
+//             Ok(*a)
+//         } else {
+//             Err("cannot as N".into())
+//         }
+//     }
 
-    fn max(&self) -> Result<usize, Box<dyn std::error::Error>> {
-        if let Self::R(a) = self {
-            Ok(*a.iter().max().unwrap_or(&0))
-        } else {
-            Err("cannot as R to find the max".into())
-        }
-    }
-}
+//     fn max(&self) -> Result<usize, Box<dyn std::error::Error>> {
+//         if let Self::R(a) = self {
+//             Ok(*a.iter().max().unwrap_or(&0))
+//         } else {
+//             Err("cannot as R to find the max".into())
+//         }
+//     }
+// }
 
-impl From<usize> for CatchCount {
-    fn from(value: usize) -> Self {
-        Self::N(value)
-    }
-}
+// impl From<usize> for CatchCount {
+//     fn from(value: usize) -> Self {
+//         Self::N(value)
+//     }
+// }
 
-impl From<Vec<usize>> for CatchCount {
-    fn from(value: Vec<usize>) -> Self {
-        Self::R(value)
-    }
-}
+// impl From<Vec<usize>> for CatchCount {
+//     fn from(value: Vec<usize>) -> Self {
+//         Self::R(value)
+//     }
+// }
 
-impl From<&'_ [usize]> for CatchCount {
-    fn from(value: &'_ [usize]) -> Self {
-        Self::R(value.to_vec())
-    }
-}
+// impl From<&'_ [usize]> for CatchCount {
+//     fn from(value: &'_ [usize]) -> Self {
+//         Self::R(value.to_vec())
+//     }
+// }
 
 #[derive(Debug)]
 struct TildeNil;
@@ -143,41 +146,37 @@ pub enum TildeKind {
 }
 
 impl TildeKind {
-    /// find how many args this tilde kind need
-    pub fn catch_able(&self) -> Result<CatchCount, Box<dyn std::error::Error>> {
-        match self {
-            TildeKind::Char => Ok(1.into()),
-            TildeKind::Float(_) => Ok(1.into()),
-            TildeKind::Digit(_) => Ok(1.into()),
-            TildeKind::Va => Ok(1.into()),
-            TildeKind::Loop((_, TildeLoopKind::Nil)) => Ok(1.into()),
-            // catch all for ~@{
-            TildeKind::Loop((vv, TildeLoopKind::At)) => Ok(CatchCount::All),
-            TildeKind::Cond((vv, TildeCondKind::Sharp(_))) => {
-                // how many args need to be catched depending on how many left
-                Ok((0..vv.len()).collect::<Vec<_>>().into())
-            }
-            TildeKind::Cond((_, _)) => Ok(1.into()),
-            TildeKind::Text(_) => Ok(0.into()),
-            TildeKind::VecTilde(vv) => {
-                let mut s = 0;
-                for v in vv {
-                    s += match v.catch_able()? {
-                        CatchCount::N(n) => n,
-                        CatchCount::R(_) => panic!("cannot get Catchable::N in Vec"),
-                        CatchCount::All => return Ok(CatchCount::All),
-                    };
-                }
-                Ok(s.into())
-            }
-            TildeKind::LoopEnd => Ok(0.into()),
-        }
-    }
+    // pub fn catch_able(&self) -> Result<CatchCount, Box<dyn std::error::Error>> {
+    //     match self {
+    //         TildeKind::Char => Ok(1.into()),
+    //         TildeKind::Float(_) => Ok(1.into()),
+    //         TildeKind::Digit(_) => Ok(1.into()),
+    //         TildeKind::Va => Ok(1.into()),
+    //         TildeKind::Loop((_, TildeLoopKind::Nil)) => Ok(1.into()),
+    //         // catch all for ~@{
+    //         TildeKind::Loop((vv, TildeLoopKind::At)) => Ok(CatchCount::All),
+    //         TildeKind::Cond((vv, TildeCondKind::Sharp(_))) => {
+    //             // how many args need to be catched depending on how many left
+    //             Ok((0..vv.len()).collect::<Vec<_>>().into())
+    //         }
+    //         TildeKind::Cond((_, _)) => Ok(1.into()),
+    //         TildeKind::Text(_) => Ok(0.into()),
+    //         TildeKind::VecTilde(vv) => {
+    //             let mut s = 0;
+    //             for v in vv {
+    //                 s += match v.catch_able()? {
+    //                     CatchCount::N(n) => n,
+    //                     CatchCount::R(_) => panic!("cannot get Catchable::N in Vec"),
+    //                     CatchCount::All => return Ok(CatchCount::All),
+    //                 };
+    //             }
+    //             Ok(s.into())
+    //         }
+    //         TildeKind::LoopEnd => Ok(0.into()),
+    //     }
+    // }
 
-    pub fn match_reveal(
-        &mut self,
-        arg: &dyn TildeAble,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn match_reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
         dbg!(arg);
         dbg!(&self);
         match self {
@@ -220,13 +219,51 @@ impl TildeKind {
 }
 
 /// impl mamually
-impl TildeAble for Vec<&dyn TildeAble> {
+// impl TildeAble for Vec<&dyn TildeAble> {
+//     fn len(&self) -> usize {
+//         self.len()
+//     }
+
+//     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
+//         Some(self)
+//     }
+
+//     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
+//         Some(self)
+//     }
+// }
+
+impl TildeAble for Option<&dyn TildeAble> {
     fn len(&self) -> usize {
-        self.len()
+        match self {
+            Some(_) => 1,
+            None => 0,
+        }
+    }
+
+    fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
+        Some(self)
+    }
+}
+
+impl TildeAble for RefCell<VecDeque<&dyn TildeAble>> {
+    fn len(&self) -> usize {
+        self.borrow().len()
     }
 
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
-        Some(self)
+        match self.borrow_mut().pop_front() {
+            Some(a) => a.into_tildekind_va(),
+            None => None,
+        }
     }
 
     fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
@@ -242,24 +279,11 @@ impl TildeAble for Vec<&dyn TildeAble> {
     }
 }
 
-impl TildeAble for Option<&dyn TildeAble> {
-    fn len(&self) -> usize {
-        match self {
-            Some(_) => 1,
-            None => 0,
-        }
-    }
-
-    fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
-        Some(self)
-    }
-}
-
 ////
 ////
 /// impl, re-define the format method for over writing the default method
 impl TildeKindChar for char {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         if let TildeKind::Char = tkind {
             Ok(format!("'{}'", self))
         } else {
@@ -269,54 +293,96 @@ impl TildeKindChar for char {
 }
 
 impl TildeKindVa for i64 {
-    fn format(&self, _: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for usize {
-    fn format(&self, _: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for f32 {
-    fn format(&self, _: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for String {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for char {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", self))
     }
 }
 
 impl TildeKindVa for TildeNil {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok("nil".into())
     }
 }
 
-impl TildeKindVa for Vec<&dyn TildeAble> {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        match tkind {
-            TildeKind::Va => {
-                tkind.match_reveal(*self.get(0).ok_or::<String>("empty vec to get".into())?)
-            }
-            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Va").into()),
-        }
-    }
-}
+// impl TildeKindVa for Vec<&dyn TildeAble> {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         match tkind {
+//             TildeKind::Va => {
+//                 tkind.match_reveal(*self.get(0).ok_or::<String>("empty vec to get".into())?)
+//             }
+//             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Va").into()),
+//         }
+//     }
+// }
 
-impl TildeKindLoop for Vec<&dyn TildeAble> {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+// impl TildeKindLoop for Vec<&dyn TildeAble> {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         match tkind {
+//             // self[0] is the Vec<&dyn TildeAble> of loop
+//             TildeKind::Loop((_, TildeLoopKind::Nil)) => {
+//                 let mut new_kind = tkind.clone();
+//                 match &mut new_kind {
+//                     TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
+//                     _ => unreachable!(),
+//                 };
+
+//                 new_kind.match_reveal(self[0])
+//             }
+//             TildeKind::Loop((vv, TildeLoopKind::At)) => {
+//                 let new_args: VecDeque<_> = self.iter().cloned().collect();
+//                 let new_args = RefCell::new(new_args);
+//                 let mut result = vec![];
+
+//                 'a: loop {
+//                     for t in vv {
+//                         if let TildeKind::LoopEnd = t.value {
+//                             if new_args.len() != 0 {
+//                                 continue;
+//                             } else {
+//                                 break 'a;
+//                             }
+//                         }
+//                         result.push(t.reveal_args_2(&new_args)?);
+//                     }
+//                     dbg!(&new_args);
+//                     if new_args.len() == 0 {
+//                         break;
+//                     }
+//                 }
+
+//                 Ok(result.as_slice().concat())
+//             }
+//             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
+//         }
+//     }
+// }
+
+impl TildeKindLoop for RefCell<VecDeque<&dyn TildeAble>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             // self[0] is the Vec<&dyn TildeAble> of loop
             TildeKind::Loop((_, TildeLoopKind::Nil)) => {
@@ -325,26 +391,30 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
                     TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
                     _ => unreachable!(),
                 };
-
-                new_kind.match_reveal(self[0])
+                let a = self
+                    .borrow_mut()
+                    .pop_front()
+                    .ok_or::<String>("run out args".into())?;
+                new_kind.match_reveal(a)
             }
             TildeKind::Loop((vv, TildeLoopKind::At)) => {
-                let mut new_args = self.clone();
+                //let mut new_args = self.clone();
                 let mut result = vec![];
 
                 'a: loop {
-                    for t in &mut *vv {
+                    for t in vv {
                         if let TildeKind::LoopEnd = t.value {
-                            if new_args.len() != 0 {
+                            if self.borrow().len() != 0 {
                                 continue;
                             } else {
                                 break 'a;
                             }
                         }
-                        result.push(t.reveal_args(&mut new_args)?);
+
+                        result.push(t.reveal_args_2(self)?);
                     }
-                    dbg!(&new_args);
-                    if new_args.len() == 0 {
+                    dbg!(self);
+                    if self.borrow().len() == 0 {
                         break;
                     }
                 }
@@ -357,20 +427,21 @@ impl TildeKindLoop for Vec<&dyn TildeAble> {
 }
 
 impl TildeKindCond for usize {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        dbg!(self);
         match tkind {
-            TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get_mut(*self) {
-                Some(tt) => tt.reveal(&TildeNil),
+            TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get(*self) {
+                Some(tt) => tt.reveal_2(&TildeNil),
                 None => {
                     let last = vv.len() - 1;
-                    match vv.get_mut(last) {
-                        Some(tt) => tt.reveal(&TildeNil),
+                    match vv.get(last) {
+                        Some(tt) => tt.reveal_2(&TildeNil),
                         None => Ok(String::new()),
                     }
                 }
             },
-            TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get_mut(*self) {
-                Some(tt) => tt.reveal(&TildeNil),
+            TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get(*self) {
+                Some(tt) => tt.reveal_2(&TildeNil),
                 None => Ok(String::new()),
             },
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
@@ -378,40 +449,64 @@ impl TildeKindCond for usize {
     }
 }
 
-impl TildeKindCond for Vec<&dyn TildeAble> {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        match tkind {
-            TildeKind::Cond((vv, TildeCondKind::Sharp(ind))) => (vv[*ind]).reveal(self),
-            TildeKind::Cond((_, _)) => tkind.match_reveal(self[0]),
-            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
-        }
-    }
-}
+// impl TildeKindCond for Vec<&dyn TildeAble> {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         match tkind {
+//             TildeKind::Cond((vv, TildeCondKind::Sharp(ind))) => (vv[*ind]).reveal_2(self),
+//             TildeKind::Cond((_, _)) => tkind.match_reveal(self[0]),
+//             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
+//         }
+//     }
+// }
 
 impl TildeKindCond for Option<&dyn TildeAble> {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::At)) => match self {
                 Some(a) => {
-                    let mut k = TildeKind::VecTilde(vv.clone());
+                    println!("here: {:?}", a);
+                    let k = TildeKind::VecTilde(vv.clone());
                     // VecTilde need the vec
                     // TildeCondKind::At only accept one arg
-                    k.match_reveal(&vec![*a])
+                    k.match_reveal(&RefCell::new(VecDeque::from([*a])))
                 }
                 None => Ok(String::new()),
             },
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
+        }
+    }
+}
+
+impl TildeKindCond for RefCell<VecDeque<&dyn TildeAble>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::Cond((vv, TildeCondKind::Sharp(_))) => {
+                let l = self.borrow().len();
+                if l >= vv.len() {
+                    vv[vv.len() - 1].reveal_2(self)
+                } else {
+                    vv[l].reveal_2(self)
+                }
+            }
+            TildeKind::Cond((_, _)) => {
+                let a = self
+                    .borrow_mut()
+                    .pop_front()
+                    .ok_or::<String>("run out args".into())?;
+                tkind.match_reveal(a)
+            }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
         }
     }
 }
 
 impl TildeKindVecTilde for TildeNil {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::VecTilde(vv) => {
                 let mut result = vec![];
                 for t in vv {
-                    result.push(t.reveal(self)?);
+                    result.push(t.reveal_2(self)?);
                 }
                 Ok(result.as_slice().concat())
             }
@@ -420,15 +515,31 @@ impl TildeKindVecTilde for TildeNil {
     }
 }
 
-impl TildeKindVecTilde for Vec<&dyn TildeAble> {
-    fn format(&self, tkind: &mut TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        //dbg!(self);
+// impl TildeKindVecTilde for Vec<&dyn TildeAble> {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         //dbg!(self);
+//         match tkind {
+//             TildeKind::VecTilde(vv) => {
+//                 let new_args: VecDeque<_> = self.iter().cloned().collect();
+//                 let new_args = RefCell::new(new_args);
+//                 let mut result = vec![];
+//                 for t in vv {
+//                     result.push(t.reveal_args_2(&new_args)?);
+//                 }
+//                 Ok(result.as_slice().concat())
+//             }
+//             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
+//         }
+//     }
+// }
+
+impl TildeKindVecTilde for RefCell<VecDeque<&dyn TildeAble>> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::VecTilde(vv) => {
-                let mut new_args = self.clone();
                 let mut result = vec![];
-                for t in &mut *vv {
-                    result.push(t.reveal_args(&mut new_args)?);
+                for t in vv {
+                    result.push(t.reveal_args_2(self)?);
                 }
                 Ok(result.as_slice().concat())
             }
@@ -456,59 +567,73 @@ impl Tilde {
     }
 
     /// return how many args this tilde can catch
-    pub fn catch_able(&self) -> Result<CatchCount, Box<dyn std::error::Error>> {
-        self.value.catch_able()
-    }
+    // pub fn catch_able(&self) -> Result<CatchCount, Box<dyn std::error::Error>> {
+    //     self.value.catch_able()
+    // }
 
     pub fn reveal(&mut self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
         self.value.match_reveal(arg)
     }
 
-    /// entry function from outside, groups args to tilde
-    pub fn reveal_args<'a>(
-        &mut self,
-        args: &mut Vec<&dyn TildeAble>, //:= can be &[]? or RefCell for avoiding the borrow check?
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        dbg!(&self);
-        dbg!(&args);
-        let rest_args_count = args.len();
-        // the count of args that catch
-        let can_catch = match &self.catch_able()? {
-            CatchCount::N(a) => *a,
-            cr @ CatchCount::R(rr) => match &mut self.value {
-                TildeKind::Cond((vv, a @ TildeCondKind::Sharp(_))) => {
-                    //:= if there isn't sharp, I don't need to use mut borrow
-                    if rest_args_count > cr.max()? {
-                        *a = TildeCondKind::Sharp(vv.len() - 1);
-                        match vv[vv.len() - 1].catch_able()? {
-                            CatchCount::N(n) => n,
-                            CatchCount::R(_) => panic!(),
-                            CatchCount::All => args.len(),
-                        }
-                    } else {
-                        *a = TildeCondKind::Sharp(rest_args_count);
-                        // return all for the next step
-                        dbg!(&vv[rest_args_count]);
-                        match vv[rest_args_count].catch_able()? {
-                            CatchCount::N(n) => n,
-                            CatchCount::R(_) => panic!(),
-                            CatchCount::All => args.len(),
-                        }
-                    }
-                }
-                _ => *rr
-                    .iter()
-                    .filter(|r| **r <= rest_args_count)
-                    .max()
-                    .ok_or::<String>("cannot get the largest catch number".into())?,
-            },
-            CatchCount::All => args.len(),
-        };
+    //:= temp code
+    pub fn reveal_2(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
+        self.value.match_reveal(arg)
+    }
 
-        dbg!(&can_catch);
-        let a = args.drain(0..can_catch);
-        //dbg!(&a);
-        self.value.match_reveal(&a.collect::<Vec<_>>())
+    /// entry function from outside, groups args to tilde
+    // pub fn reveal_args<'a>(
+    //     &mut self,
+    //     args: &mut Vec<&dyn TildeAble>, //:= can be &[]? or RefCell for avoiding the borrow check?
+    // ) -> Result<String, Box<dyn std::error::Error>> {
+    //     dbg!(&self);
+    //     dbg!(&args);
+    //     let rest_args_count = args.len();
+    //     // the count of args that catch
+    //     let can_catch = match &self.catch_able()? {
+    //         CatchCount::N(a) => *a,
+    //         cr @ CatchCount::R(rr) => match &mut self.value {
+    //             TildeKind::Cond((vv, a @ TildeCondKind::Sharp(_))) => {
+    //                 //:= if there isn't sharp, I don't need to use mut borrow
+    //                 if rest_args_count > cr.max()? {
+    //                     *a = TildeCondKind::Sharp(vv.len() - 1);
+    //                     match vv[vv.len() - 1].catch_able()? {
+    //                         CatchCount::N(n) => n,
+    //                         CatchCount::R(_) => panic!(),
+    //                         CatchCount::All => args.len(),
+    //                     }
+    //                 } else {
+    //                     *a = TildeCondKind::Sharp(rest_args_count);
+    //                     // return all for the next step
+    //                     dbg!(&vv[rest_args_count]);
+    //                     match vv[rest_args_count].catch_able()? {
+    //                         CatchCount::N(n) => n,
+    //                         CatchCount::R(_) => panic!(),
+    //                         CatchCount::All => args.len(),
+    //                     }
+    //                 }
+    //             }
+    //             _ => *rr
+    //                 .iter()
+    //                 .filter(|r| **r <= rest_args_count)
+    //                 .max()
+    //                 .ok_or::<String>("cannot get the largest catch number".into())?,
+    //         },
+    //         CatchCount::All => args.len(),
+    //     };
+
+    //     dbg!(&can_catch);
+    //     let a = args.drain(0..can_catch);
+    //     //dbg!(&a);
+    //     self.value.match_reveal(&a.collect::<Vec<_>>())
+    // }
+
+    //:= temp code
+    pub fn reveal_args_2(
+        &self,
+        //args: &RefCell<VecDeque<&dyn TildeAble>>,
+        args: &dyn TildeAble,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        self.value.match_reveal(args)
     }
 
     /*
@@ -1313,12 +1438,6 @@ mod test {
                     TildeCondKind::Sharp(0)
                 ))
             )
-        );
-
-        let mut case = Cursor::new("~#[NONE~;~a~;~a and ~a~:;~a, ~a~]");
-        assert_eq!(
-            Tilde::parse_cond(&mut case)?.catch_able()?,
-            vec![0_usize, 1, 2, 3].into()
         );
 
         let mut case = Cursor::new("~@[x = ~a ~]~@[y = ~a~]");
