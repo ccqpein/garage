@@ -650,7 +650,7 @@ impl AppConsumer for ChatGPTInputConsumer {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     //use super::*;
 
     use super::trim_string_helper;
@@ -665,7 +665,7 @@ mod test {
     #[test]
     fn test_trim_string_helper() -> Result<(), Box<dyn std::error::Error>> {
         let a = r#""  content ""#.to_string();
-        assert_eq!(trim_string_helper(a)?, "content".to_string());
+        assert_eq!(trim_string_helper(a)?, r#"content "#.to_string());
 
         let a = r#""  "content" ""#.to_string();
         assert_eq!(trim_string_helper(a)?, r#""content" "#.to_string());

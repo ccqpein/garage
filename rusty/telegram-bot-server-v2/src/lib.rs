@@ -7,5 +7,7 @@ pub mod app;
 mod opts;
 pub use opts::*;
 
+pub mod util;
+
 pub mod deliver;
 pub use deliver::{Deliver, Msg2Deliver};
