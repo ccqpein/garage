@@ -7,6 +7,60 @@ use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 use cl_format_macros::*;
 
 #[derive(Debug)]
+pub struct Args<'a> {
+    len: usize,
+    inner: Vec<&'a dyn TildeAble>,
+    ind: RefCell<usize>,
+}
+
+impl<'a> Args<'a> {
+    pub fn new(i: Vec<&'a dyn TildeAble>) -> Self {
+        Self {
+            len: i.len(),
+            inner: i,
+            ind: RefCell::new(0),
+        }
+    }
+
+    pub fn pop(&self) -> Option<&dyn TildeAble> {
+        let r = self.inner.get(*self.ind.borrow())?;
+        *self.ind.borrow_mut() += 1;
+        Some(*r)
+    }
+
+    pub fn back(&self) -> Option<&dyn TildeAble> {
+        let i = match *self.ind.borrow() {
+            0 => return None,
+            n @ _ => n - 1,
+        };
+
+        let r = self.inner.get(i)?;
+        *self.ind.borrow_mut() -= 1;
+        Some(*r)
+    }
+
+    pub fn left_count(&self) -> usize {
+        self.len - *self.ind.borrow()
+    }
+}
+
+impl<'a, 's: 'a, const N: usize> From<[&'s dyn TildeAble; N]> for Args<'a> {
+    fn from(value: [&'s dyn TildeAble; N]) -> Self {
+        Self::new(value.to_vec())
+    }
+}
+
+impl<'a> IntoIterator for Args<'a> {
+    type Item = &'a dyn TildeAble;
+
+    type IntoIter = std::vec::IntoIter<&'a dyn TildeAble>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
+
+#[derive(Debug)]
 struct TildeError {
     kind: ErrorKind,
     msg: String,
@@ -156,13 +210,13 @@ impl TildeAble for Option<&dyn TildeAble> {
     }
 }
 
-impl TildeAble for RefCell<VecDeque<&dyn TildeAble>> {
+impl<'a> TildeAble for Args<'a> {
     fn len(&self) -> usize {
-        self.borrow().len()
+        self.left_count()
     }
 
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
-        match self.borrow_mut().pop_front() {
+        match self.pop() {
             Some(a) => a.into_tildekind_va(),
             None => None,
         }
@@ -271,7 +325,7 @@ impl TildeKindVa for TildeNil {
 //========================================
 // TildeKindLoop
 //========================================
-impl TildeKindLoop for RefCell<VecDeque<&dyn TildeAble>> {
+impl<'a> TildeKindLoop for Args<'a> {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             // self[0] is the Vec<&dyn TildeAble> of loop
@@ -281,10 +335,7 @@ impl TildeKindLoop for RefCell<VecDeque<&dyn TildeAble>> {
                     TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
                     _ => unreachable!(),
                 };
-                let a = self
-                    .borrow_mut()
-                    .pop_front()
-                    .ok_or::<String>("run out args".into())?;
+                let a = self.pop().ok_or::<String>("run out args".into())?;
                 new_kind.match_reveal(a)
             }
             TildeKind::Loop((vv, TildeLoopKind::At)) => {
@@ -294,17 +345,17 @@ impl TildeKindLoop for RefCell<VecDeque<&dyn TildeAble>> {
                 'a: loop {
                     for t in vv {
                         if let TildeKind::LoopEnd = t.value {
-                            if self.borrow().len() != 0 {
+                            if self.left_count() != 0 {
                                 continue;
                             } else {
                                 break 'a;
                             }
                         }
 
-                        result.push(t.reveal_args(self)?);
+                        result.push(t.reveal(self)?);
                     }
                     dbg!(self);
-                    if self.borrow().len() == 0 {
+                    if self.left_count() == 0 {
                         break;
                     }
                 }
@@ -370,7 +421,8 @@ impl TildeKindCond for Option<&dyn TildeAble> {
                     let k = TildeKind::VecTilde(vv.clone());
                     // VecTilde need the vec
                     // TildeCondKind::At only accept one arg
-                    k.match_reveal(&RefCell::new(VecDeque::from([*a])))
+
+                    k.match_reveal(&Args::from([*a]))
                 }
                 None => Ok(String::new()),
             },
@@ -379,11 +431,11 @@ impl TildeKindCond for Option<&dyn TildeAble> {
     }
 }
 
-impl TildeKindCond for RefCell<VecDeque<&dyn TildeAble>> {
+impl<'a> TildeKindCond for Args<'a> {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Sharp)) => {
-                let l = self.borrow().len();
+                let l = self.left_count();
                 if l >= vv.len() {
                     vv[vv.len() - 1].reveal(self)
                 } else {
@@ -391,10 +443,7 @@ impl TildeKindCond for RefCell<VecDeque<&dyn TildeAble>> {
                 }
             }
             TildeKind::Cond((_, _)) => {
-                let a = self
-                    .borrow_mut()
-                    .pop_front()
-                    .ok_or::<String>("run out args".into())?;
+                let a = self.pop().ok_or::<String>("run out args".into())?;
                 tkind.match_reveal(a)
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
@@ -420,13 +469,13 @@ impl TildeKindVecTilde for TildeNil {
     }
 }
 
-impl TildeKindVecTilde for RefCell<VecDeque<&dyn TildeAble>> {
+impl<'a> TildeKindVecTilde for Args<'a> {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::VecTilde(vv) => {
                 let mut result = vec![];
                 for t in vv {
-                    result.push(t.reveal_args(self)?);
+                    result.push(t.reveal(self)?);
                 }
                 Ok(result.as_slice().concat())
             }
@@ -453,21 +502,8 @@ impl Tilde {
         self.len
     }
 
-    /// return how many args this tilde can catch
-    // pub fn catch_able(&self) -> Result<CatchCount, Box<dyn std::error::Error>> {
-    //     self.value.catch_able()
-    // }
-
     pub fn reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
         self.value.match_reveal(arg)
-    }
-
-    pub fn reveal_args(
-        &self,
-        //args: &RefCell<VecDeque<&dyn TildeAble>>,
-        args: &dyn TildeAble,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        self.value.match_reveal(args)
     }
 
     /*

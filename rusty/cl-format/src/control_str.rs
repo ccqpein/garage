@@ -54,10 +54,10 @@ impl<'a> ControlStr<'a> {
         &'cs mut self,
         args: impl Iterator<Item = &'s dyn TildeAble>,
     ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + 's>>> {
-        let args = RefCell::new(args.collect::<VecDeque<_>>());
+        let args = Args::new(args.collect::<Vec<_>>());
         self.tildes
             .iter_mut()
-            .map(move |tilde| tilde.1.reveal_args(&args))
+            .map(move |tilde| tilde.1.reveal(&args))
     }
 }
 
@@ -126,8 +126,8 @@ mod test {
         let arg0: &dyn TildeAble = &13_f32;
         let arg1: &dyn TildeAble = &14_f32;
         let arg2: &dyn TildeAble = &15_f32;
-        //let arg00: Vec<&dyn TildeAble> = vec![arg0, arg1];
-        let arg00 = RefCell::new(VecDeque::from([arg0, arg1]));
+
+        let arg00 = Args::from([arg0, arg1]);
         let arg: Vec<&dyn TildeAble> = vec![&arg00, arg2];
 
         let result: Vec<String> = vec!["1314".to_string(), "15".to_string()];
@@ -317,10 +317,7 @@ mod test {
         //dbg!(&cs);
 
         //let a = vec![&1_i64 as &dyn TildeAble, &2_i64 as &dyn TildeAble];
-        let a = RefCell::new(VecDeque::from([
-            &1_i64 as &dyn TildeAble,
-            &2_i64 as &dyn TildeAble,
-        ]));
+        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64 as &dyn TildeAble]);
         let arg: Vec<&dyn TildeAble> = vec![&a];
 
         assert_eq!(
@@ -336,7 +333,7 @@ mod test {
         let mut cs = ControlStr::new(case)?;
         //dbg!(&cs);
         //let a = vec![];
-        let a = RefCell::new(VecDeque::new());
+        let a = Args::new(vec![]);
         let arg: Vec<&dyn TildeAble> = vec![&a];
         assert_eq!(
             vec!["".to_string()],
@@ -347,7 +344,7 @@ mod test {
 
         let mut cs = ControlStr::new(case)?;
         //let a = vec![&1_i64 as &dyn TildeAble];
-        let a = RefCell::new(VecDeque::from([&1_i64 as &dyn TildeAble]));
+        let a = Args::from([&1_i64 as &dyn TildeAble]);
         let arg = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1".to_string()],
@@ -358,7 +355,7 @@ mod test {
 
         let mut cs = ControlStr::new(case)?;
         //let a = vec![&1_i64 as &dyn TildeAble, &2_i64];
-        let a = RefCell::new(VecDeque::from([&1_i64 as &dyn TildeAble, &2_i64]));
+        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1 and 2".to_string()],
@@ -369,7 +366,7 @@ mod test {
 
         let mut cs = ControlStr::new(case)?;
         //let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64];
-        let a = RefCell::new(VecDeque::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64]));
+        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1, 2, and 3".to_string()],
@@ -380,12 +377,7 @@ mod test {
 
         let mut cs = ControlStr::new(case)?;
         //let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64];
-        let a = RefCell::new(VecDeque::from([
-            &1_i64 as &dyn TildeAble,
-            &2_i64,
-            &3_i64,
-            &4_i64,
-        ]));
+        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1, 2, 3, and 4".to_string()],
@@ -396,13 +388,7 @@ mod test {
 
         let mut cs = ControlStr::new(case)?;
         //let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64, &5_i64];
-        let a = RefCell::new(VecDeque::from([
-            &1_i64 as &dyn TildeAble,
-            &2_i64,
-            &3_i64,
-            &4_i64,
-            &5_i64,
-        ]));
+        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64, &5_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1, 2, 3, 4, and 5".to_string()],
@@ -415,7 +401,7 @@ mod test {
         let mut cs = ControlStr::new(case)?;
         //dbg!(&cs);
         //let a = vec![];
-        let a = RefCell::new(VecDeque::new());
+        let a = Args::new(vec![]);
         let arg: Vec<&dyn TildeAble> = vec![&a];
         assert_eq!(
             vec!["empty".to_string()],
