@@ -7,8 +7,8 @@ use proc_macro2::{Ident, Punct, Span};
 use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream},
-    parse_macro_input, parse_quote, Attribute, Data, DataEnum, DataStruct, DeriveInput, Field,
-    Fields, GenericParam, Generics, Index, Meta, Result, Token,
+    parse_macro_input, parse_quote, Attribute, Data, DataEnum, DataStruct, DeriveInput, Expr,
+    Field, Fields, GenericParam, Generics, Index, Meta, Result, Token,
 };
 
 pub(crate) trait DeriveTestYo {
@@ -55,7 +55,7 @@ pub fn derive_test_fields(input: TokenStream) -> TokenStream {
                     .attrs
                     .iter()
                     .filter(|att| {
-                        att.path
+                        att.path()
                             .segments
                             .iter()
                             .filter(|seg| seg.ident == "this")
@@ -127,8 +127,8 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
                     .attrs
                     .iter()
                     .filter(|att| {
-                        println!("att.path.get_ident(): {:?}", att.path.get_ident());
-                        att.path
+                        println!("att.path.get_ident(): {:?}", att.path().get_ident());
+                        att.path()
                             .segments
                             .iter()
                             .filter(|seg| seg.ident == "to")
@@ -137,29 +137,12 @@ pub fn derive_fields_to(input: TokenStream) -> TokenStream {
                     })
                     .next()
                 {
-                    //println!("attr.tokens: {:#?}", attr.tokens);
-
-                    match attr.parse_meta() {
-                        Ok(meta_list) => {
-                            println!("meta_list: {:#?}", meta_list);
-                            match meta_list {
-                                Meta::List(meta_l) => {
-                                    meta_l.nested.into_iter().for_each(|m| match m {
-                                        syn::NestedMeta::Meta(mm) => match mm.path().get_ident() {
-                                            Some(id) => {
-                                                ids.push(id.to_string());
-                                            }
-                                            None => unreachable!(),
-                                        },
-                                        syn::NestedMeta::Lit(_) => unreachable!(),
-                                    })
-                                }
-                                _ => unreachable!(),
-                            }
-                        }
-                        Err(e) => std::panic::panic_any(e),
-                    }
-
+                    attr.parse_nested_meta(|meta| {
+                        println!("meta_list: {:#?}", meta.path);
+                        ids.push(meta.path.get_ident().unwrap().to_string());
+                        Ok(())
+                    });
+                    println!("{:?}", ids);
                     var_to_pairs.push((v.ident.to_string(), ids))
                 }
             }

@@ -84,7 +84,7 @@ use std::{collections::HashMap, error::Error};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, Attribute, Data, DataEnum, DeriveInput, Variant};
+use syn::{parse_macro_input, spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Variant};
 
 #[proc_macro_derive(TildeAble, attributes(implTo))]
 pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
@@ -172,7 +172,7 @@ fn parse_variant_attrs(variant: &Variant) -> (String, impl Iterator<Item = Ident
     let all_impl_to_type = variant
         .attrs
         .iter()
-        .filter(|attr| attr.path.get_ident().map(|d| d.to_string()) == Some("implTo".to_string()))
+        .filter(|attr| attr.path().get_ident().map(|d| d.to_string()) == Some("implTo".to_string()))
         .map(|attr| get_types_impl_to(attr).unwrap())
         .flatten();
 
@@ -183,13 +183,18 @@ fn parse_variant_attrs(variant: &Variant) -> (String, impl Iterator<Item = Ident
 
 /// parse the `implTo` attribute
 fn get_types_impl_to(attribute: &Attribute) -> Result<impl Iterator<Item = Ident>, Box<dyn Error>> {
-    match attribute.parse_meta()? {
-        syn::Meta::List(meta_l) => Ok(meta_l.nested.into_iter().filter_map(|m| match m {
-            syn::NestedMeta::Meta(mm) => mm.path().get_ident().cloned(),
-            _ => None,
-        })),
-        _ => unreachable!(),
-    }
+    let mut result = vec![];
+    attribute.parse_nested_meta(|meta| {
+        result.push(
+            meta.path
+                .get_ident()
+                .ok_or(syn::Error::new(meta.path.span(), "get_ident issue"))?
+                .clone(),
+        );
+        Ok(())
+    });
+
+    Ok(result.into_iter())
 }
 
 #[cfg(test)]
