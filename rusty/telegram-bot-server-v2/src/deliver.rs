@@ -83,7 +83,7 @@ impl Deliver {
                 //:= no need resp_content here
                 let (m, resp_content) = get_reply_text_msg(&resp)?;
 
-                insert_new_reply(m, "assistant")
+                insert_new_reply(m, "assistant", None)
                     .await
                     .map_err(|e| e.to_string())?;
 

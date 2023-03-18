@@ -147,23 +147,44 @@ async fn make_messages_in_body(
 }
 
 /// connect this message with its parent and add this message detail to table
-pub async fn insert_new_reply(msg: &Message, role: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let reply_to_id = match &msg.reply_to_message {
+/// replace_content replace the data of message to insert.
+pub async fn insert_new_reply(
+    msg: &Message,
+    role: &str,
+    replace_content: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let (mut reply_to_id, reply_msg_data) = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
             telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
-                MessageKind::Text { .. } => Some(m.id),
+                MessageKind::Text { data, .. } => (Some(m.id), data.to_string()),
                 _ => return Err("only support the text".into()),
             },
             telegram_bot::MessageOrChannelPost::ChannelPost(_) => {
                 return Err("ChannelPost isn't support yet".into())
             }
         },
-        None => None,
+        None => (None, "".to_string()),
     };
 
-    let content = match &msg.kind {
-        MessageKind::Text { data, .. } => data,
-        _ => return Err("only support the text".into()),
+    let mut content = match replace_content {
+        Some(s) => s.to_string(),
+        None => match &msg.kind {
+            MessageKind::Text { data, .. } => data.clone(),
+            _ => return Err("only support the text".into()),
+        },
+    };
+
+    // reply some post but not inside chain
+    content = match reply_to_id {
+        Some(_) => {
+            if !if_reply_chat_in_the_chain(&msg).await {
+                reply_to_id = None; // merge this two meg together
+                vec![r#"Original Post: \n""#, &reply_msg_data, r#""\n"#, &content].concat()
+            } else {
+                content
+            }
+        }
+        None => content,
     };
 
     CHAT_CHAIN_TABLE
@@ -266,7 +287,7 @@ impl ChatGPT {
                         .send(Msg2Deliver::new(
                             "send".to_string(),
                             msg.chat_id,
-                            String::from("not for you"),
+                            String::from("this feature is not for you"),
                             None,
                         ))
                         .await
@@ -320,6 +341,11 @@ impl ChatGPT {
             }
             (a, b, c) => return Err(format!("unmatched pattern: {:?}, {:?}, {:?}", a, b, c)),
         };
+
+        // add to reply here
+        insert_new_reply(&msg.this_message, "user", Some(&msg.data))
+            .await
+            .map_err(|e| e.to_string())?;
 
         // start to call open ai
         let body = self
@@ -488,10 +514,6 @@ impl ChatGPTInput {
                                 //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
-                                    if let Err(e) = insert_new_reply(msg, "user").await {
-                                        error!("insert_new_reply error: {}", e.to_string())
-                                    }
-
                                     return Some(Self {
                                         data: words.into(),
                                         user_name: msg
@@ -536,9 +558,6 @@ impl ChatGPTInput {
                                 //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
-                                    if let Err(e) = insert_new_reply(msg, "user").await {
-                                        error!("insert_new_reply error: {}", e.to_string())
-                                    }
                                     return Some(Self {
                                         data: words.into(),
                                         user_name: msg
@@ -582,9 +601,6 @@ impl ChatGPTInput {
                                 //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
-                                    if let Err(e) = insert_new_reply(msg, "user").await {
-                                        error!("insert_new_reply error: {}", e.to_string())
-                                    }
                                     return Some(Self {
                                         data: words.into(),
                                         user_name: msg
@@ -613,9 +629,6 @@ impl ChatGPTInput {
         // pass all check upper
         // check if this message reply some message in CHAT_CHAIN_TABLE
         if if_reply_chat_in_the_chain(msg).await {
-            if let Err(e) = insert_new_reply(msg, "user").await {
-                error!("insert_new_reply error: {}", e.to_string())
-            }
             let data = msg.kind.text().unwrap_or("".into());
             Some(Self {
                 data,
