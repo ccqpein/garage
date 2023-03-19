@@ -112,6 +112,12 @@ impl TildeCondKind {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum StarKind {
+    Hop,
+    Skip,
+}
+
 #[derive(Debug)]
 struct TildeNil;
 
@@ -134,6 +140,9 @@ pub enum TildeKind {
     #[implTo(f32, f64, char, i32, i64, usize, bool, u32, u64, String, TildeNil)]
     /// ~a
     Va,
+
+    /// ~* and ~:*
+    Star(StarKind),
 
     /// loop
     Loop((Vec<Tilde>, TildeLoopKind)),
@@ -192,6 +201,12 @@ impl TildeKind {
                 )?;
                 return a.format(self);
             }
+            TildeKind::Star(_) => {
+                let a = arg.into_tildekind_star().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
+                )?;
+                return a.format(self);
+            }
         }
     }
 }
@@ -231,6 +246,10 @@ impl<'a> TildeAble for Args<'a> {
     }
 
     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
+        Some(self)
+    }
+
+    fn into_tildekind_star(&self) -> Option<&dyn TildeKindStar> {
         Some(self)
     }
 }
@@ -484,6 +503,25 @@ impl<'a> TildeKindVecTilde for Args<'a> {
     }
 }
 
+//========================================
+// TildeKindStar
+//========================================
+impl<'a> TildeKindStar for Args<'a> {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::Star(StarKind::Hop) => {
+                self.back(); // back to last one, make it hop
+                Ok("".to_string())
+            }
+            TildeKind::Star(StarKind::Skip) => {
+                self.pop();
+                Ok("".to_string())
+            }
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Star").into()),
+        }
+    }
+}
+
 /*=========================================================*/
 
 /// The tilde struct
@@ -542,6 +580,9 @@ impl Tilde {
             }
         }
 
+        //dbg!(&c);
+        //dbg!(String::from_utf8(buf.to_vec()));
+
         match buf {
             [b'a', ..] | [b'A', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
@@ -559,7 +600,6 @@ impl Tilde {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_digit);
             }
-            //:= TODO: forget the ~:[
             [b'[', ..] | [b'#', b'[', ..] | [b':', b'[', ..] | [b'@', b'[', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_cond);
@@ -567,6 +607,10 @@ impl Tilde {
             [b'^', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_loop_end);
+            }
+            [b':', b'*', ..] | [b'*', ..] => {
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
+                return Ok(box Self::parse_star);
             }
             _ => {
                 return Err(
@@ -867,12 +911,17 @@ impl Tilde {
             c.read_until(t, &mut buf)?;
             match buf.last() {
                 Some(b) if *b == t => {
+                    let s = String::from_utf8(
+                        buf.get(1..buf.len() - 1).map_or(Vec::new(), |s| s.to_vec()),
+                    )?;
                     return Ok(Tilde::new(
                         buf.len(),
-                        TildeKind::Float(Some(String::from_utf8(
-                            buf.get(1..buf.len() - 1).map_or(Vec::new(), |s| s.to_vec()),
-                        )?)),
-                    ))
+                        if &s == "" {
+                            TildeKind::Digit(None)
+                        } else {
+                            TildeKind::Digit(Some(s))
+                        },
+                    ));
                 }
                 _ => (),
             }
@@ -880,6 +929,32 @@ impl Tilde {
             buf.clear();
         }
         Err(TildeError::new(ErrorKind::ParseError, "cannot find the '$' or 'f'").into())
+    }
+
+    /// parse the star
+    fn parse_star(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut char_buf = [0u8; 3]; // three bytes
+        c.read(&mut char_buf)?;
+
+        match char_buf {
+            [b'~', b':', b'*'] => Ok(Self {
+                len: 3,
+                value: TildeKind::Star(StarKind::Hop),
+            }),
+            [b'~', b'*', ..] => {
+                c.seek(SeekFrom::Current(-1))?;
+                Ok(Self {
+                    len: 3,
+                    value: TildeKind::Star(StarKind::Skip),
+                })
+            }
+            _ => {
+                c.seek(SeekFrom::Current(-3))?;
+                return Err(
+                    TildeError::new(ErrorKind::ParseError, "should start with ~* or ~:*").into(),
+                );
+            }
+        }
     }
 
     //:= TODO: a lot parse functions below
@@ -1393,6 +1468,22 @@ mod test {
             )
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_star() -> Result<(), Box<dyn std::error::Error>> {
+        let mut case = Cursor::new("~:*");
+        assert_eq!(
+            Tilde::parse(&mut case)?,
+            Tilde::new(3, TildeKind::Star(StarKind::Hop))
+        );
+
+        let mut case = Cursor::new("~*");
+        assert_eq!(
+            Tilde::parse(&mut case)?,
+            Tilde::new(3, TildeKind::Star(StarKind::Skip))
+        );
         Ok(())
     }
 }

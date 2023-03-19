@@ -131,11 +131,6 @@ mod test {
         let arg: Vec<&dyn TildeAble> = vec![&arg00, arg2];
 
         let result: Vec<String> = vec!["1314".to_string(), "15".to_string()];
-        // dbg!(&cs.tildes[0]);
-        // dbg!(cs
-        //     .reveal_tildes(arg.into_iter())
-        //     .map(|a| a)
-        //     .collect::<Vec<_>>());
 
         //dbg!(&cs);
         assert_eq!(
