@@ -5,6 +5,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::{File, OpenOptions},
     io::{prelude::*, BufRead, BufReader},
+    time::Duration,
 };
 use telegram_bot::{
     ChatId, GroupId, MessageChat, MessageId, MessageKind, MessageText, SupergroupId,
@@ -258,7 +259,10 @@ impl ChatGPT {
             receiver,
             deliver_sender,
             waken_groups: stored_groups,
-            reqwest_client: reqwest::Client::new(),
+            reqwest_client: reqwest::Client::builder()
+                .connect_timeout(Duration::from_secs(60))
+                .build()
+                .map_err(|e| e.to_string())?,
             openai_token: gpt_token,
         })
     }
@@ -355,7 +359,7 @@ impl ChatGPT {
 
         debug!("body: {}", body.to_string());
 
-        let response_from_chat_gpt = self
+        let response_from_chat_gpt = match self
             .reqwest_client
             .post("https://api.openai.com/v1/chat/completions")
             .bearer_auth(&self.openai_token)
@@ -363,10 +367,33 @@ impl ChatGPT {
             .body(body.to_string())
             .send()
             .await
-            .map_err(|e| e.to_string())?
-            .json::<serde_json::Value>()
-            .await
-            .map_err(|e| e.to_string())?;
+        {
+            Ok(v) => match v.json::<serde_json::Value>().await {
+                Ok(vv) => vv,
+                Err(e) => {
+                    self.deliver_sender
+                        .send(Msg2Deliver::new(
+                            "send".to_string(),
+                            msg.chat_id,
+                            "sorry, something wrong from server".into(),
+                            None,
+                        ))
+                        .await;
+                    return Err(e.to_string());
+                }
+            },
+            Err(e) => {
+                self.deliver_sender
+                    .send(Msg2Deliver::new(
+                        "send".to_string(),
+                        msg.chat_id,
+                        "sorry, something wrong from server".into(),
+                        None,
+                    ))
+                    .await;
+                return Err(e.to_string());
+            }
+        };
 
         debug!("response: {}", response_from_chat_gpt.to_string());
 
@@ -480,7 +507,9 @@ impl App for ChatGPT {
         while let Some(msg) = self.receiver.recv().await {
             match self.handle_chat(msg).await {
                 Ok(_) => continue,
-                Err(e) => error!("error: {}", e),
+                Err(e) => {
+                    error!("error: {}", e)
+                }
             }
         }
         Ok(())
