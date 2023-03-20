@@ -212,6 +212,7 @@ pub struct ChatGPT {
     reqwest_client: reqwest::Client,
 
     waken_groups: HashSet<String>,
+    waken_usernames: HashSet<String>,
 
     sender: Sender<ChatGPTInput>,
     receiver: Receiver<ChatGPTInput>,
@@ -239,6 +240,7 @@ impl ChatGPT {
             .ok_or("Read 'gpt_token' failed".to_string())?
             .map_err(|e| e.to_string())?;
 
+        // group
         let f = BufReader::new(
             File::open(vault_path.clone() + "/stored_groups").map_err(|e| e.to_string())?,
         );
@@ -252,6 +254,20 @@ impl ChatGPT {
             stored_groups
         );
 
+        // users
+        let f = BufReader::new(
+            File::open(vault_path.clone() + "/stored_usernames").map_err(|e| e.to_string())?,
+        );
+        let stored_usernames = f
+            .lines()
+            .filter_map(|l| l.ok())
+            .collect::<HashSet<String>>();
+
+        info!(
+            "these usernames added to waken_usernames directly: {:?}",
+            stored_usernames
+        );
+
         Ok(ChatGPT {
             vault_path,
             my_name,
@@ -259,6 +275,7 @@ impl ChatGPT {
             receiver,
             deliver_sender,
             waken_groups: stored_groups,
+            waken_usernames: stored_usernames,
             reqwest_client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(60))
                 .build()
@@ -285,7 +302,7 @@ impl ChatGPT {
         // check if chat legal or not
         let data = match (msg.group_id, msg.user_name.as_str(), msg.data.as_str()) {
             (None, name, data) => {
-                if name != self.my_name {
+                if name != self.my_name && !self.waken_usernames.contains(name) {
                     match self
                         .deliver_sender
                         .send(Msg2Deliver::new(
