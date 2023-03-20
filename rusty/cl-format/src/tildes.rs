@@ -1,6 +1,4 @@
-use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
@@ -123,20 +121,18 @@ struct TildeNil;
 
 #[derive(Debug, PartialEq, TildeAble, Clone)]
 pub enum TildeKind {
-    #[implTo(char)]
     /// ~C ~:C
+    #[implTo(char)]
     Char,
 
     /// ~$ ~5$ ~f
     Float(Option<String>),
 
     /// ~d ~:d ~:@d
+    #[implTo(i32, i64, u32, u64, usize)]
     Digit(Option<String>),
 
     //:= TODO: ~S
-    //:= TODO: ~C
-    //:= TODO: ~X
-    //:= TODO: ~O
     #[implTo(f32, f64, char, i32, i64, usize, bool, u32, u64, String, TildeNil)]
     /// ~a
     Va,
@@ -167,9 +163,27 @@ impl TildeKind {
         dbg!(arg);
         dbg!(&self);
         match self {
-            TildeKind::Char => todo!(),
-            TildeKind::Float(_) => todo!(),
-            TildeKind::Digit(_) => todo!(),
+            TildeKind::Char => {
+                let a = arg.into_tildekind_char().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
+                )?;
+
+                return a.format(self);
+            }
+            TildeKind::Float(_) => {
+                let a = arg.into_tildekind_float().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
+                )?;
+
+                return a.format(self);
+            }
+            TildeKind::Digit(_) => {
+                let a = arg.into_tildekind_digit().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
+                )?;
+
+                return a.format(self);
+            }
             TildeKind::Va => {
                 let a = arg.into_tildekind_va().ok_or::<TildeError>(
                     TildeError::new(ErrorKind::RevealError, "cannot reveal to Va").into(),
@@ -203,7 +217,7 @@ impl TildeKind {
             }
             TildeKind::Star(_) => {
                 let a = arg.into_tildekind_star().ok_or::<TildeError>(
-                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Cond").into(),
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Star").into(),
                 )?;
                 return a.format(self);
             }
@@ -230,6 +244,27 @@ impl<'a> TildeAble for Args<'a> {
         self.left_count()
     }
 
+    fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar> {
+        match self.pop() {
+            Some(a) => a.into_tildekind_char(),
+            None => None,
+        }
+    }
+
+    fn into_tildekind_float(&self) -> Option<&dyn TildeKindFloat> {
+        match self.pop() {
+            Some(a) => a.into_tildekind_float(),
+            None => None,
+        }
+    }
+
+    fn into_tildekind_digit(&self) -> Option<&dyn TildeKindDigit> {
+        match self.pop() {
+            Some(a) => a.into_tildekind_digit(),
+            None => None,
+        }
+    }
+
     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
         match self.pop() {
             Some(a) => a.into_tildekind_va(),
@@ -237,20 +272,61 @@ impl<'a> TildeAble for Args<'a> {
         }
     }
 
+    fn into_tildekind_star(&self) -> Option<&dyn TildeKindStar> {
+        Some(self)
+    }
+
     fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
         Some(self)
+    }
+
+    fn into_tildekind_loopend(&self) -> Option<&dyn TildeKindLoopEnd> {
+        None
     }
 
     fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
         Some(self)
     }
 
+    fn into_tildekind_text(&self) -> Option<&dyn TildeKindText> {
+        None
+    }
+
     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
         Some(self)
     }
+}
 
-    fn into_tildekind_star(&self) -> Option<&dyn TildeKindStar> {
-        Some(self)
+//========================================
+// TildeKindDigit
+//========================================
+impl TildeKindDigit for i32 {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
+    }
+}
+
+impl TildeKindDigit for i64 {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
+    }
+}
+
+impl TildeKindDigit for u32 {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
+    }
+}
+
+impl TildeKindDigit for u64 {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
+    }
+}
+
+impl TildeKindDigit for usize {
+    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+        Ok(format!("{}", self))
     }
 }
 

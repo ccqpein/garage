@@ -407,4 +407,35 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_reveal_star() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~d ~:*(~d)";
+        let mut cs = ControlStr::new(case)?;
+        //dbg!(&cs);
+
+        let arg = Args::from([&1_i64 as &dyn TildeAble]);
+        assert_eq!(
+            vec!["1".to_string(), String::new(), "1".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        //
+        let case = "~{~d~*~^ ~}";
+        let mut cs = ControlStr::new(case)?;
+        dbg!(&cs);
+
+        let a = Args::from([&1_i64 as &dyn TildeAble, &2, &3, &4]);
+        let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
+        assert_eq!(
+            vec!["1 3".to_string()],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
+
+        Ok(())
+    }
 }

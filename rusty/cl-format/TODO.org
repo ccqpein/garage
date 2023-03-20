@@ -1,13 +1,26 @@
-* TODO Tilde parsers
-- [ ] ~S
-- [ ] ~C
-- [ ] ~X
-- [ ] ~O
-- [ ] ~r
-- [ ] ~p
+#+STARTUP: content
+#+TODO: NEXT(n) TODO(t) PROCESSING(p) WAITING(w) MAYBE(m) | DONE(d@) CANCELLED(c)
+
+* Doc
++ [[https://gigamonkeys.com/book/a-few-format-recipes.html][A Few FORMAT Recipes]]
++ [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_c.htm][Formatted Output]]
+
+* Features need to do
+** TODO Tilde parsers
+- [ ] \~n~ [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cae.htm][tilde]]
+- [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cba.htm][R: Radix]]
+- [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbc.htm][B: Binary]]
+- [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbd.htm][O: Octal]]
+- [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbe.htm][X: Hexadecimal]]
+- [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cdb.htm][S: Standard]]
   
-* TODO macro for usage
+** TODO macro for usage
 like ~cl_format!~
 
-* TODO view layer
+** DONE view layer
+CLOSED: [2023-03-18 Sat 23:03]
+:LOGBOOK:
+- State "DONE"       from "TODO"       [2023-03-18 Sat 23:03] \\
+  reveal functions done the reveal job
+:END:
 after parse, the tilde need a view layer.
