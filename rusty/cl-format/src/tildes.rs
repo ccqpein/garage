@@ -146,6 +146,9 @@ pub enum TildeKind {
     /// loop stop, ~^
     LoopEnd,
 
+    /// tilde itself
+    Tildes(usize),
+
     #[implTo(usize, bool)]
     /// ~[ ~] condition
     Cond((Vec<Tilde>, TildeCondKind)),
@@ -201,6 +204,7 @@ impl TildeKind {
             TildeKind::LoopEnd => {
                 Err(TildeError::new(ErrorKind::RevealError, "loop end cannot reveal").into())
             }
+            TildeKind::Tildes(n) => Ok(String::from_utf8(vec![b'~'; *n])?),
             TildeKind::Text(s) => Ok(s.to_string()),
             TildeKind::VecTilde(_) => {
                 let a = arg.into_tildekind_vectilde().ok_or::<TildeError>(
@@ -688,6 +692,11 @@ impl Tilde {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
                 return Ok(box Self::parse_star);
             }
+            [_, b'~', ..] => {
+                //:= can only parse the one digit number
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
+                return Ok(box Self::parse_tildes);
+            }
             _ => {
                 return Err(
                     TildeError::new(ErrorKind::ParseError, "cannot find the key tilde").into(),
@@ -1029,6 +1038,21 @@ impl Tilde {
                 return Err(
                     TildeError::new(ErrorKind::ParseError, "should start with ~* or ~:*").into(),
                 );
+            }
+        }
+    }
+
+    fn parse_tildes(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut char_buf = [0u8; 3]; // three bytes
+        c.read(&mut char_buf)?;
+        match char_buf {
+            [b'~', n @ _, b'~'] => Ok(Self {
+                len: 3,
+                value: TildeKind::Tildes(String::from_utf8(vec![n])?.parse::<usize>()?),
+            }),
+            _ => {
+                c.seek(SeekFrom::Current(-3))?;
+                return Err(TildeError::new(ErrorKind::ParseError, "should start with ~n~").into());
             }
         }
     }
@@ -1559,6 +1583,22 @@ mod test {
         assert_eq!(
             Tilde::parse(&mut case)?,
             Tilde::new(3, TildeKind::Star(StarKind::Skip))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_tildes() -> Result<(), Box<dyn std::error::Error>> {
+        let mut case = Cursor::new("~9~");
+        assert_eq!(
+            Tilde::parse(&mut case)?,
+            Tilde::new(3, TildeKind::Tildes(9))
+        );
+
+        let mut case = Cursor::new("~0~");
+        assert_eq!(
+            Tilde::parse(&mut case)?,
+            Tilde::new(3, TildeKind::Tildes(0))
         );
         Ok(())
     }
