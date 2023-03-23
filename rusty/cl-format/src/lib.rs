@@ -5,7 +5,7 @@
 mod control_str;
 mod tildes;
 
-/// multi_tilde_impl!(TildeKindVa, [float, char, String], {Err("un-implenmented yet".into())})
+/// multi_tilde_impl!(TildeKindVa, [float, char, String], self, {Err("un-implenmented yet".into())})
 ///
 /// will expand
 ///
@@ -17,10 +17,10 @@ mod tildes;
 /// ...
 #[macro_export]
 macro_rules! multi_tilde_impl {
-    ($implName:ident, [$($y:ident),+], $body:block) => {
+    ($implName:ident, [$($y:ident),+], $s:ident,$body:block) => {
 		$(
 			impl $implName for $y {
-				fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>>
+				fn format(&$s, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>>
 					$body
 
 			}
@@ -28,4 +28,4 @@ macro_rules! multi_tilde_impl {
     };
 }
 
-//multi_tilde_impl!(TildeKindVa, [usize, i32], { println!("") });
+//multi_tilde_impl!(TildeKindVa, [usize, i32], self, { println!("") });

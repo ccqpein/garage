@@ -309,45 +309,25 @@ impl<'a> TildeAble for Args<'a> {
     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
         Some(self)
     }
+
+    fn into_tildekind_standard(&self) -> Option<&dyn TildeKindStandard> {
+        match self.pop() {
+            Some(a) => a.into_tildekind_standard(),
+            None => None,
+        }
+    }
+
+    fn into_tildekind_tildes(&self) -> Option<&dyn TildeKindTildes> {
+        None
+    }
 }
 
 //========================================
 // TildeKindDigit
 //========================================
-multi_tilde_impl!(TildeKindDigit, [i64, u32, u64, usize], {
-    //Ok(format!("{}", self))
+multi_tilde_impl!(TildeKindDigit, [i32, i64, u32, u64, usize], self, {
     Ok(format!("{}", self))
 });
-
-impl TildeKindDigit for i32 {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-// impl TildeKindDigit for i64 {
-//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-//         Ok(format!("{}", self))
-//     }
-// }
-
-// impl TildeKindDigit for u32 {
-//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-//         Ok(format!("{}", self))
-//     }
-// }
-
-// impl TildeKindDigit for u64 {
-//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-//         Ok(format!("{}", self))
-//     }
-// }
-
-// impl TildeKindDigit for usize {
-//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-//         Ok(format!("{}", self))
-//     }
-// }
 
 //========================================
 // TildeKindChar
@@ -366,59 +346,12 @@ impl TildeKindChar for char {
 //========================================
 // TildeKindVa
 //========================================
-impl TildeKindVa for i32 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for i64 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for usize {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for f32 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for f64 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for u32 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for u64 {
-    fn format(&self, _: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for String {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
-
-impl TildeKindVa for char {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
+multi_tilde_impl!(
+    TildeKindVa,
+    [f32, f64, char, i32, i64, usize, u32, u64, String],
+    self,
+    { Ok(format!("{}", self)) }
+);
 
 impl TildeKindVa for bool {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
