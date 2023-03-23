@@ -149,6 +149,7 @@ async fn make_messages_in_body(
 
 /// connect this message with its parent and add this message detail to table
 /// replace_content replace the data of message to insert.
+//:= TODO: should can accept any types of content, reply or original
 pub async fn insert_new_reply(
     msg: &Message,
     role: &str,
@@ -205,7 +206,7 @@ pub async fn insert_new_reply(
 /// receive message and return back
 pub struct ChatGPT {
     vault_path: String,
-    // user or group
+
     my_name: String,
 
     openai_token: String,
@@ -298,6 +299,9 @@ impl ChatGPT {
         Ok(())
     }
 
+    //:= TODO: return value should be used by chat gpt app
+    async fn download_file(&self) {}
+
     async fn handle_chat(&mut self, msg: ChatGPTInput) -> Result<(), String> {
         // check if chat legal or not
         let data = match (msg.group_id, msg.user_name.as_str(), msg.data.as_str()) {
@@ -362,6 +366,11 @@ impl ChatGPT {
             }
             (a, b, c) => return Err(format!("unmatched pattern: {:?}, {:?}, {:?}", a, b, c)),
         };
+
+        //:= NEXT: download file here
+        // let file_loc = if let Some(f) = reply_msg_is_media(&msg) {
+        // 	self.download_file(f)?
+        // }
 
         // add to reply here
         insert_new_reply(&msg.this_message, "user", Some(&msg.data))

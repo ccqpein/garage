@@ -1,5 +1,7 @@
 use std::{
+    collections::HashSet,
     env,
+    ffi::OsString,
     path::{Path, PathBuf},
 };
 
@@ -13,6 +15,7 @@ struct FileDownloader {
     api: Api,
     reqwest_client: reqwest::Client,
     folder: String,
+    files_exist: HashSet<String>,
 }
 
 impl FileDownloader {
@@ -28,9 +31,23 @@ impl FileDownloader {
 
         debug!("download path: {:?}", path.as_path().to_str());
 
+        // add the exist files
+        let mut files = HashSet::new();
+        for p in std::fs::read_dir(path.as_path())? {
+            match p {
+                Ok(pp) => files.insert(
+                    pp.file_name()
+                        .into_string()
+                        .map_err(|e| e.into_string().unwrap())?,
+                ),
+                Err(ee) => return Err(ee.to_string().into()),
+            };
+        }
+
         Ok(Self {
             api,
             reqwest_client: reqwest::Client::new(),
+            files_exist: files,
             folder: path
                 .as_path()
                 .to_str()
@@ -55,14 +72,16 @@ impl FileDownloader {
                 file_id, file_path, ..
             }) => {
                 let path = self.folder.clone() + "/" + &file_id;
+                if self.files_exist.contains(&path) {
+                    return Ok(path);
+                }
+
                 let mut f = std::fs::File::create(path.clone())?;
                 let f_url = file_path.ok_or::<String>("file path is nil".into())?;
                 let r = self.reqwest_client.get(f_url).send().await?;
 
                 // write file
                 f.write_all(&r.bytes().await?)?;
-
-                //:= TODO: need to cache if the file downloaded or not
 
                 Ok(path)
             }
