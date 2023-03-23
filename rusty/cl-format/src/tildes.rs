@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
+use crate::*;
 use cl_format_macros::*;
 
 #[derive(Debug)]
@@ -132,13 +133,16 @@ pub enum TildeKind {
     #[implTo(i32, i64, u32, u64, usize)]
     Digit(Option<String>),
 
-    //:= TODO: ~S
     #[implTo(f32, f64, char, i32, i64, usize, bool, u32, u64, String, TildeNil)]
     /// ~a
     Va,
 
     /// ~* and ~:*
     Star(StarKind),
+
+    //:= need to implTo impl macro
+    /// ~s
+    Standard,
 
     /// loop
     Loop((Vec<Tilde>, TildeLoopKind)),
@@ -225,6 +229,12 @@ impl TildeKind {
                 )?;
                 return a.format(self);
             }
+            TildeKind::Standard => {
+                let a = arg.into_tildekind_standard().ok_or::<TildeError>(
+                    TildeError::new(ErrorKind::RevealError, "cannot reveal to Standard").into(),
+                )?;
+                return a.format(self);
+            }
         }
     }
 }
@@ -304,35 +314,40 @@ impl<'a> TildeAble for Args<'a> {
 //========================================
 // TildeKindDigit
 //========================================
+multi_tilde_impl!(TildeKindDigit, [i64, u32, u64, usize], {
+    //Ok(format!("{}", self))
+    Ok(format!("{}", self))
+});
+
 impl TildeKindDigit for i32 {
     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
         Ok(format!("{}", self))
     }
 }
 
-impl TildeKindDigit for i64 {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
+// impl TildeKindDigit for i64 {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         Ok(format!("{}", self))
+//     }
+// }
 
-impl TildeKindDigit for u32 {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
+// impl TildeKindDigit for u32 {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         Ok(format!("{}", self))
+//     }
+// }
 
-impl TildeKindDigit for u64 {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
+// impl TildeKindDigit for u64 {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         Ok(format!("{}", self))
+//     }
+// }
 
-impl TildeKindDigit for usize {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok(format!("{}", self))
-    }
-}
+// impl TildeKindDigit for usize {
+//     fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+//         Ok(format!("{}", self))
+//     }
+// }
 
 //========================================
 // TildeKindChar
@@ -666,36 +681,67 @@ impl Tilde {
         match buf {
             [b'a', ..] | [b'A', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_value);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_value),
+                );
             }
             [b'{', ..] | [b'@', b'{', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_loop);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_loop),
+                );
             }
             [b'$', ..] | [b'f', ..] | [b'F', ..] | [_, b'$', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_float);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_float),
+                );
             }
             [b'd', ..] | [b'D', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_digit);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_digit),
+                );
             }
             [b'[', ..] | [b'#', b'[', ..] | [b':', b'[', ..] | [b'@', b'[', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_cond);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_cond),
+                );
             }
             [b'^', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_loop_end);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_loop_end),
+                );
             }
             [b':', b'*', ..] | [b'*', ..] => {
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_star);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_star),
+                );
             }
             [_, b'~', ..] => {
                 //:= can only parse the one digit number
                 c.seek(SeekFrom::Current(-buf_offset))?; // back to start
-                return Ok(box Self::parse_tildes);
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_tildes),
+                );
+            }
+            [b'S', ..] | [b's', ..] => {
+                c.seek(SeekFrom::Current(-buf_offset))?; // back to start
+                return Ok(
+                    #[rustc_box]
+                    Box::new(Self::parse_standard),
+                );
             }
             _ => {
                 return Err(
@@ -1013,7 +1059,7 @@ impl Tilde {
             c.seek(SeekFrom::Current(-(buf.len() as i64)))?;
             buf.clear();
         }
-        Err(TildeError::new(ErrorKind::ParseError, "cannot find the '$' or 'f'").into())
+        Err(TildeError::new(ErrorKind::ParseError, "cannot find the 'd' or 'D'").into())
     }
 
     /// parse the star
@@ -1055,6 +1101,21 @@ impl Tilde {
                 return Err(TildeError::new(ErrorKind::ParseError, "should start with ~n~").into());
             }
         }
+    }
+
+    fn parse_standard(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut buf = vec![];
+
+        for t in [b's', b'S'] {
+            c.read_until(t, &mut buf)?;
+            match buf.last() {
+                Some(b) if *b == t => return Ok(Tilde::new(buf.len(), TildeKind::Standard)),
+                _ => (),
+            }
+            c.seek(SeekFrom::Current(-(buf.len() as i64)))?;
+            buf.clear();
+        }
+        Err(TildeError::new(ErrorKind::ParseError, "cannot find the 's' or 'S'").into())
     }
 
     //:= TODO: a lot parse functions below
@@ -1600,6 +1661,17 @@ mod test {
             Tilde::parse(&mut case)?,
             Tilde::new(3, TildeKind::Tildes(0))
         );
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_standard() -> Result<(), Box<dyn std::error::Error>> {
+        let mut case = Cursor::new("~s");
+        assert_eq!(Tilde::parse(&mut case)?, Tilde::new(2, TildeKind::Standard));
+
+        let mut case = Cursor::new("~S");
+        assert_eq!(Tilde::parse(&mut case)?, Tilde::new(2, TildeKind::Standard));
+
         Ok(())
     }
 }
