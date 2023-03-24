@@ -12,7 +12,7 @@
 - [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbc.htm][B: Binary]]
 - [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbd.htm][O: Octal]]
 - [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbe.htm][X: Hexadecimal]]
-- [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cdb.htm][S: Standard]]
+- [X] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cdb.htm][S: Standard]]
   
 ** TODO macro for usage
 like ~cl_format!~

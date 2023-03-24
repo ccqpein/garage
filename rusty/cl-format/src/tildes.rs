@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
@@ -140,7 +141,7 @@ pub enum TildeKind {
     /// ~* and ~:*
     Star(StarKind),
 
-    //:= need to implTo impl macro
+    #[implTo(f32, f64, char, i32, i64, usize, bool, u32, u64, String)]
     /// ~s
     Standard,
 
@@ -166,7 +167,10 @@ pub enum TildeKind {
 }
 
 impl TildeKind {
-    pub fn match_reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn match_reveal(
+        &self,
+        arg: &dyn TildeAble,
+    ) -> Result<Option<String>, Box<dyn std::error::Error>> {
         dbg!(arg);
         dbg!(&self);
         match self {
@@ -208,8 +212,8 @@ impl TildeKind {
             TildeKind::LoopEnd => {
                 Err(TildeError::new(ErrorKind::RevealError, "loop end cannot reveal").into())
             }
-            TildeKind::Tildes(n) => Ok(String::from_utf8(vec![b'~'; *n])?),
-            TildeKind::Text(s) => Ok(s.to_string()),
+            TildeKind::Tildes(n) => Ok(Some(String::from_utf8(vec![b'~'; *n])?)),
+            TildeKind::Text(s) => Ok(Some(s.to_string())),
             TildeKind::VecTilde(_) => {
                 let a = arg.into_tildekind_vectilde().ok_or::<TildeError>(
                     TildeError::new(ErrorKind::RevealError, "cannot reveal to VecTilde").into(),
@@ -326,7 +330,7 @@ impl<'a> TildeAble for Args<'a> {
 // TildeKindDigit
 //========================================
 multi_tilde_impl!(TildeKindDigit, [i32, i64, u32, u64, usize], self, {
-    Ok(format!("{}", self))
+    Ok(Some(format!("{}", self)))
 });
 
 //========================================
@@ -334,9 +338,9 @@ multi_tilde_impl!(TildeKindDigit, [i32, i64, u32, u64, usize], self, {
 //========================================
 /// impl, re-define the format method for over writing the default method
 impl TildeKindChar for char {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         if let TildeKind::Char = tkind {
-            Ok(format!("'{}'", self))
+            Ok(Some(format!("'{}'", self)))
         } else {
             Err(TildeError::new(ErrorKind::RevealError, "cannot format to Char").into())
         }
@@ -350,22 +354,22 @@ multi_tilde_impl!(
     TildeKindVa,
     [f32, f64, char, i32, i64, usize, u32, u64, String],
     self,
-    { Ok(format!("{}", self)) }
+    { Ok(Some(format!("{}", self))) }
 );
 
 impl TildeKindVa for bool {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         if *self {
-            Ok("true".into())
+            Ok(Some("true".into()))
         } else {
-            Ok("false".into())
+            Ok(Some("false".into()))
         }
     }
 }
 
 impl TildeKindVa for TildeNil {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
-        Ok("nil".into())
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        Ok(Some("nil".into()))
     }
 }
 
@@ -373,7 +377,7 @@ impl TildeKindVa for TildeNil {
 // TildeKindLoop
 //========================================
 impl<'a> TildeKindLoop for Args<'a> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             // self[0] is the Vec<&dyn TildeAble> of loop
             TildeKind::Loop((_, TildeLoopKind::Nil)) => {
@@ -407,7 +411,14 @@ impl<'a> TildeKindLoop for Args<'a> {
                     }
                 }
 
-                Ok(result.as_slice().concat())
+                Ok(Some(
+                    result
+                        .into_iter()
+                        .filter_map(|a| a)
+                        .collect::<Vec<_>>()
+                        .as_slice()
+                        .join(""),
+                ))
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
         }
@@ -418,7 +429,7 @@ impl<'a> TildeKindLoop for Args<'a> {
 // TildeKindCond
 //========================================
 impl TildeKindCond for usize {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         dbg!(self);
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get(*self) {
@@ -427,13 +438,13 @@ impl TildeKindCond for usize {
                     let last = vv.len() - 1;
                     match vv.get(last) {
                         Some(tt) => tt.reveal(&TildeNil),
-                        None => Ok(String::new()),
+                        None => Ok(None),
                     }
                 }
             },
             TildeKind::Cond((vv, TildeCondKind::Nil(false))) => match vv.get(*self) {
                 Some(tt) => tt.reveal(&TildeNil),
-                None => Ok(String::new()),
+                None => Ok(None),
             },
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
         }
@@ -441,7 +452,7 @@ impl TildeKindCond for usize {
 }
 
 impl TildeKindCond for bool {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Colon)) => {
                 if *self {
@@ -460,7 +471,7 @@ impl TildeKindCond for bool {
 }
 
 impl TildeKindCond for Option<&dyn TildeAble> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::At)) => match self {
                 Some(a) => {
@@ -471,7 +482,7 @@ impl TildeKindCond for Option<&dyn TildeAble> {
 
                     k.match_reveal(&Args::from([*a]))
                 }
-                None => Ok(String::new()),
+                None => Ok(None),
             },
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Cond").into()),
         }
@@ -479,7 +490,7 @@ impl TildeKindCond for Option<&dyn TildeAble> {
 }
 
 impl<'a> TildeKindCond for Args<'a> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Sharp)) => {
                 let l = self.left_count();
@@ -502,14 +513,21 @@ impl<'a> TildeKindCond for Args<'a> {
 // TildeKindVecTilde
 //========================================
 impl TildeKindVecTilde for TildeNil {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::VecTilde(vv) => {
                 let mut result = vec![];
                 for t in vv {
                     result.push(t.reveal(self)?);
                 }
-                Ok(result.as_slice().concat())
+                Ok(Some(
+                    result
+                        .into_iter()
+                        .filter_map(|a| a)
+                        .collect::<Vec<_>>()
+                        .as_slice()
+                        .join(""),
+                ))
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
         }
@@ -517,14 +535,21 @@ impl TildeKindVecTilde for TildeNil {
 }
 
 impl<'a> TildeKindVecTilde for Args<'a> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::VecTilde(vv) => {
                 let mut result = vec![];
                 for t in vv {
                     result.push(t.reveal(self)?);
                 }
-                Ok(result.as_slice().concat())
+                Ok(Some(
+                    result
+                        .into_iter()
+                        .filter_map(|a| a)
+                        .collect::<Vec<_>>()
+                        .as_slice()
+                        .join(""),
+                ))
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to VecTilde").into()),
         }
@@ -535,20 +560,42 @@ impl<'a> TildeKindVecTilde for Args<'a> {
 // TildeKindStar
 //========================================
 impl<'a> TildeKindStar for Args<'a> {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Star(StarKind::Hop) => {
                 self.back(); // back to last one, make it hop
-                Ok("".to_string())
+
+                Ok(None)
             }
             TildeKind::Star(StarKind::Skip) => {
                 self.pop();
-                Ok("".to_string())
+                Ok(None)
             }
             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Star").into()),
         }
     }
 }
+
+//========================================
+// TildeKindStandard
+//========================================
+impl TildeKindStandard for String {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        Ok(Some(format!("\"{}\"", self)))
+    }
+}
+
+impl TildeKindStandard for char {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        Ok(Some(format!("'{}'", self)))
+    }
+}
+multi_tilde_impl!(
+    TildeKindStandard,
+    [f32, f64, i32, i64, usize, bool, u32, u64],
+    self,
+    { Ok(Some(format!("{}", self))) }
+);
 
 /*=========================================================*/
 
@@ -568,7 +615,10 @@ impl Tilde {
         self.len
     }
 
-    pub fn reveal(&self, arg: &dyn TildeAble) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn reveal(
+        &self,
+        arg: &dyn TildeAble,
+    ) -> Result<Option<String>, Box<dyn std::error::Error>> {
         self.value.match_reveal(arg)
     }
 

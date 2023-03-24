@@ -65,13 +65,13 @@ impl TildeAble for String {
 }
 
 trait TildeKindChar {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         Err("un-implenmented yet".into())
     }
 }
 
 trait TildeKindVa {
-    fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         Err("un-implenmented yet".into())
     }
 }
@@ -126,7 +126,7 @@ pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
                 //
                 return_types_traits.push(quote! {
                     pub trait #return_type: Debug {
-                        fn format(&self, tkind: &TildeKind) -> Result<String, Box<dyn std::error::Error>> {
+                        fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
                             Err("un-implenmented yet".into())
                         }
                 }})

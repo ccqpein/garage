@@ -53,7 +53,7 @@ impl<'a> ControlStr<'a> {
     fn reveal_tildes<'s, 'cs: 's>(
         &'cs mut self,
         args: impl Iterator<Item = &'s dyn TildeAble>,
-    ) -> impl Iterator<Item = Result<String, Box<dyn std::error::Error + 's>>> {
+    ) -> impl Iterator<Item = Result<Option<String>, Box<dyn std::error::Error + 's>>> {
         let args = Args::new(args.collect::<Vec<_>>());
         self.tildes
             .iter_mut()
@@ -108,7 +108,10 @@ mod test {
         let arg: &dyn TildeAble = &13_f32;
         dbg!(arg.into_tildekind_va());
 
-        let result: Vec<String> = vec!["13".to_string()];
+        let result: Vec<Option<String>> = vec!["13".to_string()]
+            .into_iter()
+            .map(|s| Some(s))
+            .collect();
 
         assert_eq!(
             result,
@@ -130,7 +133,10 @@ mod test {
         let arg00 = Args::from([arg0, arg1]);
         let arg: Vec<&dyn TildeAble> = vec![&arg00, arg2];
 
-        let result: Vec<String> = vec!["1314".to_string(), "15".to_string()];
+        let result: Vec<Option<String>> = vec!["1314".to_string(), "15".to_string()]
+            .into_iter()
+            .map(|s| Some(s))
+            .collect();
 
         //dbg!(&cs);
         assert_eq!(
@@ -143,7 +149,10 @@ mod test {
         let case = "hello, ~@{~a~^, ~}";
         let mut cs = ControlStr::new(case)?;
         let arg: Vec<&dyn TildeAble> = vec![&1_i64, &2_i64, &3_i64];
-        let result: Vec<String> = vec!["1, 2, 3".to_string()];
+        let result: Vec<Option<String>> = vec!["1, 2, 3".to_string()]
+            .into_iter()
+            .map(|s| Some(s))
+            .collect();
         assert_eq!(
             result,
             cs.reveal_tildes(arg.into_iter())
@@ -162,7 +171,10 @@ mod test {
 
         let arg: Vec<&dyn TildeAble> = vec![&0_usize];
         assert_eq!(
-            vec!["cero".to_string()],
+            vec!["cero".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -171,7 +183,10 @@ mod test {
         //
         let arg: Vec<&dyn TildeAble> = vec![&1_usize];
         assert_eq!(
-            vec!["uno".to_string()],
+            vec!["uno".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -184,7 +199,10 @@ mod test {
 
         let arg: Vec<&dyn TildeAble> = vec![&0_usize];
         assert_eq!(
-            vec!["cero".to_string()],
+            vec!["cero".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -192,7 +210,10 @@ mod test {
 
         let arg: Vec<&dyn TildeAble> = vec![&2_usize];
         assert_eq!(
-            vec!["dos".to_string()],
+            vec!["dos".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -201,7 +222,10 @@ mod test {
         //dbg!(&cs);
         let arg: Vec<&dyn TildeAble> = vec![&3_usize];
         assert_eq!(
-            vec!["dos".to_string()],
+            vec!["dos".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -210,7 +234,10 @@ mod test {
         //dbg!(&cs);
         let arg: Vec<&dyn TildeAble> = vec![&4_usize];
         assert_eq!(
-            vec!["dos".to_string()],
+            vec!["dos".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -218,7 +245,10 @@ mod test {
 
         let arg: Vec<&dyn TildeAble> = vec![&100_usize];
         assert_eq!(
-            vec!["dos".to_string()],
+            vec!["dos".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -229,7 +259,10 @@ mod test {
         let mut args: Vec<&dyn TildeAble> = vec![&1_i64];
         //dbg!(t.reveal_args(&mut args));
         assert_eq!(
-            vec!["first: 1".to_string()],
+            vec!["first: 1".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(args.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -239,7 +272,10 @@ mod test {
         let mut args: Vec<&dyn TildeAble> = vec![&2_i64, &2_i64];
         //dbg!(t.reveal_args(&mut args));
         assert_eq!(
-            vec!["2 and 2".to_string()],
+            vec!["2 and 2".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(args.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -249,7 +285,10 @@ mod test {
         let mut args: Vec<&dyn TildeAble> = vec![&3_i64, &3_i64, &3_i64];
         //dbg!(t.reveal_args(&mut args));
         assert_eq!(
-            vec!["3, 3".to_string()],
+            vec!["3, 3".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(args.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -266,7 +305,7 @@ mod test {
 
         let arg: Vec<&dyn TildeAble> = vec![];
         assert_eq!(
-            vec!["NONE".to_string(), "".to_string()],
+            vec![Some("NONE".to_string()), Some("".to_string())],
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -283,7 +322,7 @@ mod test {
 
         let arg: Vec<&dyn TildeAble> = vec![&Some(&1_i64 as &dyn TildeAble), &None];
         assert_eq!(
-            vec!["x = 1 ".to_string(), "".to_string()],
+            vec![Some("x = 1 ".to_string()), None],
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -296,7 +335,10 @@ mod test {
             &Some(&2_usize as &dyn TildeAble),
         ];
         assert_eq!(
-            vec!["x = 1 ".to_string(), "y = 2".to_string()],
+            vec!["x = 1 ".to_string(), "y = 2".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -316,7 +358,7 @@ mod test {
         let arg: Vec<&dyn TildeAble> = vec![&a];
 
         assert_eq!(
-            vec!["1, and 2".to_string()],
+            vec![Some("1, and 2".to_string())],
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -331,7 +373,7 @@ mod test {
         let a = Args::new(vec![]);
         let arg: Vec<&dyn TildeAble> = vec![&a];
         assert_eq!(
-            vec!["".to_string()],
+            vec![Some(String::new())],
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -342,7 +384,10 @@ mod test {
         let a = Args::from([&1_i64 as &dyn TildeAble]);
         let arg = vec![&a as &dyn TildeAble];
         assert_eq!(
-            vec!["1".to_string()],
+            vec!["1".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -353,7 +398,10 @@ mod test {
         let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
-            vec!["1 and 2".to_string()],
+            vec!["1 and 2".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -364,7 +412,10 @@ mod test {
         let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
-            vec!["1, 2, and 3".to_string()],
+            vec!["1, 2, and 3".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -375,7 +426,10 @@ mod test {
         let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
-            vec!["1, 2, 3, and 4".to_string()],
+            vec!["1, 2, 3, and 4".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -386,7 +440,10 @@ mod test {
         let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64, &5_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
-            vec!["1, 2, 3, 4, and 5".to_string()],
+            vec!["1, 2, 3, 4, and 5".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -399,7 +456,10 @@ mod test {
         let a = Args::new(vec![]);
         let arg: Vec<&dyn TildeAble> = vec![&a];
         assert_eq!(
-            vec!["empty".to_string()],
+            vec!["empty".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -412,11 +472,11 @@ mod test {
     fn test_reveal_star() -> Result<(), Box<dyn std::error::Error>> {
         let case = "~d ~:*(~d)";
         let mut cs = ControlStr::new(case)?;
-        //dbg!(&cs);
+        dbg!(&cs);
 
         let arg = Args::from([&1_i64 as &dyn TildeAble]);
         assert_eq!(
-            vec!["1".to_string(), String::new(), "1".to_string()],
+            vec![Some("1".to_string()), None, Some("1".to_string())],
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
@@ -430,12 +490,33 @@ mod test {
         let a = Args::from([&1_i64 as &dyn TildeAble, &2, &3, &4]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
-            vec!["1 3".to_string()],
+            vec!["1 3".to_string()]
+                .into_iter()
+                .map(|s| Some(s))
+                .collect::<Vec<Option<_>>>(),
             cs.reveal_tildes(arg.into_iter())
                 .map(|a| a.unwrap())
                 .collect::<Vec<_>>()
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_reveal_standard() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~d ~s";
+        let mut cs = ControlStr::new(case)?;
+        dbg!(&cs);
+
+        let s = String::from("hello");
+        let arg = Args::from([&1_i64 as &dyn TildeAble, &s]);
+
+        assert_eq!(
+            vec![Some("1".to_string()), Some("\"hello\"".to_string())],
+            cs.reveal_tildes(arg.into_iter())
+                .map(|a| a.unwrap())
+                .collect::<Vec<_>>()
+        );
         Ok(())
     }
 }
