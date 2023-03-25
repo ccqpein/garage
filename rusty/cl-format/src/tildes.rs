@@ -44,9 +44,21 @@ impl<'a> Args<'a> {
     }
 }
 
-impl<'a, 's: 'a, const N: usize> From<[&'s dyn TildeAble; N]> for Args<'a> {
-    fn from(value: [&'s dyn TildeAble; N]) -> Self {
+impl<'a, const N: usize> From<[&'a dyn TildeAble; N]> for Args<'a> {
+    fn from(value: [&'a dyn TildeAble; N]) -> Self {
         Self::new(value.to_vec())
+    }
+}
+
+impl<'a> From<&'_ [&'a dyn TildeAble]> for Args<'a> {
+    fn from(value: &'_ [&'a dyn TildeAble]) -> Self {
+        Self::new(value.to_vec())
+    }
+}
+
+impl<'a, 's: 'a> From<Vec<&'s dyn TildeAble>> for Args<'a> {
+    fn from(value: Vec<&'s dyn TildeAble>) -> Self {
+        Self::new(value)
     }
 }
 
@@ -635,8 +647,7 @@ impl Tilde {
         Box<
             dyn for<'a, 'b> Fn(
                 &'a mut std::io::Cursor<&'b str>,
-            )
-                -> Result<Tilde, Box<(dyn std::error::Error + 'static)>>,
+            ) -> Result<Tilde, Box<dyn std::error::Error>>,
         >,
         Box<dyn std::error::Error>,
     > {
