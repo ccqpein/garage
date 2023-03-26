@@ -1,6 +1,7 @@
 use crate::tildes::*;
 use std::cell::RefCell;
 use std::collections::VecDeque;
+use std::convert::{TryFrom, TryInto};
 use std::fmt::{Debug, Display};
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 use std::iter;
@@ -8,23 +9,30 @@ use std::iter;
 /// the control string should including:
 /// 1. the whole string
 /// 2. the parsed tree
-#[derive(Debug)]
-struct ControlStr<'a> {
+#[derive(Debug, Clone, PartialEq)]
+pub struct ControlStr<'a> {
     inner: &'a str,
     tildes: Vec<((usize, usize), Tilde)>,
 }
 
 impl<'a> ControlStr<'a> {
-    fn new(s: &'a str) -> Result<Self, Box<dyn std::error::Error>> {
+    fn new(s: &'a str) -> Result<Self, Box<dyn std::error::Error + 'a>> {
         let cc = Cursor::new(s);
         let tildes = Self::scan(cc)?;
 
         Ok(Self { inner: s, tildes })
     }
 
+    pub fn from<T>(x: T) -> Result<Self, <T as TryInto<ControlStr<'a>>>::Error>
+    where
+        T: TryInto<ControlStr<'a>> + 'a + ?Sized,
+    {
+        x.try_into()
+    }
+
     fn scan(
         mut s: Cursor<&'_ str>,
-    ) -> Result<Vec<((usize, usize), Tilde)>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<((usize, usize), Tilde)>, Box<dyn std::error::Error + 'a>> {
         let mut buf = vec![];
         let mut has_read_len = 0;
         let mut result = vec![];
@@ -51,7 +59,7 @@ impl<'a> ControlStr<'a> {
     }
 
     fn reveal_tildes<'s, 'cs>(
-        &'cs mut self,
+        &'cs self,
         args: Args<'s>,
     ) -> impl Iterator<
         Item = (
@@ -63,10 +71,30 @@ impl<'a> ControlStr<'a> {
             .iter()
             .map(move |(ind, tilde)| (ind, tilde.reveal(&args)))
     }
+
+    pub fn reveal<'s>(&self, args: Args<'s>) -> Result<String, Box<dyn std::error::Error + 's>> {
+        let mut result = String::new();
+        let mut start = 0;
+        for (r, s) in self.reveal_tildes(args) {
+            result += &self.inner[start..r.0];
+            result += &s?.unwrap_or("".to_string());
+            start = r.1;
+        }
+
+        Ok(result)
+    }
+}
+
+impl<'a> TryFrom<&'a str> for ControlStr<'a> {
+    type Error = Box<dyn std::error::Error + 'a>;
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        Self::new(value)
+    }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     fn parse_test_result<'x, 's>(
@@ -82,6 +110,18 @@ mod test {
             x.push(aa.map_err(|e| e.to_string())?)
         }
         Ok(x)
+    }
+
+    #[test]
+    fn test_try_from_self() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "hello wor~{~a~}";
+        let x = ControlStr::new(case)?;
+        let y = x.clone();
+        //dbg!(&y);
+
+        assert_eq!(ControlStr::try_from(x)?, y);
+
+        Ok(())
     }
 
     #[test]
@@ -477,6 +517,22 @@ mod test {
         assert_eq!(
             vec![Some("1".to_string()), Some("\"hello\"".to_string())],
             parse_test_result(cs.reveal_tildes(arg.into()))?
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_reveal() -> Result<(), Box<dyn std::error::Error>> {
+        let case = "~a, ~a, ~a";
+        let cs = ControlStr::from(case)?;
+        assert_eq!(
+            "1, 2, 3".to_string(),
+            cs.reveal([&1_i32 as &dyn TildeAble, &2, &3].into())?
+        );
+
+        assert_eq!(
+            "4, 5, 6".to_string(),
+            cs.reveal([&4_i32 as &dyn TildeAble, &5, &6].into())?
         );
         Ok(())
     }

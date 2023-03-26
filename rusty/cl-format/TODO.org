@@ -14,7 +14,7 @@
 - [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbe.htm][X: Hexadecimal]]
 - [X] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cdb.htm][S: Standard]]
   
-** TODO macro for usage
+** PROCESSING macro for usage
 like ~cl_format!~
 
 ** DONE view layer
