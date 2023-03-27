@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::cell::RefCell;
+use std::convert::TryInto;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
 
@@ -59,15 +60,6 @@ impl<'a> From<&'_ [&'a dyn TildeAble]> for Args<'a> {
 impl<'a, 's: 'a> From<Vec<&'s dyn TildeAble>> for Args<'a> {
     fn from(value: Vec<&'s dyn TildeAble>) -> Self {
         Self::new(value)
-    }
-}
-
-impl<'a, T> From<&T> for Args<'a>
-where
-    T: Into<Args<'a>>,
-{
-    fn from(value: &T) -> Self {
-        Args::from(value)
     }
 }
 
@@ -278,66 +270,6 @@ impl TildeAble for Option<&dyn TildeAble> {
     }
 }
 
-// impl<'a, T> TildeAble for T
-// where
-//     //T: Into<Args<'a>> + Debug,
-//     T: Debug,
-//     tildes::Args<'a>: From<T>,
-// {
-//     fn len(&self) -> usize {
-//         Args::from(self).len()
-//     }
-
-//     fn into_tildekind_char(&self) -> Option<&dyn TildeKindChar> {
-//         Args::from(self).into_tildekind_char()
-//     }
-
-//     fn into_tildekind_float(&self) -> Option<&dyn TildeKindFloat> {
-//         Args::from(self).into_tildekind_float()
-//     }
-
-//     fn into_tildekind_digit(&self) -> Option<&dyn TildeKindDigit> {
-//         Args::from(self).into_tildekind_digit()
-//     }
-
-//     fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
-//         Args::from(self).into_tildekind_va()
-//     }
-
-//     fn into_tildekind_star(&self) -> Option<&dyn TildeKindStar> {
-//         Args::from(self).into_tildekind_star()
-//     }
-
-//     fn into_tildekind_standard(&self) -> Option<&dyn TildeKindStandard> {
-//         Args::from(self).into_tildekind_standard()
-//     }
-
-//     fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
-//         Args::from(self).into_tildekind_loop()
-//     }
-
-//     fn into_tildekind_loopend(&self) -> Option<&dyn TildeKindLoopEnd> {
-//         Args::from(self).into_tildekind_loopend()
-//     }
-
-//     fn into_tildekind_tildes(&self) -> Option<&dyn TildeKindTildes> {
-//         Args::from(self).into_tildekind_tildes()
-//     }
-
-//     fn into_tildekind_cond(&self) -> Option<&dyn TildeKindCond> {
-//         Args::from(self).into_tildekind_cond()
-//     }
-
-//     fn into_tildekind_text(&self) -> Option<&dyn TildeKindText> {
-//         Args::from(self).into_tildekind_text()
-//     }
-
-//     fn into_tildekind_vectilde(&self) -> Option<&dyn TildeKindVecTilde> {
-//         Args::from(self).into_tildekind_vectilde()
-//     }
-// }
-
-/// mock Tildeable
 impl<'a> TildeAble for Args<'a> {
     fn len(&self) -> usize {
         self.left_count()

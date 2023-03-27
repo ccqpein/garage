@@ -77,6 +77,24 @@ trait TildeKindVa {
 }
 
 ```
+
+Args macro:
+
+args!([&1, &2, [&3, &4], [[&5]]]);
+
+Into::<tildes::Args<'_>>::into([
+  &1 as &dyn tildes::TildeAble,
+  &2 as &dyn tildes::TildeAble,
+  &Into::<tildes::Args<'_>>::into([
+    &3 as &dyn tildes::TildeAble,
+    &4 as &dyn tildes::TildeAble,
+  ]) as &dyn tildes::TildeAble,
+  &Into::<tildes::Args<'_>>::into([
+    &Into::<tildes::Args<'_>>::into([
+      &5 as &dyn tildes::TildeAble
+    ]) as &dyn tildes::TildeAble]) as &dyn tildes::TildeAble,
+  ]);
+
 "#]
 
 use std::{collections::HashMap, error::Error};

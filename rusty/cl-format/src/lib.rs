@@ -30,6 +30,7 @@ macro_rules! multi_tilde_impl {
 
 //multi_tilde_impl!(TildeKindVa, [usize, i32], self, { println!("test") });
 
+//:= TODO: need the proc macro
 /// args!
 /// args!(&a) => &a as &dyn tildes::TildeAble
 ///
@@ -43,19 +44,6 @@ macro_rules! args {
     };
     ($arg:expr) => {
         $arg as &dyn tildes::TildeAble
-    };
-}
-
-fn arg_check(a: &dyn tildes::TildeAble) -> &dyn tildes::TildeAble {
-    a
-}
-
-macro_rules! test {
-    (&[$($arg:expr),*]) => {
-        &[$(test!($arg)),*].to_vec();
-    };
-	($arg:expr) => {
-        let a = $arg;
     };
 }
 
@@ -84,28 +72,60 @@ macro_rules! cl_format {
 
 }
 
+fn iter_to_args<'a, T: 'a + tildes::TildeAble>(a: impl Iterator<Item = &'a T>) -> tildes::Args<'a> {
+    a.map(|v| v as &'a dyn tildes::TildeAble)
+        .collect::<Vec<_>>()
+        .into()
+}
+
 #[cfg(test)]
 mod tests {
+    use std::convert::TryInto;
+
     use super::*;
 
     #[test]
     fn test_args_macro_expand() -> Result<(), Box<dyn std::error::Error>> {
-        test!(&[&1, 2, 3, &[4, 5]]);
         args!(&1);
         args!(&2);
         args!(&[&1, args!(&[&5, &6])]);
-        args!(&[&1, &[&5, &6]]);
         args!(&[&5, &6]);
         Ok(())
     }
 
     #[test]
     fn test_macro_expand() -> Result<(), Box<dyn std::error::Error>> {
-        let a = cl_format!("~a, ~a, ~a", &1, &2, &3);
+        let a = cl_format!("~a, ~a, ~a", &1_i32, &2, &3);
         dbg!(a);
 
-        let a = cl_format!("~a, ~a, ~a", &1, args!(&[&2]), &3);
+        let s = String::from("abc");
+        let a = cl_format!("~a, ~a, ~a, ~S", &1_i32, &2, &3, &s);
         dbg!(a);
+
+        let a = cl_format!("~a, ~a, ~a, ~a", &1_i32, &2, &3, &s);
+        dbg!(a);
+
+        let ll: Vec<i32> = vec![1, 2, 3];
+
+        let ll = iter_to_args(ll.iter());
+
+        let a = cl_format!("~a, ~a, ~a, ~{~a,~}", &1_i32, &2, &3, &ll);
+
+        dbg!(a);
+
+        //
+        //
+        Into::<tildes::Args<'_>>::into([
+            &1 as &dyn tildes::TildeAble,
+            &2 as &dyn tildes::TildeAble,
+            &Into::<tildes::Args<'_>>::into([
+                &3 as &dyn tildes::TildeAble,
+                &4 as &dyn tildes::TildeAble,
+            ]) as &dyn tildes::TildeAble,
+            &Into::<tildes::Args<'_>>::into([&Into::<tildes::Args<'_>>::into([
+                &5 as &dyn tildes::TildeAble
+            ]) as &dyn tildes::TildeAble]) as &dyn tildes::TildeAble,
+        ]);
 
         Ok(())
     }
