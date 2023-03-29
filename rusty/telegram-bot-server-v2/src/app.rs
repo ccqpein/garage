@@ -82,7 +82,10 @@ impl AppLayer {
         C: AppConsumer + 'static,
         A: App<Consumer = C> + 'static,
     {
-        self.app_queue.push(box a.consumer());
+        self.app_queue.push(
+            #[rustc_box]
+            Box::new(a.consumer()),
+        );
         //tokio::spawn(async { a.run().await });
     }
 

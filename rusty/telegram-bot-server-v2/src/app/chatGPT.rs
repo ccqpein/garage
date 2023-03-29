@@ -25,7 +25,7 @@ lazy_static! {
 }
 
 /// the number of how many messages inside the request body
-static CHAT_COUNT: usize = 20;
+static CHAT_COUNT: usize = 40;
 
 pub struct ChatDetail {
     role: String,
@@ -479,7 +479,7 @@ impl ChatGPT {
     ) -> Result<Value, Box<dyn std::error::Error>> {
         let body = self.get_reply_chain(msg).await?;
         let body = json!({
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-4",
             "messages": body
         });
 
