@@ -102,7 +102,10 @@ use std::{collections::HashMap, error::Error};
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, Attribute, Data, DataEnum, DeriveInput, Variant};
+use syn::{
+    parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, Attribute,
+    Data, DataEnum, DeriveInput, Expr, Token, Variant,
+};
 
 #[proc_macro_derive(TildeAble, attributes(implTo))]
 pub fn derive_tilde_able(input: TokenStream) -> TokenStream {
@@ -215,9 +218,33 @@ fn get_types_impl_to(attribute: &Attribute) -> Result<impl Iterator<Item = Ident
     Ok(result.into_iter())
 }
 
+#[proc_macro]
+pub fn cl_format(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as Punctuated<Expr, Token![,]>);
+
+    //let input: Punctuated<Expr, Token![,]> = parse(input).unwrap();
+
+    //let parser = Punctuated::<Expr, Token![,]>::parse_terminated;
+    //let input = parser(input);
+
+    dbg!(input);
+
+    //dbg!(parse_quote! {input});
+    let mut result: Vec<proc_macro2::TokenStream> = vec![];
+    proc_macro2::TokenStream::from_iter(result.into_iter()).into()
+}
+
+fn slice_recursive_reveal_macro(input: TokenStream) -> TokenStream {
+    dbg!(input);
+    TokenStream::new()
+}
+
 #[cfg(test)]
-mod test {
+mod tests {
+    use std::str::FromStr;
+
     use super::*;
+    use proc_macro2::TokenStream;
     use syn::{parse2, parse_quote, Variant};
 
     #[test]
@@ -287,6 +314,13 @@ mod test {
         assert_eq!(result.0, "B");
         assert_eq!(result.1.next(), None);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_cl_format_macro() -> Result<(), Box<dyn Error>> {
+        //slice_recursive_reveal_macro(proc_macro2::TokenStream::from_str("\"abc\", &1, &a")?.into());
+        //cl_format!("abc", &1, &a);
         Ok(())
     }
 }

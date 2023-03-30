@@ -60,29 +60,30 @@ macro_rules! args {
 ///         ]);
 ///         c.reveal(a)
 /// }
-#[macro_export]
-macro_rules! cl_format {
-    ($control_str:expr, $($ele:expr),*) =>	{
-		{
-			let c = control_str::ControlStr::from($control_str)?;
-			let a = Into::<tildes::Args<'_>>::into([$(args!($ele)),*]);
-			c.reveal(a)
-		}
-	}
+// #[macro_export]
+// macro_rules! cl_format {
+//     ($control_str:expr, $($ele:expr),*) =>	{
+// 		{
+// 			let c = control_str::ControlStr::from($control_str)?;
+// 			let a = Into::<tildes::Args<'_>>::into([$(args!($ele)),*]);
+// 			c.reveal(a)
+// 		}
+// 	}
 
-}
+// }
 
-fn iter_to_args<'a, T: 'a + tildes::TildeAble>(a: impl Iterator<Item = &'a T>) -> tildes::Args<'a> {
-    a.map(|v| v as &'a dyn tildes::TildeAble)
-        .collect::<Vec<_>>()
-        .into()
-}
+// fn iter_to_args<'a, T: 'a + tildes::TildeAble>(a: impl Iterator<Item = &'a T>) -> tildes::Args<'a> {
+//     a.map(|v| v as &'a dyn tildes::TildeAble)
+//         .collect::<Vec<_>>()
+//         .into()
+// }
 
 #[cfg(test)]
 mod tests {
     use std::convert::TryInto;
 
     use super::*;
+    use cl_format_macros::*;
 
     #[test]
     fn test_args_macro_expand() -> Result<(), Box<dyn std::error::Error>> {
@@ -127,6 +128,12 @@ mod tests {
             ]) as &dyn tildes::TildeAble]) as &dyn tildes::TildeAble,
         ]);
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_cl_format_macro() -> Result<(), Box<dyn std::error::Error>> {
+        cl_format!("abc",    &1 ,   &a);
         Ok(())
     }
 }
