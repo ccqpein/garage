@@ -101,10 +101,14 @@ use std::{collections::HashMap, error::Error};
 
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
-    parse, parse_macro_input, parse_quote, punctuated::Punctuated, spanned::Spanned, Attribute,
-    Data, DataEnum, DeriveInput, Expr, Token, Variant,
+    buffer::{Cursor, TokenBuffer},
+    parse::{self, Parser},
+    parse_macro_input, parse_quote,
+    punctuated::Punctuated,
+    spanned::Spanned,
+    Attribute, Data, DataEnum, DeriveInput, Expr, Token, Variant,
 };
 
 #[proc_macro_derive(TildeAble, attributes(implTo))]
@@ -218,25 +222,119 @@ fn get_types_impl_to(attribute: &Attribute) -> Result<impl Iterator<Item = Ident
     Ok(result.into_iter())
 }
 
+///////////////////////
+///////////////////////
+///////////////////////
+
 #[proc_macro]
-pub fn cl_format(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as Punctuated<Expr, Token![,]>);
+pub fn cl_format(tokens: TokenStream) -> TokenStream {
+    let items = Punctuated::<Expr, Token![,]>::parse_terminated
+        .parse(tokens)
+        .unwrap();
 
-    //let input: Punctuated<Expr, Token![,]> = parse(input).unwrap();
+    dbg!(&items);
 
-    //let parser = Punctuated::<Expr, Token![,]>::parse_terminated;
-    //let input = parser(input);
+    let mut items = items.pairs();
 
-    dbg!(input);
+    let cs = match items.next() {
+        Some(cs) => match cs.value() {
+            Expr::Lit(l) => match &l.lit {
+                syn::Lit::Str(s) => {
+                    dbg!(s.value());
+                    let ss = s.value();
+                    quote! {let cs = control_str::ControlStr::from(#ss).unwrap();}
+                }
+                _ => panic!("the first arg have to be &str"),
+            },
+            Expr::Path(syn::ExprPath { attrs, qself, path }) => {
+                let pp = path
+                    .get_ident()
+                    .unwrap_or_else(|| panic!("path get ident failed"));
+                quote! {let cs = control_str::ControlStr::from(#pp).unwrap();}
+            }
+            Expr::Reference(er) => match er.expr.as_ref() {
+                Expr::Path(syn::ExprPath { attrs, qself, path }) => {
+                    let pp = path
+                        .get_ident()
+                        .unwrap_or_else(|| panic!("path get ident failed"));
+                    quote! {let cs = control_str::ControlStr::from(&#pp).unwrap();}
+                }
+                _ => panic!("the first arg have to be &str"),
+            },
+            _ => panic!("the first arg have to be &str"),
+        },
+        None => return proc_macro2::TokenStream::new().into(),
+    };
 
-    //dbg!(parse_quote! {input});
-    let mut result: Vec<proc_macro2::TokenStream> = vec![];
-    proc_macro2::TokenStream::from_iter(result.into_iter()).into()
+    //let args = items
+
+    dbg!(cs.to_string());
+    dbg!(items.len());
+    let args = args_picker(items);
+    dbg!(args.to_string());
+
+    let q = quote! {{
+        #cs
+        let args = #args;
+        cs.reveal(args)
+    }};
+    println!("here: \n{}", q.to_string());
+    q.into()
+    //proc_macro2::TokenStream::from_iter(result.into_iter()).into()
 }
 
-fn slice_recursive_reveal_macro(input: TokenStream) -> TokenStream {
-    dbg!(input);
-    TokenStream::new()
+fn args_picker(mut pairs: syn::punctuated::Pairs<Expr, Token![,]>) -> proc_macro2::TokenStream {
+    let mut result = vec![];
+    loop {
+        match pairs.next() {
+            Some(a) => match a.value() {
+                Expr::Path(syn::ExprPath { attrs, qself, path }) => {
+                    let pp = path
+                        .get_ident()
+                        .unwrap_or_else(|| panic!("path get ident failed"));
+                    result.push(quote! {#pp as &dyn tildes::TildeAble})
+                }
+                Expr::Reference(er) => match er.expr.as_ref() {
+                    Expr::Path(syn::ExprPath { attrs, qself, path }) => {
+                        let pp = path
+                            .get_ident()
+                            .unwrap_or_else(|| panic!("path get ident failed"));
+                        result.push(quote! {&#pp as &dyn tildes::TildeAble})
+                    }
+                    Expr::Lit(l) => {
+                        let x = match &l.lit {
+                            syn::Lit::Str(x) => x.to_token_stream(),
+                            syn::Lit::ByteStr(x) => x.to_token_stream(),
+                            syn::Lit::Byte(x) => x.to_token_stream(),
+                            syn::Lit::Char(x) => x.to_token_stream(),
+                            syn::Lit::Int(x) => x.to_token_stream(),
+                            syn::Lit::Float(x) => x.to_token_stream(),
+                            syn::Lit::Bool(x) => x.to_token_stream(),
+                            syn::Lit::Verbatim(x) => x.to_token_stream(),
+                            _ => unreachable!(),
+                        };
+
+                        result.push(quote! {&#x as &dyn tildes::TildeAble})
+                    }
+                    _ => panic!("unsupport"),
+                },
+                Expr::Array(a) => {
+                    let a = args_picker(a.elems.pairs());
+                    result.push(quote! {#a as &dyn tildes::TildeAble})
+                }
+                _ => panic!("only accept Path, Referance, and Array"),
+            },
+            None => {
+                return quote! {
+                    Into::<tildes::Args<'_>>::into([
+                        #(
+                            #result,
+                        )*
+                    ])
+                };
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -245,7 +343,8 @@ mod tests {
 
     use super::*;
     use proc_macro2::TokenStream;
-    use syn::{parse2, parse_quote, Variant};
+    use quote::quote;
+    use syn::{parse::Parser, parse2, parse_quote, Variant};
 
     #[test]
     fn test_get_types_impl_to() -> Result<(), Box<dyn Error>> {
@@ -318,9 +417,15 @@ mod tests {
     }
 
     #[test]
-    fn test_cl_format_macro() -> Result<(), Box<dyn Error>> {
-        //slice_recursive_reveal_macro(proc_macro2::TokenStream::from_str("\"abc\", &1, &a")?.into());
-        //cl_format!("abc", &1, &a);
+    fn test_args_picker() -> Result<(), Box<dyn Error>> {
+        //let s: syn::Expr = syn::parse_str("a!(a1, &a2, a3)")?;
+        //let s: Punctuated<Expr, Token![,]> = syn::parse_str("a!(a1, &a2, a3)")?;
+        let s: TokenStream = "a1, &a2, a3, [[&3]]".parse().unwrap();
+        let items = Punctuated::<Expr, Token![,]>::parse_terminated
+            .parse(s.into())
+            .unwrap();
+        dbg!(items);
+        //args_picker(tokens.into());
         Ok(())
     }
 }

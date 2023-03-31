@@ -82,6 +82,8 @@ macro_rules! args {
 mod tests {
     use std::convert::TryInto;
 
+    use crate::tildes::Args;
+
     use super::*;
     use cl_format_macros::*;
 
@@ -107,8 +109,8 @@ mod tests {
         dbg!(a);
 
         let ll: Vec<i32> = vec![1, 2, 3];
-
-        let ll = iter_to_args(ll.iter());
+        let ll = Into::<tildes::Args<'_>>::into(ll.as_slice());
+        //let ll = iter_to_args(ll.iter());
 
         let a = cl_format!("~a, ~a, ~a, ~{~a,~}", &1_i32, &2, &3, &ll);
 
@@ -133,7 +135,12 @@ mod tests {
 
     #[test]
     fn test_cl_format_macro() -> Result<(), Box<dyn std::error::Error>> {
-        cl_format!("abc",    &1 ,   &a);
+        cl_format!("abc", &1, &4, &3);
+
+        let s = "ss";
+        cl_format!(s, &1, &3, [[&3]]);
+
+        //cl_format!(&s, &1, &a, [[&3]]);
         Ok(())
     }
 }
