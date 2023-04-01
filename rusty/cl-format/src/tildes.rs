@@ -63,6 +63,15 @@ impl<'a, 's: 'a> From<Vec<&'s dyn TildeAble>> for Args<'a> {
     }
 }
 
+impl<'a, T> From<&'a [T]> for Args<'a>
+where
+    T: TildeAble,
+{
+    fn from(value: &'a [T]) -> Self {
+        Self::new(value.iter().map(|v| v as &dyn TildeAble).collect())
+    }
+}
+
 impl<'a> IntoIterator for Args<'a> {
     type Item = &'a dyn TildeAble;
 

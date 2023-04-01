@@ -232,7 +232,7 @@ pub fn cl_format(tokens: TokenStream) -> TokenStream {
         .parse(tokens)
         .unwrap();
 
-    dbg!(&items);
+    //dbg!(&items);
 
     let mut items = items.pairs();
 
@@ -240,7 +240,7 @@ pub fn cl_format(tokens: TokenStream) -> TokenStream {
         Some(cs) => match cs.value() {
             Expr::Lit(l) => match &l.lit {
                 syn::Lit::Str(s) => {
-                    dbg!(s.value());
+                    //dbg!(s.value());
                     let ss = s.value();
                     quote! {let cs = control_str::ControlStr::from(#ss).unwrap();}
                 }
@@ -266,21 +266,18 @@ pub fn cl_format(tokens: TokenStream) -> TokenStream {
         None => return proc_macro2::TokenStream::new().into(),
     };
 
-    //let args = items
-
-    dbg!(cs.to_string());
-    dbg!(items.len());
+    //dbg!(cs.to_string());
+    //dbg!(items.len());
     let args = args_picker(items);
-    dbg!(args.to_string());
+    //dbg!(args.to_string());
 
     let q = quote! {{
         #cs
         let args = #args;
         cs.reveal(args)
     }};
-    println!("here: \n{}", q.to_string());
+    //println!("result: \n{}", q.to_string());
     q.into()
-    //proc_macro2::TokenStream::from_iter(result.into_iter()).into()
 }
 
 fn args_picker(mut pairs: syn::punctuated::Pairs<Expr, Token![,]>) -> proc_macro2::TokenStream {
@@ -318,10 +315,11 @@ fn args_picker(mut pairs: syn::punctuated::Pairs<Expr, Token![,]>) -> proc_macro
                     }
                     _ => panic!("unsupport"),
                 },
-                Expr::Array(a) => {
-                    let a = args_picker(a.elems.pairs());
-                    result.push(quote! {#a as &dyn tildes::TildeAble})
-                }
+                // temporary value lifetime issue
+                // Expr::Array(a) => {
+                //     let a = args_picker(a.elems.pairs());
+                //     result.push(quote! {&#a as &dyn tildes::TildeAble})
+                // }
                 _ => panic!("only accept Path, Referance, and Array"),
             },
             None => {
@@ -425,7 +423,7 @@ mod tests {
             .parse(s.into())
             .unwrap();
         dbg!(items);
-        //args_picker(tokens.into());
+
         Ok(())
     }
 }

@@ -105,7 +105,7 @@ mod tests {
         let a = cl_format!("~a, ~a, ~a, ~S", &1_i32, &2, &3, &s);
         dbg!(a);
 
-        let a = cl_format!("~a, ~a, ~a, ~a", &1_i32, &2, &3, &s);
+        let a = cl_format!("~a, ~a, ~a, ~a, here", &1_i32, &2, &3, &s);
         dbg!(a);
 
         let ll: Vec<i32> = vec![1, 2, 3];
@@ -118,27 +118,41 @@ mod tests {
 
         //
         //
-        Into::<tildes::Args<'_>>::into([
-            &1 as &dyn tildes::TildeAble,
-            &2 as &dyn tildes::TildeAble,
-            &Into::<tildes::Args<'_>>::into([
-                &3 as &dyn tildes::TildeAble,
-                &4 as &dyn tildes::TildeAble,
-            ]) as &dyn tildes::TildeAble,
-            &Into::<tildes::Args<'_>>::into([&Into::<tildes::Args<'_>>::into([
-                &5 as &dyn tildes::TildeAble
-            ]) as &dyn tildes::TildeAble]) as &dyn tildes::TildeAble,
-        ]);
+        // let x = Into::<tildes::Args<'_>>::into([
+        //     &1 as &dyn tildes::TildeAble,
+        //     &2 as &dyn tildes::TildeAble,
+        //     &Into::<tildes::Args<'_>>::into([
+        //         &3 as &dyn tildes::TildeAble,
+        //         &4 as &dyn tildes::TildeAble,
+        //     ]) as &dyn tildes::TildeAble,
+        //     &Into::<tildes::Args<'_>>::into([&Into::<tildes::Args<'_>>::into([
+        //         &5 as &dyn tildes::TildeAble
+        //     ]) as &dyn tildes::TildeAble]) as &dyn tildes::TildeAble,
+        // ]);
+        // dbg!(x);
 
         Ok(())
     }
 
     #[test]
     fn test_cl_format_macro() -> Result<(), Box<dyn std::error::Error>> {
-        cl_format!("abc", &1, &4, &3);
+        let var_name = cl_format!("abc", &1, &4, &3);
+        let a = var_name;
+        dbg!(a);
 
         let s = "ss";
-        cl_format!(s, &1, &3, [[&3]]);
+        //cl_format!(s, &1, &3, [[&3]]);
+
+        //let i = 3;
+        //cl_format!(s, &1, &3, [[&3]]);
+
+        // Into::<tildes::Args<'_>>::into([
+        //     &1 as &dyn tildes::TildeAble,
+        //     &3 as &dyn tildes::TildeAble,
+        //     Into::<tildes::Args<'_>>::into([Into::<tildes::Args<'_>>::into([
+        //         &3 as &dyn tildes::TildeAble
+        //     ]) as &dyn tildes::TildeAble]) as &dyn tildes::TildeAble,
+        // ]);
 
         //cl_format!(&s, &1, &a, [[&3]]);
         Ok(())

@@ -75,11 +75,15 @@ impl<'a> ControlStr<'a> {
     pub fn reveal<'s>(&self, args: Args<'s>) -> Result<String, Box<dyn std::error::Error + 's>> {
         let mut result = String::new();
         let mut start = 0;
+        let mut end = self.inner.len();
+
         for (r, s) in self.reveal_tildes(args) {
             result += &self.inner[start..r.0];
             result += &s?.unwrap_or("".to_string());
             start = r.1;
         }
+
+        result += &self.inner[start..end];
 
         Ok(result)
     }
