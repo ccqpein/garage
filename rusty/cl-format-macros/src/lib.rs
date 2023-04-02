@@ -226,6 +226,7 @@ fn get_types_impl_to(attribute: &Attribute) -> Result<impl Iterator<Item = Ident
 ///////////////////////
 ///////////////////////
 
+// abandon, use the one in cl-format
 #[proc_macro]
 pub fn cl_format(tokens: TokenStream) -> TokenStream {
     let items = Punctuated::<Expr, Token![,]>::parse_terminated
@@ -280,6 +281,7 @@ pub fn cl_format(tokens: TokenStream) -> TokenStream {
     q.into()
 }
 
+// abandon, use the one in cl-format
 fn args_picker(mut pairs: syn::punctuated::Pairs<Expr, Token![,]>) -> proc_macro2::TokenStream {
     let mut result = vec![];
     loop {

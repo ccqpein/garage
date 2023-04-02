@@ -1,11 +1,11 @@
+use crate::*;
+use cl_format_macros::*;
 use std::any::Any;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::io::{BufRead, Cursor, Read, Seek, SeekFrom};
-
-use crate::*;
-use cl_format_macros::*;
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct Args<'a> {
@@ -43,6 +43,10 @@ impl<'a> Args<'a> {
     pub fn left_count(&self) -> usize {
         self.len - *self.ind.borrow()
     }
+
+    pub fn reset(&self) {
+        *self.ind.borrow_mut() = 0;
+    }
 }
 
 impl<'a, const N: usize> From<[&'a dyn TildeAble; N]> for Args<'a> {
@@ -63,12 +67,21 @@ impl<'a, 's: 'a> From<Vec<&'s dyn TildeAble>> for Args<'a> {
     }
 }
 
-impl<'a, T> From<&'a [T]> for Args<'a>
+// impl<'a, T> From<&'a [T]> for Args<'a>
+// where
+//     T: TildeAble,
+// {
+//     fn from(value: &'a [T]) -> Self {
+//         Self::new(value.iter().map(|v| v as &dyn TildeAble).collect())
+//     }
+// }
+
+impl<'a, T> From<&T> for Args<'a>
 where
-    T: TildeAble,
+    T: Deref<Target = [&'a dyn TildeAble]>,
 {
-    fn from(value: &'a [T]) -> Self {
-        Self::new(value.iter().map(|v| v as &dyn TildeAble).collect())
+    fn from(value: &T) -> Self {
+        Self::from(value.deref())
     }
 }
 
@@ -112,7 +125,7 @@ enum ErrorKind {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-enum TildeCondKind {
+pub enum TildeCondKind {
     Nil(bool), // ~[, bool for the last ~:;
     Sharp,     // ~#[
     At,        // ~@[
@@ -193,8 +206,8 @@ impl TildeKind {
         &self,
         arg: &dyn TildeAble,
     ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-        dbg!(arg);
-        dbg!(&self);
+        //dbg!(arg);
+        //dbg!(&self);
         match self {
             TildeKind::Char => {
                 let a = arg.into_tildekind_char().ok_or::<TildeError>(
@@ -427,7 +440,7 @@ impl<'a> TildeKindLoop for Args<'a> {
 
                         result.push(t.reveal(self)?);
                     }
-                    dbg!(self);
+                    //dbg!(self);
                     if self.left_count() == 0 {
                         break;
                     }
@@ -447,12 +460,59 @@ impl<'a> TildeKindLoop for Args<'a> {
     }
 }
 
+// impl<'a> TildeKindLoop for Vec<&dyn TildeAble> {
+// 	match tkind {
+//             // self[0] is the Vec<&dyn TildeAble> of loop
+//             TildeKind::Loop((_, TildeLoopKind::Nil)) => {
+//                 let mut new_kind = tkind.clone();
+//                 match &mut new_kind {
+//                     TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
+//                     _ => unreachable!(),
+//                 };
+//                 let a = self.pop().ok_or::<String>("run out args".into())?;
+//                 new_kind.match_reveal(a)
+//             }
+//             TildeKind::Loop((vv, TildeLoopKind::At)) => {
+//                 //let mut new_args = self.clone();
+//                 let mut result = vec![];
+
+//                 'a: loop {
+//                     for t in vv {
+//                         if let TildeKind::LoopEnd = t.value {
+//                             if self.left_count() != 0 {
+//                                 continue;
+//                             } else {
+//                                 break 'a;
+//                             }
+//                         }
+
+//                         result.push(t.reveal(self)?);
+//                     }
+//                     //dbg!(self);
+//                     if self.left_count() == 0 {
+//                         break;
+//                     }
+//                 }
+
+//                 Ok(Some(
+//                     result
+//                         .into_iter()
+//                         .filter_map(|a| a)
+//                         .collect::<Vec<_>>()
+//                         .as_slice()
+//                         .join(""),
+//                 ))
+//             }
+//             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
+//         }
+// }
+
 //========================================
 // TildeKindCond
 //========================================
 impl TildeKindCond for usize {
     fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
-        dbg!(self);
+        //dbg!(self);
         match tkind {
             TildeKind::Cond((vv, TildeCondKind::Nil(true))) => match vv.get(*self) {
                 Some(tt) => tt.reveal(&TildeNil),
@@ -612,6 +672,7 @@ impl TildeKindStandard for char {
         Ok(Some(format!("'{}'", self)))
     }
 }
+
 multi_tilde_impl!(
     TildeKindStandard,
     [f32, f64, i32, i64, usize, bool, u32, u64],
@@ -757,7 +818,7 @@ impl Tilde {
 
     /// cursor should located on '~'
     pub fn parse(c: &mut Cursor<&'_ str>) -> Result<Self, Box<dyn std::error::Error>> {
-        dbg!(&c);
+        //dbg!(&c);
         let parser = Self::scan_for_kind(c)?;
         parser(c)
     }
@@ -1122,7 +1183,7 @@ impl Tilde {
         Err(TildeError::new(ErrorKind::ParseError, "cannot find the 's' or 'S'").into())
     }
 
-    //:= TODO: a lot parse functions below
+    //:= TODO: a lot parsers functions below
 }
 
 #[cfg(test)]

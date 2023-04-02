@@ -75,7 +75,7 @@ impl<'a> ControlStr<'a> {
     pub fn reveal<'s>(&self, args: Args<'s>) -> Result<String, Box<dyn std::error::Error + 's>> {
         let mut result = String::new();
         let mut start = 0;
-        let mut end = self.inner.len();
+        let end = self.inner.len();
 
         for (r, s) in self.reveal_tildes(args) {
             result += &self.inner[start..r.0];
@@ -161,6 +161,9 @@ mod tests {
             )]
         );
 
+        let c = ControlStr::scan(Cursor::new("~a, ~a, ~a, ~{~a~^,~}"));
+        dbg!(c);
+
         Ok(())
     }
 
@@ -205,8 +208,23 @@ mod tests {
         assert_eq!(result, parse_test_result(cs.reveal_tildes(arg.into()))?);
 
         let case = "hello, ~@{~a~^, ~}";
-        let mut cs = ControlStr::new(case)?;
+        let cs = ControlStr::new(case)?;
         let arg: Vec<&dyn TildeAble> = vec![&1_i64, &2_i64, &3_i64];
+        let result: Vec<Option<String>> = vec!["1, 2, 3".to_string()]
+            .into_iter()
+            .map(|s| Some(s))
+            .collect();
+        assert_eq!(result, parse_test_result(cs.reveal_tildes(arg.into()))?);
+
+        let case = "hello, ~{~a~^, ~}";
+        let cs = ControlStr::new(case)?;
+        dbg!(&cs);
+        let a0: Args = Args::new(vec![
+            &1_i64 as &dyn TildeAble,
+            &2_i64 as &dyn TildeAble,
+            &3_i64 as &dyn TildeAble,
+        ]);
+        let arg: Vec<&dyn TildeAble> = vec![&a0];
         let result: Vec<Option<String>> = vec!["1, 2, 3".to_string()]
             .into_iter()
             .map(|s| Some(s))
