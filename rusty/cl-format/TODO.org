@@ -14,7 +14,11 @@
 - [ ] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cbe.htm][X: Hexadecimal]]
 - [X] [[http://www.lispworks.com/documentation/lw50/CLHS/Body/22_cdb.htm][S: Standard]]
   
-** PROCESSING macro for usage
+** DONE macro for usage
+CLOSED: [2023-04-02 Sun 14:41]
+:LOGBOOK:
+- State "DONE"       from "PROCESSING" [2023-04-02 Sun 14:41]
+:END:
 like ~cl_format!~
 
 ** DONE view layer

@@ -134,8 +134,9 @@ pub enum TildeCondKind {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TildeLoopKind {
-    Nil, // ~{~}
-    At,  // ~@{~}
+    Nil,      // ~{~}
+    NilColon, // ~{~:}
+    At,       // ~@{~}
 }
 
 impl TildeCondKind {
@@ -361,6 +362,20 @@ impl<'a> TildeAble for Args<'a> {
     }
 }
 
+impl TildeAble for Vec<&dyn TildeAble> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn into_tildekind_va(&self) -> Option<&dyn TildeKindVa> {
+        Some(self)
+    }
+
+    fn into_tildekind_loop(&self) -> Option<&dyn TildeKindLoop> {
+        Some(self)
+    }
+}
+
 //========================================
 // TildeKindDigit
 //========================================
@@ -408,6 +423,12 @@ impl TildeKindVa for TildeNil {
     }
 }
 
+impl TildeKindVa for Vec<&dyn TildeAble> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        Ok(Some(format!("{:?}", self)))
+    }
+}
+
 //========================================
 // TildeKindLoop
 //========================================
@@ -415,14 +436,9 @@ impl<'a> TildeKindLoop for Args<'a> {
     fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             // self[0] is the Vec<&dyn TildeAble> of loop
-            TildeKind::Loop((_, TildeLoopKind::Nil)) => {
-                let mut new_kind = tkind.clone();
-                match &mut new_kind {
-                    TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
-                    _ => unreachable!(),
-                };
+            TildeKind::Loop((_, TildeLoopKind::Nil | TildeLoopKind::NilColon)) => {
                 let a = self.pop().ok_or::<String>("run out args".into())?;
-                new_kind.match_reveal(a)
+                tkind.match_reveal(a)
             }
             TildeKind::Loop((vv, TildeLoopKind::At)) => {
                 //let mut new_args = self.clone();
@@ -455,58 +471,42 @@ impl<'a> TildeKindLoop for Args<'a> {
                         .join(""),
                 ))
             }
-            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format Arg to Loop").into()),
         }
     }
 }
 
-// impl<'a> TildeKindLoop for Vec<&dyn TildeAble> {
-// 	match tkind {
-//             // self[0] is the Vec<&dyn TildeAble> of loop
-//             TildeKind::Loop((_, TildeLoopKind::Nil)) => {
-//                 let mut new_kind = tkind.clone();
-//                 match &mut new_kind {
-//                     TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => *k = TildeLoopKind::At,
-//                     _ => unreachable!(),
-//                 };
-//                 let a = self.pop().ok_or::<String>("run out args".into())?;
-//                 new_kind.match_reveal(a)
-//             }
-//             TildeKind::Loop((vv, TildeLoopKind::At)) => {
-//                 //let mut new_args = self.clone();
-//                 let mut result = vec![];
+impl<'a> TildeKindLoop for Vec<&dyn TildeAble> {
+    fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        match tkind {
+            TildeKind::Loop((_, TildeLoopKind::Nil)) => {
+                //:= NEXT
+                let mut new_kind = tkind.clone();
 
-//                 'a: loop {
-//                     for t in vv {
-//                         if let TildeKind::LoopEnd = t.value {
-//                             if self.left_count() != 0 {
-//                                 continue;
-//                             } else {
-//                                 break 'a;
-//                             }
-//                         }
-
-//                         result.push(t.reveal(self)?);
-//                     }
-//                     //dbg!(self);
-//                     if self.left_count() == 0 {
-//                         break;
-//                     }
-//                 }
-
-//                 Ok(Some(
-//                     result
-//                         .into_iter()
-//                         .filter_map(|a| a)
-//                         .collect::<Vec<_>>()
-//                         .as_slice()
-//                         .join(""),
-//                 ))
-//             }
-//             _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format to Loop").into()),
-//         }
-// }
-
+                match &mut new_kind {
+                    TildeKind::Loop((_, k @ TildeLoopKind::Nil)) => {
+                        if self.len() != 0 {
+                            *k = TildeLoopKind::At
+                        } else {
+                            return Ok(None);
+                        }
+                    }
+                    _ => unreachable!(),
+                };
+                new_kind.match_reveal(&Args::from(self))
+            }
+            TildeKind::Loop((_, TildeLoopKind::NilColon)) => {
+                let mut new_kind = tkind.clone();
+                match &mut new_kind {
+                    TildeKind::Loop((_, k @ TildeLoopKind::NilColon)) => *k = TildeLoopKind::At,
+                    _ => unreachable!(),
+                };
+                new_kind.match_reveal(&Args::from(self))
+            }
+            _ => Err(TildeError::new(ErrorKind::RevealError, "cannot format Vec to Loop").into()),
+        }
+    }
+}
 //========================================
 // TildeKindCond
 //========================================
@@ -848,7 +848,7 @@ impl Tilde {
 
         let mut result = vec![];
         let mut buf = vec![];
-        let mut char_buf = [0u8; 2];
+        let mut char_buf = [0u8; 3];
 
         loop {
             // read text until the next '~'
@@ -878,17 +878,44 @@ impl Tilde {
 
             c.read(&mut char_buf)?;
 
-            if let Ok(s) = std::str::from_utf8(&char_buf) && s == "~}" {
-				return Ok(Tilde::new(total_len + 2, TildeKind::Loop((result, loop_kind))));
-			}
+            match char_buf {
+                [b'~', b'}', 0] => {
+                    return Ok(Tilde::new(
+                        total_len + 2,
+                        TildeKind::Loop((result, loop_kind)),
+                    ));
+                }
+                [b'~', b'}', ..] => {
+                    c.seek(SeekFrom::Current(-1))?;
+                    return Ok(Tilde::new(
+                        total_len + 2,
+                        TildeKind::Loop((result, loop_kind)),
+                    ));
+                }
+                [b'~', b':', b'}'] => {
+                    return Ok(Tilde::new(
+                        total_len + 3,
+                        TildeKind::Loop((
+                            result,
+                            if loop_kind == TildeLoopKind::Nil {
+                                TildeLoopKind::NilColon
+                            } else {
+                                loop_kind
+                            },
+                        )),
+                    ));
+                }
+                _ => {
+                    let back = 3 - char_buf.iter().filter(|b| **b == 0).count() as i64;
+                    c.seek(SeekFrom::Current(-back))?;
+                }
+            }
 
-            c.seek(SeekFrom::Current(-2))?;
-            //dbg!(&c);
             // read the tilde
             let next = Tilde::parse(c)?;
             total_len += next.len;
             result.push(next);
-
+            char_buf = [0; 3];
             buf.clear()
         }
     }
@@ -1322,6 +1349,21 @@ mod tests {
                         }
                     ],
                     TildeLoopKind::At
+                ))
+            )
+        );
+
+        let mut case = Cursor::new("~{~a~:}");
+        assert_eq!(
+            Tilde::parse_loop(&mut case)?,
+            Tilde::new(
+                7,
+                TildeKind::Loop((
+                    vec![Tilde {
+                        len: 2,
+                        value: TildeKind::Va,
+                    },],
+                    TildeLoopKind::NilColon
                 ))
             )
         );

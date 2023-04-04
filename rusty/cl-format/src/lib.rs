@@ -53,6 +53,13 @@ macro_rules! args {
 /// }
 #[macro_export]
 macro_rules! cl_format {
+	($control_str:expr) =>	{
+		{
+			let c = crate::ControlStr::from($control_str).expect("making control string has issue");
+			let a = crate::Args::new(vec![]);
+			c.reveal(a)
+		}
+	};
     ($control_str:expr, $($ele:expr),*) =>	{
 		{
 			let c = crate::ControlStr::from($control_str).expect("making control string has issue");

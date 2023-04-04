@@ -99,6 +99,8 @@ impl<'a> TryFrom<&'a str> for ControlStr<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::args;
+
     use super::*;
 
     fn parse_test_result<'x, 's>(
@@ -197,8 +199,9 @@ mod tests {
         let arg2 = 15_f32;
         let a: Vec<&dyn TildeAble> = vec![&arg0, &arg1];
         //let arg00 = Args::from(vec![&arg0 as &dyn TildeAble, &arg1]);
-        let arg00 = Args::new(a);
-        let arg: Vec<&dyn TildeAble> = vec![&arg00, &arg2];
+        //let arg00 = Args::new(a);
+        //let arg: Vec<&dyn TildeAble> = vec![&arg00, &arg2];
+        let arg: Vec<&dyn TildeAble> = vec![&a, &arg2];
 
         let result: Vec<Option<String>> = vec!["1314".to_string(), "15".to_string()]
             .into_iter()
@@ -219,11 +222,16 @@ mod tests {
         let case = "hello, ~{~a~^, ~}";
         let cs = ControlStr::new(case)?;
         dbg!(&cs);
-        let a0: Args = Args::new(vec![
+        // let a0: Args = Args::new(vec![
+        //     &1_i64 as &dyn TildeAble,
+        //     &2_i64 as &dyn TildeAble,
+        //     &3_i64 as &dyn TildeAble,
+        // ]);
+        let a0: Vec<&dyn TildeAble> = vec![
             &1_i64 as &dyn TildeAble,
             &2_i64 as &dyn TildeAble,
             &3_i64 as &dyn TildeAble,
-        ]);
+        ];
         let arg: Vec<&dyn TildeAble> = vec![&a0];
         let result: Vec<Option<String>> = vec!["1, 2, 3".to_string()]
             .into_iter()
@@ -398,8 +406,8 @@ mod tests {
         let mut cs = ControlStr::new(case)?;
         //dbg!(&cs);
 
-        //let a = vec![&1_i64 as &dyn TildeAble, &2_i64 as &dyn TildeAble];
-        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64 as &dyn TildeAble]);
+        let a = vec![&1_i64 as &dyn TildeAble, &2_i64 as &dyn TildeAble];
+        //let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64 as &dyn TildeAble]);
         let arg: Vec<&dyn TildeAble> = vec![&a];
 
         assert_eq!(
@@ -412,17 +420,16 @@ mod tests {
         let case = "~{~#[~;~a~;~a and ~a~:;~@{~a~#[~;, and ~:;, ~]~}~]~}";
         let mut cs = ControlStr::new(case)?;
         //dbg!(&cs);
-        //let a = vec![];
-        let a = Args::new(vec![]);
+
+        //let a = Args::new(vec![]);
+        let a: Vec<&dyn TildeAble> = vec![];
+        //let aa = vec![&a as &dyn TildeAble];
         let arg: Vec<&dyn TildeAble> = vec![&a];
-        assert_eq!(
-            vec![Some(String::new())],
-            parse_test_result(cs.reveal_tildes(arg.into()))?
-        );
+        assert_eq!(vec![None], parse_test_result(cs.reveal_tildes(arg.into()))?);
 
         let mut cs = ControlStr::new(case)?;
-        //let a = vec![&1_i64 as &dyn TildeAble];
-        let a = Args::from([&1_i64 as &dyn TildeAble]);
+        let a = vec![&1_i64 as &dyn TildeAble];
+        //let a = Args::from([&1_i64 as &dyn TildeAble]);
         let arg = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1".to_string()]
@@ -433,8 +440,8 @@ mod tests {
         );
 
         let mut cs = ControlStr::new(case)?;
-        //let a = vec![&1_i64 as &dyn TildeAble, &2_i64];
-        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64]);
+        let a = vec![&1_i64 as &dyn TildeAble, &2_i64];
+        //let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1 and 2".to_string()]
@@ -445,8 +452,8 @@ mod tests {
         );
 
         let mut cs = ControlStr::new(case)?;
-        //let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64];
-        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64]);
+        let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64];
+        //let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1, 2, and 3".to_string()]
@@ -457,8 +464,8 @@ mod tests {
         );
 
         let mut cs = ControlStr::new(case)?;
-        //let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64];
-        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64]);
+        let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64];
+        //let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1, 2, 3, and 4".to_string()]
@@ -469,8 +476,8 @@ mod tests {
         );
 
         let mut cs = ControlStr::new(case)?;
-        //let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64, &5_i64];
-        let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64, &5_i64]);
+        let a = vec![&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64, &5_i64];
+        //let a = Args::from([&1_i64 as &dyn TildeAble, &2_i64, &3_i64, &4_i64, &5_i64]);
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1, 2, 3, 4, and 5".to_string()]
@@ -482,9 +489,13 @@ mod tests {
 
         let case = "~{~#[empty~;~a~;~a and ~a~:;~@{~a~#[~;, and ~:;, ~]~}~]~}";
         let mut cs = ControlStr::new(case)?;
-        //dbg!(&cs);
-        //let a = vec![];
-        let a = Args::new(vec![]);
+        let a = vec![];
+        //let a = Args::new(vec![]);
+        let arg: Vec<&dyn TildeAble> = vec![&a];
+        assert_eq!(vec![None], parse_test_result(cs.reveal_tildes(arg.into()))?);
+
+        let case = "~{~#[empty~;~a~;~a and ~a~:;~@{~a~#[~;, and ~:;, ~]~}~]~:}";
+        let mut cs = ControlStr::new(case)?;
         let arg: Vec<&dyn TildeAble> = vec![&a];
         assert_eq!(
             vec!["empty".to_string()]
@@ -514,7 +525,8 @@ mod tests {
         let mut cs = ControlStr::new(case)?;
         dbg!(&cs);
 
-        let a = Args::from([&1_i64 as &dyn TildeAble, &2, &3, &4]);
+        //let a = Args::from([&1_i64 as &dyn TildeAble, &2, &3, &4]);
+        let a = vec![&1_i64 as &dyn TildeAble, &2, &3, &4];
         let arg: Vec<&dyn TildeAble> = vec![&a as &dyn TildeAble];
         assert_eq!(
             vec!["1 3".to_string()]
