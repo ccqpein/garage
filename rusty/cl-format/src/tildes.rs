@@ -480,7 +480,6 @@ impl<'a> TildeKindLoop for Vec<&dyn TildeAble> {
     fn format(&self, tkind: &TildeKind) -> Result<Option<String>, Box<dyn std::error::Error>> {
         match tkind {
             TildeKind::Loop((_, TildeLoopKind::Nil)) => {
-                //:= NEXT
                 let mut new_kind = tkind.clone();
 
                 match &mut new_kind {
@@ -507,6 +506,7 @@ impl<'a> TildeKindLoop for Vec<&dyn TildeAble> {
         }
     }
 }
+
 //========================================
 // TildeKindCond
 //========================================
@@ -1210,7 +1210,7 @@ impl Tilde {
         Err(TildeError::new(ErrorKind::ParseError, "cannot find the 's' or 'S'").into())
     }
 
-    //:= TODO: a lot parsers functions below
+    // more parsers functions below
 }
 
 #[cfg(test)]
