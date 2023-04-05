@@ -144,6 +144,8 @@ async fn make_messages_in_body(
         .map(|detail| detail.to_json_message())
         .collect::<Vec<_>>();
 
+    //:= if add the system message, add here
+
     Ok(json!(details))
 }
 
