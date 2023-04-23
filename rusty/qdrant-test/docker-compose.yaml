@@ -1,0 +1,11 @@
+version: "3"
+services:
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant:/qdrant
+      #- ./path/to/custom_config.yaml:/qdrant/config/production.yaml
+volumes:
+  qdrant: # give external global volumn inside orbstack folder

@@ -34,7 +34,14 @@
   "messages is the list of struct message"
   (format nil "{\"model\": ~S, \"messages\":[~{~a~}]}"
 		  model
-		  (mapcar (lambda (m) (to-json m)) messages))
-  )
+		  (mapcar (lambda (m) (to-json m)) messages)))
 
-;;:= todo: response from json to message
+(defun parse-response (resp)
+  "get the response from chatgpt and parse it to message struct"
+  (let ((table (yason:parse (car (multiple-value-list resp)))))
+	(let ((choices (gethash "choices" table)))
+	  (let ((message (gethash "message" (car choices))))
+		(make-message :role (gethash "role" message)
+					  :content (gethash "content" message))))	
+	))
+
