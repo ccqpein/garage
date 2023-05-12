@@ -157,3 +157,11 @@ pub enum TildeKind {
     #[implTo(char)]
     Char,
 }
+
+////////// test super trait
+
+struct A {}
+
+impl A {
+    fn function_inside() {}
+}
