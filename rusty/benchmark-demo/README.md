@@ -11,3 +11,5 @@ then check the `target/criterion`
 ## method 2 ##
 
 use https://github.com/flamegraph-rs/flamegraph
+
+`cargo install flamegraph`
