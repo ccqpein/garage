@@ -2,7 +2,10 @@ use super::*;
 use chrono::{Timelike, Utc};
 use chrono_tz::America::New_York;
 use lazy_static::*;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader, Cursor, Read},
+};
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::{
     sync::{
@@ -308,6 +311,23 @@ pub enum ReminderComm {
     ErrorCommand(String),
 }
 
+impl ReminderComm {
+    fn is_err(&self) -> bool {
+        if let Self::ErrorCommand(_) = self {
+            return true;
+        }
+        false
+    }
+
+    fn reminder_time(&self) -> Option<ReminderTime> {
+        match self {
+            ReminderComm::InitReminder(t) => Some(t.clone()),
+            ReminderComm::MakeReminder(_, t) => Some(t.clone()),
+            _ => None,
+        }
+    }
+}
+
 pub struct ReminderInputConsumer {
     snd: Sender<ReminderInput>,
 }
@@ -373,19 +393,35 @@ impl ReminderInput {
 
     fn from_msg(msg: &Message) -> Option<Self> {
         let data = match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
-            _ => None,
+            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => data.to_string(),
+            _ => String::new(),
         };
 
-        let data: Vec<_> = if let Some(line) = data {
-            line.split_whitespace().map(|s| s.to_lowercase()).collect()
-        } else {
-            return None;
+        let mut c = Cursor::new(data);
+
+        // read the fist line
+        let mut first_line = String::new();
+        match c.read_line(&mut first_line) {
+            Ok(_) => (),
+            Err(e) => {
+                debug!("read line err: {}", e.to_string());
+                return None;
+            }
         };
+
+        if first_line.is_empty() {
+            return None;
+        }
+
+        // split the first line
+        let data: Vec<_> = first_line
+            .split_whitespace()
+            .map(|s| s.to_lowercase())
+            .collect();
 
         match data.get(0).map(|s| s.as_str()) {
             Some("reminder") => {
-                let comm = data.get(1).map_or(
+                let mut comm = data.get(1).map_or(
                     ReminderComm::InitReminder(ReminderTime::parse("30m").unwrap()),
                     |time| {
                         ReminderTime::parse(time).map_or_else(
@@ -394,6 +430,32 @@ impl ReminderInput {
                         )
                     },
                 );
+
+                // read body
+                // make reminder body directly
+                let mut body = vec![];
+                let body_lenght = match c.read_to_end(&mut body) {
+                    Ok(n) => n,
+                    Err(e) => {
+                        debug!("read body err: {}", e.to_string());
+                        return None;
+                    }
+                };
+
+                if body_lenght != 0 && !comm.is_err() {
+                    let bb = match String::from_utf8(body) {
+                        Ok(s) => s,
+                        Err(e) => {
+                            debug!("make body string has err {}", e.to_string());
+                            String::new()
+                        }
+                    };
+                    if let Some(tt) = comm.reminder_time() {
+                        // change command
+                        comm = ReminderComm::MakeReminder(bb, tt)
+                    }
+                }
+
                 Some(Self {
                     chat_id: msg.chat.id(),
                     command: comm,
