@@ -432,28 +432,14 @@ impl ReminderInput {
                 );
 
                 // read body
-                // make reminder body directly
-                let mut body = vec![];
-                let body_lenght = match c.read_to_end(&mut body) {
-                    Ok(n) => n,
-                    Err(e) => {
-                        debug!("read body err: {}", e.to_string());
-                        return None;
-                    }
-                };
-
-                if body_lenght != 0 && !comm.is_err() {
-                    let bb = match String::from_utf8(body) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            debug!("make body string has err {}", e.to_string());
-                            String::new()
+                match read_reminder_body(c, msg) {
+                    Some(b) if !comm.is_err() => {
+                        if let Some(tt) = comm.reminder_time() {
+                            // change command
+                            comm = ReminderComm::MakeReminder(b, tt)
                         }
-                    };
-                    if let Some(tt) = comm.reminder_time() {
-                        // change command
-                        comm = ReminderComm::MakeReminder(bb, tt)
                     }
+                    _ => (),
                 }
 
                 Some(Self {
@@ -479,6 +465,43 @@ impl ReminderInput {
                 })
             }
             _ => None,
+        }
+    }
+}
+
+/// helper function read the reminder body directly rather than the async wait
+fn read_reminder_body(mut c: Cursor<String>, msg: &Message) -> Option<String> {
+    // read reply first
+    match &msg.reply_to_message {
+        Some(m) => match m.as_ref() {
+            telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
+                MessageKind::Text { data, .. } => return Some(data.to_string()),
+                _ => debug!("only support reply text"),
+            },
+            _ => debug!("not support"),
+        },
+        None => (),
+    }
+
+    // read the body of message
+    let mut body = vec![];
+    let body_lenght = match c.read_to_end(&mut body) {
+        Ok(n) => n,
+        Err(e) => {
+            debug!("read body err: {}", e.to_string());
+            return None;
+        }
+    };
+
+    if body_lenght == 0 {
+        None
+    } else {
+        match String::from_utf8(body) {
+            Ok(s) => Some(s),
+            Err(e) => {
+                debug!("make body string has err {}", e.to_string());
+                None
+            }
         }
     }
 }
