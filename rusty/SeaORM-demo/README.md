@@ -12,3 +12,5 @@
 
 try to use this project for sqlite
 
+`sea-orm-cli migrate init`
+

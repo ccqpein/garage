@@ -20,7 +20,7 @@ use https://github.com/flamegraph-rs/flamegraph
 but I need to stop for SIP [blog](https://poweruser.blog/using-dtrace-with-sip-enabled-3826a352e64b):
 
 ```
-Command-R in restarting
+Command-R in restarting (if not silicon CPU)
 
 csrutil enable --without dtrace
 ```
