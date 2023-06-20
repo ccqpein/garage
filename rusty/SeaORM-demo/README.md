@@ -10,19 +10,23 @@
 
 ### update 6/13/2023 ###
 
+[some tutorial](https://dev.to/anshulxyz/guide-to-getting-started-with-seaorm-an-orm-for-rust-2fen)
+
 try to use this project for sqlite
 
 `sea-orm-cli migrate init`
 
 **make sqlite db file**
 
-`sqlite3 ./db/test_case.sql`
+`sqlite3 ./db/test_case.db`
 
 then 
 
 `.dump`
 
 **migration**
+
+`sea-orm-cli migrate init`
 
 `cd migration && cargo run -- up`
 
@@ -35,3 +39,4 @@ then
 `cd entity && cargo add sea-orm && cd ..`
 
 `mv entity/src/mod.rs entity/src/lib.rs` (I dont know why they still use mod)
+
