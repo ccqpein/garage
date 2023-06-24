@@ -1,6 +1,6 @@
 use super::*;
-use entity::prelude::GptWhiteList;
 use lazy_static::*;
+use sea_orm::{DatabaseConnection, EntityTrait};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, HashSet},
@@ -211,6 +211,7 @@ pub struct ChatGPT {
     vault_path: String,
 
     my_name: String,
+    db: DatabaseConnection,
 
     openai_token: String,
     reqwest_client: reqwest::Client,
@@ -225,8 +226,13 @@ pub struct ChatGPT {
 }
 
 impl ChatGPT {
-    pub fn new(deliver_sender: Sender<Msg2Deliver>, vault_path: String) -> Result<Self, String> {
+    pub fn new(
+        deliver_sender: Sender<Msg2Deliver>,
+        vault_path: String,
+        db: &DatabaseConnection,
+    ) -> Result<Self, String> {
         let (sender, receiver) = mpsc::channel(10);
+        // cache my id
         let f =
             BufReader::new(File::open(vault_path.clone() + "/myname").map_err(|e| e.to_string())?);
         let my_name = f
@@ -244,7 +250,7 @@ impl ChatGPT {
             .ok_or("Read 'gpt_token' failed".to_string())?
             .map_err(|e| e.to_string())?;
 
-        // group
+        // cached groups ids
         let f = BufReader::new(
             File::open(vault_path.clone() + "/stored_groups").map_err(|e| e.to_string())?,
         );
@@ -258,7 +264,7 @@ impl ChatGPT {
             stored_groups
         );
 
-        // users
+        // cache the users users
         let f = BufReader::new(
             File::open(vault_path.clone() + "/stored_usernames").map_err(|e| e.to_string())?,
         );
@@ -267,6 +273,16 @@ impl ChatGPT {
             .filter_map(|l| l.ok())
             .collect::<HashSet<String>>();
 
+        //:= test the db read
+        let db_clone = db.clone();
+        tokio::spawn(async move {
+            let entries = entity::prelude::GptWhiteList::find()
+                .all(&db_clone)
+                .await
+                .unwrap();
+            debug!("read the whitelist from db: {:?}", entries);
+        });
+
         info!(
             "these usernames added to waken_usernames directly: {:?}",
             stored_usernames
@@ -274,6 +290,7 @@ impl ChatGPT {
 
         Ok(ChatGPT {
             vault_path,
+            db: db.clone(),
             my_name,
             sender,
             receiver,

@@ -2,6 +2,8 @@ use actix_web::{web, App, Error, HttpResponse, HttpServer};
 use clap::Parser;
 use rustls::{Certificate, PrivateKey, ServerConfig};
 use rustls_pemfile::{certs, pkcs8_private_keys};
+use sea_orm::{Database, DatabaseConnection};
+use std::env;
 use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
@@ -39,6 +41,7 @@ async fn making_app_layer(
     rt: &Runtime,
     deliver_sender: &Sender<Msg2Deliver>,
     opts: &Opts,
+    db: &DatabaseConnection,
 ) {
     // need make status checker first
     let mut status_checker = app::StatusChecker::new();
@@ -66,7 +69,7 @@ async fn making_app_layer(
     // rt.spawn(echo.run());
 
     // make chat_gpt
-    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone()).unwrap();
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db).unwrap();
     al.register_app(&chat_gpt);
     rt.spawn(chat_gpt.run());
 
@@ -83,9 +86,10 @@ async fn making_app_layer_2(
     rt: &Runtime,
     deliver_sender: &Sender<Msg2Deliver>,
     opts: &Opts,
+    db: &DatabaseConnection,
 ) {
     // make chat_gpt
-    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone()).unwrap();
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db).unwrap();
     al.register_app(&chat_gpt);
     rt.spawn(chat_gpt.run());
 }
@@ -128,8 +132,13 @@ fn main() -> std::io::Result<()> {
     let (mut applayer2, app_sender2) = app::AppLayer::new();
 
     rt.block_on(async {
-        making_app_layer(&mut applayer1, &rt, &deliver_sender1, &opts).await;
-        making_app_layer_2(&mut applayer2, &rt, &deliver_sender2, &opts).await;
+        // connect the db
+        // db file inside vault
+        let db_path = "sqlite://".to_string() + &opts.vault + "/db/sqlite.db?mode=rwc";
+        let db_conn = Database::connect(db_path).await.unwrap();
+
+        making_app_layer(&mut applayer1, &rt, &deliver_sender1, &opts, &db_conn).await;
+        making_app_layer_2(&mut applayer2, &rt, &deliver_sender2, &opts, &db_conn).await;
     });
 
     {
