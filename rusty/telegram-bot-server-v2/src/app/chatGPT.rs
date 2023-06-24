@@ -1,4 +1,5 @@
 use super::*;
+use entity::prelude::GptWhiteList;
 use lazy_static::*;
 use serde_json::{json, Value};
 use std::{
