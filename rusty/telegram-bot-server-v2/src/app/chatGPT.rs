@@ -586,7 +586,6 @@ impl ChatGPTInput {
                     Some(en) => match en.kind {
                         telegram_bot::MessageEntityKind::BotCommand => {
                             if data.starts_with("/chat_gpt") {
-                                //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     return Some(Self {
@@ -630,7 +629,6 @@ impl ChatGPTInput {
                                     this_message: msg.clone(),
                                 });
                             } else if data.starts_with("/chat_gpt") {
-                                //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     return Some(Self {
@@ -673,7 +671,6 @@ impl ChatGPTInput {
                                     this_message: msg.clone(),
                                 });
                             } else if data.starts_with("/chat_gpt") {
-                                //:= do I need the system role here?
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     return Some(Self {
