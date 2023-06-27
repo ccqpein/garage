@@ -69,7 +69,9 @@ async fn making_app_layer(
     // rt.spawn(echo.run());
 
     // make chat_gpt
-    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db).unwrap();
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db)
+        .await
+        .unwrap();
     al.register_app(&chat_gpt);
     rt.spawn(chat_gpt.run());
 
@@ -89,7 +91,9 @@ async fn making_app_layer_2(
     db: &DatabaseConnection,
 ) {
     // make chat_gpt
-    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db).unwrap();
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db)
+        .await
+        .unwrap();
     al.register_app(&chat_gpt);
     rt.spawn(chat_gpt.run());
 }

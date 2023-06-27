@@ -2,4 +2,5 @@
 
 pub mod prelude;
 
+pub mod gpt_group_whitelist;
 pub mod gpt_white_list;

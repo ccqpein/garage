@@ -1,4 +1,5 @@
 use super::*;
+use entity::prelude::*;
 use lazy_static::*;
 use sea_orm::{DatabaseConnection, EntityTrait};
 use serde_json::{json, Value};
@@ -226,7 +227,7 @@ pub struct ChatGPT {
 }
 
 impl ChatGPT {
-    pub fn new(
+    pub async fn new(
         deliver_sender: Sender<Msg2Deliver>,
         vault_path: String,
         db: &DatabaseConnection,
@@ -251,13 +252,10 @@ impl ChatGPT {
             .map_err(|e| e.to_string())?;
 
         // cached groups ids
-        let f = BufReader::new(
-            File::open(vault_path.clone() + "/stored_groups").map_err(|e| e.to_string())?,
-        );
-        let stored_groups = f
-            .lines()
-            .filter_map(|l| l.ok())
-            .collect::<HashSet<String>>();
+        let stored_groups = match GptGroupWhitelist::find().all(db).await {
+            Ok(m) => m.into_iter().map(|x| x.group_id).collect(),
+            Err(e) => return Err(e.to_string()),
+        };
 
         info!(
             "these group added to waken_groups directly: {:?}",
@@ -265,23 +263,10 @@ impl ChatGPT {
         );
 
         // cache the users users
-        let f = BufReader::new(
-            File::open(vault_path.clone() + "/stored_usernames").map_err(|e| e.to_string())?,
-        );
-        let stored_usernames = f
-            .lines()
-            .filter_map(|l| l.ok())
-            .collect::<HashSet<String>>();
-
-        //:= test the db read
-        let db_clone = db.clone();
-        tokio::spawn(async move {
-            let entries = entity::prelude::GptWhiteList::find()
-                .all(&db_clone)
-                .await
-                .unwrap();
-            debug!("read the whitelist from db: {:?}", entries);
-        });
+        let stored_usernames = match GptWhiteList::find().all(db).await {
+            Ok(m) => m.into_iter().map(|x| x.username).collect(),
+            Err(e) => return Err(e.to_string()),
+        };
 
         info!(
             "these usernames added to waken_usernames directly: {:?}",
@@ -305,6 +290,7 @@ impl ChatGPT {
         })
     }
 
+    #[deprecated(note = "after I use db, this function is deprecated")]
     fn write_to_group_list_file(&self, g_id: String) -> Result<(), String> {
         let mut f = OpenOptions::new()
             .append(true)
@@ -315,6 +301,20 @@ impl ChatGPT {
         f.write_all(b"\n").map_err(|e| e.to_string())?;
         f.write_all(g_id.as_bytes()).map_err(|e| e.to_string())?;
         f.flush().map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
+    async fn write_to_group_list_table(&self, g_id: String) -> Result<(), String> {
+        let new_group = entity::gpt_group_whitelist::ActiveModel {
+            group_id: sea_orm::ActiveValue::Set(g_id),
+            ..Default::default()
+        };
+
+        GptGroupWhitelist::insert(new_group)
+            .exec(&self.db)
+            .await
+            .map_err(|e| e.to_string())?;
 
         Ok(())
     }
@@ -351,7 +351,7 @@ impl ChatGPT {
                         String::from("already")
                     } else {
                         self.waken_groups.insert(g_id.clone());
-                        self.write_to_group_list_file(g_id.clone())?;
+                        self.write_to_group_list_table(g_id.clone()).await?;
                         String::from("sure")
                     };
 
