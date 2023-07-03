@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 leptos = { version = "0.4", features = ["csr", "nightly"] }
+
+#[package.metadata.rust-analyzer]
+#rustfmt_command = "leptosfmt ."
