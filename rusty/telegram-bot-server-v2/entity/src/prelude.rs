@@ -2,3 +2,4 @@
 
 pub use super::gpt_group_whitelist::Entity as GptGroupWhitelist;
 pub use super::gpt_white_list::Entity as GptWhiteList;
+pub use super::reminder::Entity as Reminder;
