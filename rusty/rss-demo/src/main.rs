@@ -15,10 +15,10 @@ async fn example_feed() -> Result<Channel, Box<dyn Error>> {
         .build()?;
 
     let response = client.execute(request).await?;
-    dbg!(&response);
+    //dbg!(&response);
     let content = response.text().await?;
 
-    dbg!(&content);
+    //dbg!(&content);
     let channel = Channel::read_from(Cursor::new(content))?;
 
     // let file = File::open(env!("HOME").to_string() + "/Desktop/technology.xml").unwrap();
@@ -26,18 +26,18 @@ async fn example_feed() -> Result<Channel, Box<dyn Error>> {
     Ok(channel)
 }
 
-async fn test_download() {
-    let resp = reqwest::get("https://sh.rustup.rs")
-        .await
-        .expect("request failed");
-    dbg!(&resp);
-    let body = resp.text().await.expect("body invalid");
-    //dbg!(body);
-}
+// async fn test_download() {
+//     let resp = reqwest::get("https://sh.rustup.rs")
+//         .await
+//         .expect("request failed");
+//     dbg!(&resp);
+//     let body = resp.text().await.expect("body invalid");
+//     //dbg!(body);
+// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    test_download().await;
+    //test_download().await;
     println!("{}", example_feed().await?.link());
     Ok(())
 }
