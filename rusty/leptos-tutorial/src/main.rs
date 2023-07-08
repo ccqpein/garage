@@ -510,14 +510,29 @@ fn main() {
 
 //==========================================================
 
+// use several ways to handler action
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
     let (toggled, set_toggled) = create_signal(cx, false);
+
+    // share `set_toggled` with all children of this component
+    // for <ButtonD/> context
+    provide_context(cx, set_toggled);
+
     view! { cx,
         <p>"Toggled? " {toggled}</p>
         <ButtonA setter=set_toggled/>
         <ButtonB on_click=move |_| set_toggled.update(|value| *value = !*value)/>
+        <ButtonC on:click=move |_| set_toggled.update(|value| *value = !*value)/>
+
+        //<Layout/>
+        <ButtonD/>
     }
+}
+
+#[component]
+pub fn ButtonC(cx: Scope) -> impl IntoView {
+    view! { cx, <button>"Toggle"</button> }
 }
 
 #[component]
@@ -530,5 +545,36 @@ where
 
 #[component]
 pub fn ButtonA(cx: Scope, setter: WriteSignal<bool>) -> impl IntoView {
+    view! { cx, <button on:click=move |_| setter.update(|value| *value = !*value)>"Toggle"</button> }
+}
+
+// #[component]
+// pub fn Layout(cx: Scope, set_toggled: WriteSignal<bool>) -> impl IntoView {
+//     view! { cx,
+//         <header>
+//             <h1>"My Page"</h1>
+//         </header>
+//         <main>
+//             <Content set_toggled/>
+//         </main>
+//     }
+// }
+
+// #[component]
+// pub fn Content(cx: Scope, set_toggled: WriteSignal<bool>) -> impl IntoView {
+//     view! { cx,
+//         <div class="content">
+//             <ButtonD/>
+//         </div>
+//     }
+// }
+
+#[component]
+pub fn ButtonD(cx: Scope) -> impl IntoView {
+    // use_context searches up the context tree, hoping to
+    // find a `WriteSignal<bool>`
+    // in this case, I .expect() because I know I provided it
+    let setter = use_context::<WriteSignal<bool>>(cx).expect("to have found the setter provided");
+
     view! { cx, <button on:click=move |_| setter.update(|value| *value = !*value)>"Toggle"</button> }
 }
