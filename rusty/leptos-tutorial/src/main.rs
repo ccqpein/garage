@@ -511,70 +511,155 @@ fn main() {
 //==========================================================
 
 // use several ways to handler action
-#[component]
-pub fn App(cx: Scope) -> impl IntoView {
-    let (toggled, set_toggled) = create_signal(cx, false);
-
-    // share `set_toggled` with all children of this component
-    // for <ButtonD/> context
-    provide_context(cx, set_toggled);
-
-    view! { cx,
-        <p>"Toggled? " {toggled}</p>
-        <ButtonA setter=set_toggled/>
-        <ButtonB on_click=move |_| set_toggled.update(|value| *value = !*value)/>
-        <ButtonC on:click=move |_| set_toggled.update(|value| *value = !*value)/>
-
-        //<Layout/>
-        <ButtonD/>
-    }
-}
-
-#[component]
-pub fn ButtonC(cx: Scope) -> impl IntoView {
-    view! { cx, <button>"Toggle"</button> }
-}
-
-#[component]
-pub fn ButtonB<F>(cx: Scope, on_click: F) -> impl IntoView
-where
-    F: Fn(MouseEvent) + 'static,
-{
-    view! { cx, <button on:click=on_click>"Toggle"</button> }
-}
-
-#[component]
-pub fn ButtonA(cx: Scope, setter: WriteSignal<bool>) -> impl IntoView {
-    view! { cx, <button on:click=move |_| setter.update(|value| *value = !*value)>"Toggle"</button> }
-}
-
 // #[component]
-// pub fn Layout(cx: Scope, set_toggled: WriteSignal<bool>) -> impl IntoView {
+// pub fn App(cx: Scope) -> impl IntoView {
+//     let (toggled, set_toggled) = create_signal(cx, false);
+
+//     // share `set_toggled` with all children of this component
+//     // for <ButtonD/> context
+//     provide_context(cx, set_toggled);
+
 //     view! { cx,
-//         <header>
-//             <h1>"My Page"</h1>
-//         </header>
-//         <main>
-//             <Content set_toggled/>
-//         </main>
+//         <p>"Toggled? " {toggled}</p>
+//         <ButtonA setter=set_toggled/>
+//         <ButtonB on_click=move |_| set_toggled.update(|value| *value = !*value)/>
+//         <ButtonC on:click=move |_| set_toggled.update(|value| *value = !*value)/>
+
+//         //<Layout/>
+//         <ButtonD/>
 //     }
 // }
 
 // #[component]
-// pub fn Content(cx: Scope, set_toggled: WriteSignal<bool>) -> impl IntoView {
+// pub fn ButtonC(cx: Scope) -> impl IntoView {
+//     view! { cx, <button>"Toggle"</button> }
+// }
+
+// #[component]
+// pub fn ButtonB<F>(cx: Scope, on_click: F) -> impl IntoView
+// where
+//     F: Fn(MouseEvent) + 'static,
+// {
+//     view! { cx, <button on:click=on_click>"Toggle"</button> }
+// }
+
+// #[component]
+// pub fn ButtonA(cx: Scope, setter: WriteSignal<bool>) -> impl IntoView {
+//     view! { cx, <button on:click=move |_| setter.update(|value| *value = !*value)>"Toggle"</button> }
+// }
+
+// // #[component]
+// // pub fn Layout(cx: Scope, set_toggled: WriteSignal<bool>) -> impl IntoView {
+// //     view! { cx,
+// //         <header>
+// //             <h1>"My Page"</h1>
+// //         </header>
+// //         <main>
+// //             <Content set_toggled/>
+// //         </main>
+// //     }
+// // }
+
+// // #[component]
+// // pub fn Content(cx: Scope, set_toggled: WriteSignal<bool>) -> impl IntoView {
+// //     view! { cx,
+// //         <div class="content">
+// //             <ButtonD/>
+// //         </div>
+// //     }
+// // }
+
+// #[component]
+// pub fn ButtonD(cx: Scope) -> impl IntoView {
+//     // use_context searches up the context tree, hoping to
+//     // find a `WriteSignal<bool>`
+//     // in this case, I .expect() because I know I provided it
+//     let setter = use_context::<WriteSignal<bool>>(cx).expect("to have found the setter provided");
+
+//     view! { cx, <button on:click=move |_| setter.update(|value| *value = !*value)>"Toggle"</button> }
+// }
+
+//==========================================================
+
+// #[component]
+// pub fn App(cx: Scope) -> impl IntoView {
+//     let (items, set_items) = create_signal(cx, vec![0, 1, 2]);
+//     let render_prop = move || {
+//         // items.with(...) reacts to the value without cloning
+//         // by applying a function. Here, we pass the `len` method
+//         // on a `Vec<_>` directly
+//         let len = move || items.with(Vec::len);
+//         view! { cx,
+//             <p>"Length: " {len}</p>
+//         }
+//     };
+
 //     view! { cx,
-//         <div class="content">
-//             <ButtonD/>
-//         </div>
+//         // This component just displays the two kinds of children,
+//         // embedding them in some other markup
+//         <TakesChildren
+//             // for component props, you can shorthand
+//             // `render_prop=render_prop` => `render_prop`
+//             // (this doesn't work for HTML element attributes)
+//             render_prop
+//         >
+//             // these look just like the children of an HTML element
+//             <p>"Here's a child."</p>
+//             <p>"Here's another child."</p>
+//         </TakesChildren>
+//         <hr/>
+//         // This component actually iterates over and wraps the children
+//         <WrapsChildren>
+//             <p>"Here's a child."</p>
+//             <p>"Here's another child."</p>
+//         </WrapsChildren>
 //     }
 // }
 
-#[component]
-pub fn ButtonD(cx: Scope) -> impl IntoView {
-    // use_context searches up the context tree, hoping to
-    // find a `WriteSignal<bool>`
-    // in this case, I .expect() because I know I provided it
-    let setter = use_context::<WriteSignal<bool>>(cx).expect("to have found the setter provided");
+// /// Displays a `render_prop` and some children within markup.
+// #[component]
+// pub fn TakesChildren<F, IV>(
+//     cx: Scope,
+//     /// Takes a function (type F) that returns anything that can be
+//     /// converted into a View (type IV)
+//     render_prop: F,
+//     /// `children` takes the `Children` type
+//     /// this is an alias for `Box<dyn FnOnce(Scope) -> Fragment>`
+//     /// ... aren't you glad we named it `Children` instead?
+//     children: Children,
+// ) -> impl IntoView
+// where
+//     F: Fn() -> IV,
+//     IV: IntoView,
+// {
+//     view! { cx,
+//         <h1><code>"<TakesChildren/>"</code></h1>
+//         <h2>"Render Prop"</h2>
+//         {render_prop()}
+//         <hr/>
+//         <h2>"Children"</h2>
+//         {children(cx)}
+//     }
+// }
 
-    view! { cx, <button on:click=move |_| setter.update(|value| *value = !*value)>"Toggle"</button> }
-}
+// /// Wraps each child in an `<li>` and embeds them in a `<ul>`.
+// #[component]
+// pub fn WrapsChildren(cx: Scope, children: Children) -> impl IntoView {
+//     // children(cx) returns a `Fragment`, which has a
+//     // `nodes` field that contains a Vec<View>
+//     // this means we can iterate over the children
+//     // to create something new!
+//     let children = children(cx)
+//         .nodes
+//         .into_iter()
+//         .map(|child| view! { cx, <li>{child}</li> })
+//         .collect::<Vec<_>>();
+
+//     view! { cx,
+//         <h1><code>"<WrapsChildren/>"</code></h1>
+//         // wrap our wrapped children in a UL
+//         <ul>{children}</ul>
+//     }
+// }
+
+//==========================================================
