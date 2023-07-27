@@ -1,10 +1,10 @@
 ;;; shell-run package
-(defpackage #:shell-util
+(defpackage #:libs/shell-util
   (:use #:CL)
   (:export #:sbcl-run-command)
   )
 
-(in-package #:shell-util)
+(in-package #:libs/shell-util)
 
 (defun sbcl-run-command (comm &rest args)
   "run shell command and return the output string stream"
