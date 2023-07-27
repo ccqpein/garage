@@ -1,0 +1,30 @@
+* Arch
+
+** plugin
+howebrew stuff can be plugin
+
+** recept
+all package receipts location.
+
+** lib
+all lisp files of this project
+
+** db
+need think about the way to store the packages. the way should be flexible, can change in config (or the standalone helper plugin)
+
+* system
+
+** common lisp version
+
++ sbcl
++ etc. (need feature flags for it)
+
+** config path
+default is ~~/.config/xxx~, can change with env var.
+
+* interface
+
+** shell interface
+ask question about inplenments, config path, or something else
+
+** conflict resolve interface
