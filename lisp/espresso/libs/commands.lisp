@@ -12,3 +12,11 @@
   comm
   doc
   func)
+
+(defun set-command-function (comm func)
+  "set current command's function"
+  (setf (command-func comm) func)
+  )
+
+(defun run-command (comm &rest args)
+  (apply command-func args))
