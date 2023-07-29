@@ -1,10 +1,10 @@
 ;;; shell-run package
-(defpackage #:libs/shell-util
+(defpackage #:espresso/libs/shell-util
   (:use #:CL)
   (:export #:sbcl-run-command)
   )
 
-(in-package #:libs/shell-util)
+(in-package #:espresso/libs/shell-util)
 
 (defun sbcl-run-command (comm &rest args)
   "run shell command and return the output string stream"

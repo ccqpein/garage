@@ -1,5 +1,5 @@
-(defpackage #:libs
+(defpackage #:espresso/libs
   (:use #:CL
-		#:libs/shell-util))
+		#:espresso/libs/shell-util))
 
-(in-package #:libs)
+(in-package #:espresso/libs)

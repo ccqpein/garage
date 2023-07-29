@@ -1,8 +1,30 @@
-(defpackage #:plugin/homebrew
+(defpackage #:espresso/plugin/homebrew
   (:use #:CL
-		#:libs/plugin))
+		#:espresso/libs/plugin
+		#:espresso/libs/shell-util))
 
-(in-package #:plugin/homebrew)
+(in-package #:espresso/plugin/homebrew)
+
+(defun binstall (&rest args)
+  (apply
+   #'sbcl-run-command
+   "brew"
+   "install"
+   args))
+
+(defun bupdate (&rest args)
+  (apply
+   #'sbcl-run-command
+   "brew"
+   "update"
+   args))
+
+(defun blist (&rest args)
+  (apply
+   #'sbcl-run-command
+   "brew"
+   "list"
+   args))
 
 (defparameter *commands*
   (list
@@ -10,32 +32,12 @@
 	"binstall" "brew install"
 	:command-func #'binstall)
 
-   (plugin-command-alias 
+   (make-alias-command 
 	"bupdate" "brew update"
 	:command-func #'bupdate)
 
-   (plugin-command-alias 
+   (make-alias-command 
 	"blist" "brew list"
 	:command-func #'blist)
    ))
 
-(defun binstall (&rest args)
-  (apply
-   #'libs/shell-util:sbcl-run-command
-   "brew"
-   "install"
-   args))
-
-(defun bupdate (&rest args)
-  (apply
-   #'libs/shell-util:sbcl-run-command
-   "brew"
-   "update"
-   args))
-
-(defun blist (&rest args)
-  (apply
-   #'libs/shell-util:sbcl-run-command
-   "brew"
-   "list"
-   args))

@@ -1,4 +1,4 @@
-(defpackage #:libs/command
+(defpackage #:espresso/libs/command
   (:documentation
    "libs codes for commands")
   (:use #:CL)
@@ -6,7 +6,7 @@
 		   #:make-command)
   )
 
-(in-package #:libs/command)
+(in-package #:espresso/libs/command)
 
 (defstruct command
   comm

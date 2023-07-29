@@ -10,9 +10,13 @@
   :author "ccQpein"
   :maintainer "ccQpein"
   :defsystem-depends-on ("uiop")
-  :serial t
   :components ((:module "libs"
-						:components ((:file "commands")
-									 (:file "shell-util")
-									 (:file "plugin" :depends-on ("commands"))
-									 (:file "package")))))
+				:serial t
+				:components ((:file "commands")
+							 (:file "shell-util")
+							 (:file "plugin" :depends-on ("commands"))
+							 (:file "package"))
+				)
+
+			   (:module "plugins" :components ((:file "homebrew")))
+			   ))

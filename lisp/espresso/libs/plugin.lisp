@@ -1,11 +1,11 @@
-(defpackage #:libs/plugin
+(defpackage #:espresso/libs/plugin
   (:documentation
    "libs codes for plugins")
   (:use #:CL
-		#:libs/command)
+		#:espresso/libs/command)
   (:export #:make-alias-command))
 
-(in-package #:libs/plugin)
+(in-package #:espresso/libs/plugin)
 
 (defstruct plugin-alias
   alias

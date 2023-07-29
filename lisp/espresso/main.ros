@@ -5,33 +5,15 @@ exec ros -Q -- $0 "$@"
 |#
 (progn ;;init forms
   (ros:ensure-asdf)
-  #+quicklisp(ql:quickload '(uiop) :silent t)
+  #+quicklisp(ql:quickload '(espresso) :silent t)
   )
 
 (defpackage :ros.script.main.3899647026
   (:use :cl))
 (in-package :ros.script.main.3899647026)
 
-(defparameter *libs*
-  (remove-if-not
-   (lambda (f) (string= "lisp" (pathname-type f)))
-   (uiop:directory-files
-	(format nil "~a/libs/" (uiop/os:getcwd)))))
-
-(defparameter *plugins*
-  (remove-if-not
-   (lambda (f) (string= "lisp" (pathname-type f)))
-   (uiop:directory-files
-	(format nil "~a/plugins/" (uiop/os:getcwd)))))
-
-(dolist (lib *libs*)
-  (load lib))
-
-(dolist (plugin *plugins*)
-  (load plugin))
-
 (defun main (&rest argv)
   (declare (ignorable argv))
-  (format t "~{~a~%~}" #:plugin/homebrew:*commands*)
+  (format t "~{~a~%~}" espresso/plugin/homebrew::*commands*)
   )
 ;;; vim: set ft=lisp lisp:
