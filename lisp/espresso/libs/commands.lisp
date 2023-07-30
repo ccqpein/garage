@@ -3,7 +3,9 @@
    "libs codes for commands")
   (:use #:CL)
   (:export #:command
-		   #:make-command)
+		   #:make-command
+		   #:command-comm
+		   #:run-command)
   )
 
 (in-package #:espresso/libs/command)
@@ -18,5 +20,5 @@
   (setf (command-func comm) func)
   )
 
-(defun run-command (comm &rest args)
-  (apply command-func args))
+(defun run-command (comm args)
+  (apply (command-func comm) args))

@@ -28,3 +28,9 @@ default is ~~/.config/xxx~, can change with env var.
 ask question about inplenments, config path, or something else
 
 ** conflict resolve interface
+
+
+* todo list
+
+- [ ] ros need to be replaced because it install via homebrew
+- [ ] 

@@ -1,7 +1,9 @@
 (defpackage #:espresso/plugin/homebrew
   (:use #:CL
 		#:espresso/libs/plugin
-		#:espresso/libs/shell-util))
+		#:espresso/libs/shell-util)
+  (:export *commands*
+		   *plugin-name*))
 
 (in-package #:espresso/plugin/homebrew)
 
@@ -25,6 +27,8 @@
    "brew"
    "list"
    args))
+
+(defparameter *plugin-name* "homebrew")
 
 (defparameter *commands*
   (list

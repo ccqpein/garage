@@ -19,4 +19,5 @@
 				)
 
 			   (:module "plugins" :components ((:file "homebrew")))
+			   (:file "commands" :depends-on ("libs" "plugins"))
 			   ))
