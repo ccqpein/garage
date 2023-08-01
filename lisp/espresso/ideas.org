@@ -33,4 +33,7 @@ ask question about inplenments, config path, or something else
 * todo list
 
 - [ ] ros need to be replaced because it install via homebrew
-- [ ] 
+- [ ] need command output async-able (maybe give additional thread?)
+- [ ] config
+  - [ ] default receipts location
+  - [ ] custome receipts locations

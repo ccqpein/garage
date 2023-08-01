@@ -20,6 +20,7 @@
 
 (defun install-receipt (&rest receipts)
   ;;;= todo here
+  ;;:= And the receipt 
   )
 
 (setf *commands*

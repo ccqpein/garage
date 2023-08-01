@@ -10,6 +10,7 @@
 (defun binstall (&rest args)
   (apply
    #'sbcl-run-command
+   nil
    "brew"
    "install"
    args))
@@ -17,6 +18,7 @@
 (defun bupdate (&rest args)
   (apply
    #'sbcl-run-command
+   nil
    "brew"
    "update"
    args))
@@ -24,6 +26,7 @@
 (defun blist (&rest args)
   (apply
    #'sbcl-run-command
+   nil
    "brew"
    "list"
    args))
@@ -43,5 +46,14 @@
    (make-alias-command 
 	"blist" "brew list"
 	:command-func #'blist)
+
+   (make-alias-command 
+	"bubu" "brew update && brew upgrade && brew cleanup"
+	:command-func (lambda ()
+					(let ((output (make-string-output-stream)))
+					  (sbcl-run-command output "brew" "update")
+					  (sbcl-run-command output "brew" "upgrade")
+					  (sbcl-run-command output "brew" "cleanup")
+					  output)))
    ))
 
