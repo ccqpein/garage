@@ -15,8 +15,7 @@
 				:components ((:file "commands")
 							 (:file "shell-util")
 							 (:file "plugin" :depends-on ("commands"))
-							 (:file "package"))
-				)
+							 ))
 
 			   (:module "plugins" :components ((:file "homebrew")))
 			   (:file "commands" :depends-on ("libs" "plugins"))
