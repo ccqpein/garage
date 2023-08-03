@@ -31,7 +31,8 @@ exec ros -Q -- $0 "$@"
   (declare (ignorable argv))
   ;;(format t "~a~%" espresso/commands::*plugins-commands*)
   ;;(format t "~{~a~%~}" argv)
-  (format t "~a" (pick-command argv))
+  (format t "~a~%" (pick-command argv))
+  (format t "cdr argv: ~a~%" (cdr argv))
   (format t (get-output-stream-string
 			 (espresso/libs/command:run-command (pick-command argv) (cdr argv))))
   )

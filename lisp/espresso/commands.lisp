@@ -2,8 +2,10 @@
 
 (defpackage #:espresso/commands
   (:use #:CL)
+  
   (:import-from #:espresso/libs/command
 				#:make-command)
+    
   (:export #:*commands*
 		   #:*plugins-commands*))
 
@@ -19,9 +21,8 @@
   "the bucket that contains plugins commands")
 
 (defun install-receipt (&rest receipts)
-  ;;;= todo here
-  ;;:= And the receipt 
-  )
+  (dolist (r receipts)
+	(espresso/receipts:install (espresso/receipts:look-up-receipt r))))
 
 (setf *commands*
 	  (list (make-command :comm "install"

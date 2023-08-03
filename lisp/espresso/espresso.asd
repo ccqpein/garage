@@ -15,8 +15,10 @@
 				:components ((:file "commands")
 							 (:file "shell-util")
 							 (:file "plugin" :depends-on ("commands"))
+							 (:file "fs" :depends-on ("commands"))
 							 ))
 
 			   (:module "plugins" :components ((:file "homebrew")))
+			   (:file "receipts" :depends-on ("libs"))
 			   (:file "commands" :depends-on ("libs" "plugins"))
 			   ))
