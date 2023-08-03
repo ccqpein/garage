@@ -11,19 +11,18 @@
 (defparameter *download-folder* "~/Downloads")
 
 (defun download-and-build-souce-code ()
-  (let ((output (make-string-output-stream))
-		(download-path (pathname (format nil
-										"~a/build-emacs-for-macos"
-										*download-folder*))))
+  (let ((download-path (pathname (format nil
+										 "~a/build-emacs-for-macos"
+										 *download-folder*))))
 	(format t "download-path: ~a~%" download-path)
 	(unless (if-file-exist download-path)
 	  (sbcl-run-command
-	   output
+	   *receipts-output*
 	   "git" "clone" "https://github.com/jimeh/build-emacs-for-macos.git" "download-path"))
 
 	(uiop:with-current-directory (download-path)
 	  (format t "jump inside ~a~%" download-path)
-	  (sbcl-run-command output
+	  (sbcl-run-command *receipts-output*
 						"./build-emacs-for-macos")
 	  )))
 

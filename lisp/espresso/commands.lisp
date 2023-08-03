@@ -1,5 +1,4 @@
 ;;; the top level commands of espresso
-
 (defpackage #:espresso/commands
   (:use #:CL)
   
@@ -20,9 +19,13 @@
 		 espresso/plugin/homebrew:*commands*))
   "the bucket that contains plugins commands")
 
+(defparameter *command-output* (make-string-output-stream))
+
 (defun install-receipt (&rest receipts)
   (dolist (r receipts)
-	(espresso/receipts:install (espresso/receipts:look-up-receipt r))))
+	(espresso/receipts:install (espresso/receipts:look-up-receipt r)
+							   :output *command-output*))
+  *command-output*)
 
 (setf *commands*
 	  (list (make-command :comm "install"

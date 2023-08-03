@@ -6,6 +6,7 @@
 		   #:standard-receipt
 		   #:register-receipt
 		   #:look-up-receipt
+		   #:*receipts-output*
 		   ))
 
 (in-package #:espresso/receipts)
@@ -19,6 +20,8 @@
 
 (defparameter *receipts-table* (make-hash-table :test 'equal))
 
+(defparameter *receipts-output* (make-string-output-stream))
+
 (defclass root-receipt () nil)
 
 (defclass standard-receipt (root-receipt)
@@ -28,15 +31,16 @@
 (defun look-up-receipt (name)
   (let ((r (gethash name *receipts-table*))
 		)
-	(if r
-		(install r)
+	(or	r
 		(progn (load (format nil "~a/~a.lisp" *receipts-folder* name))
-			   (install (gethash name *receipts-table*))))))
+			   (gethash name *receipts-table*)))))
 
 ;;:= need more args maybe
-(defmethod install ((r standard-receipt))
-  (funcall (install-func r))
-  )
+(defmethod install ((r standard-receipt) &key output &allow-other-keys)
+  (if output
+	  (let ((*receipts-output* output))
+		(funcall (install-func r)))
+	  (funcall (install-func r))))
 
 (defun register-receipt (name receipt)
   (if (gethash name *receipts-table*)

@@ -8,13 +8,9 @@
 (in-package #:espresso/receipts/echo)
 
 (defun echo ()
-  (format t "hello~%~%")
-  (let ((output (make-string-output-stream))
-		)
-	(sbcl-run-command output
-					  "echo" "hello hello")
-	)
-  )
+  (format *receipts-output* "inside hello~%~%")
+  (sbcl-run-command *receipts-output*
+					"echo" "hello hello"))
 
 (register-receipt "echo"
 				  (make-instance 'standard-receipt
