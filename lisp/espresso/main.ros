@@ -12,28 +12,13 @@ exec ros -Q -- $0 "$@"
   (:use :cl))
 (in-package :ros.script.main.3899647026)
 
-(defun pick-command (argv)
-  (let ((comm (car argv)))
-	(or (find-if (lambda (command)
-				   (string= comm
-							(espresso/libs/command:command-comm command)))
-				 espresso/commands:*commands*)
-
-		(loop for plugin-commands in espresso/commands:*plugins-commands*
-			  for p = (loop for plugin-command in (cdr plugin-commands)
-							if (string= comm
-										(espresso/libs/command:command-comm plugin-command))
-							  return plugin-command)
-			  if p return p))
-	))
-
 (defun main (&rest argv)
   (declare (ignorable argv))
   ;;(format t "~a~%" espresso/commands::*plugins-commands*)
   ;;(format t "~{~a~%~}" argv)
-  (format t "~a~%" (pick-command argv))
+  (format t "~a~%" (espresso/commands:pick-command argv))
   (format t "cdr argv: ~a~%" (cdr argv))
   (format t (get-output-stream-string
-			 (espresso/libs/command:run-command (pick-command argv) (cdr argv))))
+			 (espresso/libs/command:run-command (espresso/commands:pick-command argv) (cdr argv))))
   )
 ;;; vim: set ft=lisp lisp:

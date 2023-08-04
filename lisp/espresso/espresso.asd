@@ -18,7 +18,7 @@
 							 (:file "fs" :depends-on ("commands"))
 							 ))
 
-			   (:module "plugins" :components ((:file "homebrew")))
+			   (:module "plugins" :depends-on ("libs") :components ((:file "homebrew")))
 			   (:file "receipts" :depends-on ("libs"))
 			   (:file "commands" :depends-on ("libs" "plugins"))
 			   ))

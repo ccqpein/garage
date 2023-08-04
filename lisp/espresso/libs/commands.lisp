@@ -10,6 +10,8 @@
 
 (in-package #:espresso/libs/command)
 
+(defparameter *command-output* (make-string-output-stream))
+
 (defstruct command
   comm
   doc
@@ -21,4 +23,5 @@
   )
 
 (defun run-command (comm args)
-  (apply (command-func comm) args))
+  (apply (command-func comm) args)
+  *command-output*)

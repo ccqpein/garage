@@ -2,6 +2,10 @@
   (:use #:CL
 		#:espresso/libs/plugin
 		#:espresso/libs/shell-util)
+
+  (:import-from #:espresso/libs/command
+				#:*command-output*)
+  
   (:export *commands*
 		   *plugin-name*))
 
@@ -9,26 +13,26 @@
 
 (defun binstall (&rest args)
   (apply
-   #'sbcl-run-command
-   nil
-   "brew"
-   "install"
+   #'run-program
+   "brew install"
+   :output
+   *command-output*
    args))
 
 (defun bupdate (&rest args)
   (apply
-   #'sbcl-run-command
-   nil
-   "brew"
-   "update"
+   #'run-program
+   "brew update"
+   :output
+   *command-output*
    args))
 
 (defun blist (&rest args)
   (apply
-   #'sbcl-run-command
-   nil
-   "brew"
-   "list"
+   #'run-program
+   "brew list"
+   :output
+   *command-output*
    args))
 
 (defparameter *plugin-name* "homebrew")
@@ -50,10 +54,8 @@
    (make-alias-command 
 	"bubu" "brew update && brew upgrade && brew cleanup"
 	:command-func (lambda ()
-					(let ((output (make-string-output-stream)))
-					  (sbcl-run-command output "brew" "update")
-					  (sbcl-run-command output "brew" "upgrade")
-					  (sbcl-run-command output "brew" "cleanup")
-					  output)))
+					(run-program "brew update" :output *command-output*)
+					(run-program "brew upgrade" :output *command-output*)
+					(run-program "brew cleanup" :output *command-output*)))
    ))
 

@@ -3,10 +3,12 @@
   (:use #:CL)
   
   (:import-from #:espresso/libs/command
-				#:make-command)
+				#:make-command
+				#:*command-output*)
     
   (:export #:*commands*
-		   #:*plugins-commands*))
+		   #:*plugins-commands*
+		   #:pick-command))
 
 (in-package #:espresso/commands)
 
@@ -19,13 +21,26 @@
 		 espresso/plugin/homebrew:*commands*))
   "the bucket that contains plugins commands")
 
-(defparameter *command-output* (make-string-output-stream))
+(defun pick-command (argv)
+  "pick the command from shell arguments"
+  (let ((comm (car argv)))
+	(or (find-if (lambda (command)
+				   (string= comm
+							(espresso/libs/command:command-comm command)))
+				 *commands*)
+
+		(loop for plugin-commands in *plugins-commands*
+			  for p = (loop for plugin-command in (cdr plugin-commands)
+							if (string= comm
+										(espresso/libs/command:command-comm plugin-command))
+							  return plugin-command)
+			  if p return p))
+	))
 
 (defun install-receipt (&rest receipts)
   (dolist (r receipts)
 	(espresso/receipts:install (espresso/receipts:look-up-receipt r)
-							   :output *command-output*))
-  *command-output*)
+							   :output *command-output*)))
 
 (setf *commands*
 	  (list (make-command :comm "install"

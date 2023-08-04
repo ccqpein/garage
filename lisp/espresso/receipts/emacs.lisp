@@ -3,7 +3,7 @@
   (:import-from #:espresso/libs/fs
 				#:if-file-exist)
   (:import-from #:espresso/libs/shell-util
-				#:sbcl-run-command))
+				#:run-program))
 
 (in-package #:espresso/receipts/build-emacs)
 
@@ -16,14 +16,14 @@
 										 *download-folder*))))
 	(format t "download-path: ~a~%" download-path)
 	(unless (if-file-exist download-path)
-	  (sbcl-run-command
-	   *receipts-output*
-	   "git" "clone" "https://github.com/jimeh/build-emacs-for-macos.git" "download-path"))
+	  (run-program
+	   "git clone https://github.com/jimeh/build-emacs-for-macos.git download-path"
+	   :output *receipts-output*))
 
 	(uiop:with-current-directory (download-path)
 	  (format t "jump inside ~a~%" download-path)
-	  (sbcl-run-command *receipts-output*
-						"./build-emacs-for-macos")
+	  (run-program "./build-emacs-for-macos"
+				   :output *receipts-output*)
 	  )))
 
 (register-receipt "emacs"

@@ -1,12 +1,12 @@
 (defpackage #:espresso/receipts
   (:use #:CL)
   (:export #:*cache-folder*
+		   #:*receipts-output*
 
 		   #:install
 		   #:standard-receipt
 		   #:register-receipt
 		   #:look-up-receipt
-		   #:*receipts-output*
 		   ))
 
 (in-package #:espresso/receipts)

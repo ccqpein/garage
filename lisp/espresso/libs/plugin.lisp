@@ -34,5 +34,4 @@
   "make alias command"
   (alias-to-command (plugin-command-alias to from)
 					:custom-doc custom-doc
-					:command-func command-func)
-  )
+					:command-func command-func))
