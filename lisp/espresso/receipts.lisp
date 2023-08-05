@@ -2,6 +2,7 @@
   (:use #:CL)
   (:export #:*cache-folder*
 		   #:*receipts-output*
+		   #:*receipts-error*
 
 		   #:install
 		   #:standard-receipt
@@ -20,7 +21,8 @@
 
 (defparameter *receipts-table* (make-hash-table :test 'equal))
 
-(defparameter *receipts-output* (make-string-output-stream))
+(defparameter *receipts-output* t)
+(defparameter *receipts-error* t)
 
 (defclass root-receipt () nil)
 
@@ -36,11 +38,8 @@
 			   (gethash name *receipts-table*)))))
 
 ;;:= need more args maybe
-(defmethod install ((r standard-receipt) &key output &allow-other-keys)
-  (if output
-	  (let ((*receipts-output* output))
-		(funcall (install-func r)))
-	  (funcall (install-func r))))
+(defmethod install ((r standard-receipt) &key (output *receipts-output*) (error-output *receipts-error*) &allow-other-keys)
+    (funcall (install-func r)))
 
 (defun register-receipt (name receipt)
   (if (gethash name *receipts-table*)

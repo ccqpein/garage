@@ -2,7 +2,10 @@
   (:documentation
    "libs codes for commands")
   (:use #:CL)
-  (:export #:command
+  (:export #:*command-output*
+		   #:*command-error*
+
+		   #:command
 		   #:make-command
 		   #:command-comm
 		   #:run-command)
@@ -10,7 +13,8 @@
 
 (in-package #:espresso/libs/command)
 
-(defparameter *command-output* (make-string-output-stream))
+(defparameter *command-output* t)
+(defparameter *command-error* t)
 
 (defstruct command
   comm
@@ -24,4 +28,4 @@
 
 (defun run-command (comm args)
   (apply (command-func comm) args)
-  *command-output*)
+  (values *command-output* *command-error*))

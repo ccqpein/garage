@@ -1,9 +1,11 @@
 (defpackage #:espresso/receipts/build-emacs
   (:use #:CL #:espresso/receipts)
+
   (:import-from #:espresso/libs/fs
 				#:if-file-exist)
+
   (:import-from #:espresso/libs/shell-util
-				#:run-program))
+				#:shell-run-program))
 
 (in-package #:espresso/receipts/build-emacs)
 
@@ -16,14 +18,18 @@
 										 *download-folder*))))
 	(format t "download-path: ~a~%" download-path)
 	(unless (if-file-exist download-path)
-	  (run-program
-	   "git clone https://github.com/jimeh/build-emacs-for-macos.git download-path"
-	   :output *receipts-output*))
+	  (shell-run-program
+	   (format nil
+			   "git clone https://github.com/jimeh/build-emacs-for-macos.git ~a"
+			   download-path)
+	   :output *receipts-output*
+	   :error-output *receipts-error*))
 
 	(uiop:with-current-directory (download-path)
 	  (format t "jump inside ~a~%" download-path)
-	  (run-program "./build-emacs-for-macos"
-				   :output *receipts-output*)
+	  (shell-run-program "./build-emacs-for-macos"
+				   :output *receipts-output*
+				   :error-output *receipts-error*)
 	  )))
 
 (register-receipt "emacs"

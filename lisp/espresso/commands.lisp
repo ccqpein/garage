@@ -4,7 +4,8 @@
   
   (:import-from #:espresso/libs/command
 				#:make-command
-				#:*command-output*)
+				#:*command-output*
+				#:*command-error*)
     
   (:export #:*commands*
 		   #:*plugins-commands*
@@ -40,7 +41,8 @@
 (defun install-receipt (&rest receipts)
   (dolist (r receipts)
 	(espresso/receipts:install (espresso/receipts:look-up-receipt r)
-							   :output *command-output*)))
+							   :output *command-output*
+							   :error-output *command-error*)))
 
 (setf *commands*
 	  (list (make-command :comm "install"

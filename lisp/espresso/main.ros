@@ -14,11 +14,12 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest argv)
   (declare (ignorable argv))
-  ;;(format t "~a~%" espresso/commands::*plugins-commands*)
-  ;;(format t "~{~a~%~}" argv)
   (format t "~a~%" (espresso/commands:pick-command argv))
   (format t "cdr argv: ~a~%" (cdr argv))
-  (format t (get-output-stream-string
-			 (espresso/libs/command:run-command (espresso/commands:pick-command argv) (cdr argv))))
+  ;;(uiop:wait-process (uiop:launch-program "echo 1 && sleep 2 && echo aaa && sleep 1 && echo 123" :output t))
+  ;;(uiop:run-program "echo 1 && sleep 2 && echo aaa" :output t)
+  ;; (format t (get-output-stream-string
+  ;; 			 (espresso/libs/command:run-command (espresso/commands:pick-command argv) (cdr argv))))
+  (espresso/libs/command:run-command (espresso/commands:pick-command argv) (cdr argv))
   )
 ;;; vim: set ft=lisp lisp:

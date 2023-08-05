@@ -12,28 +12,22 @@
 (in-package #:espresso/plugin/homebrew)
 
 (defun binstall (&rest args)
-  (apply
-   #'run-program
-   "brew install"
+  (shell-run-program
+   (format nil "brew install~{~^ ~a~}" args)
    :output
-   *command-output*
-   args))
+   *command-output*))
 
 (defun bupdate (&rest args)
-  (apply
-   #'run-program
+  (shell-run-program
    "brew update"
    :output
-   *command-output*
-   args))
+   *command-output*))
 
 (defun blist (&rest args)
-  (apply
-   #'run-program
+  (shell-run-program
    "brew list"
    :output
-   *command-output*
-   args))
+   *command-output*))
 
 (defparameter *plugin-name* "homebrew")
 
@@ -54,8 +48,8 @@
    (make-alias-command 
 	"bubu" "brew update && brew upgrade && brew cleanup"
 	:command-func (lambda ()
-					(run-program "brew update" :output *command-output*)
-					(run-program "brew upgrade" :output *command-output*)
-					(run-program "brew cleanup" :output *command-output*)))
+					(shell-run-program "brew update" :output *command-output*)
+					(shell-run-program "brew upgrade" :output *command-output*)
+					(shell-run-program "brew cleanup" :output *command-output*)))
    ))
 
