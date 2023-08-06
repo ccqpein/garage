@@ -1,13 +1,18 @@
-(defpackage #:espresso/receipts/build-emacs
+(defpackage #:espresso/receipts/emacs
   (:use #:CL #:espresso/receipts)
 
   (:import-from #:espresso/libs/fs
 				#:if-file-exist)
 
   (:import-from #:espresso/libs/shell-util
-				#:shell-run-program))
+				#:shell-run-program)
 
-(in-package #:espresso/receipts/build-emacs)
+  (:export *RECEIPTS*))
+
+(in-package #:espresso/receipts/emacs)
+
+(defparameter *RECEIPTS* nil
+  "receipts of this pakcage")
 
 ;; cache folder
 (defparameter *download-folder* "~/Downloads")
@@ -32,7 +37,8 @@
 				   :error-output *receipts-error*)
 	  )))
 
-(register-receipt "emacs"
-				  (make-instance 'standard-receipt
-								 :install-func #'download-and-build-souce-code)
-				  )
+(push (make-instance 'standard-receipt
+					 :receipt-version "master"
+					 :install-func #'download-and-build-souce-code)
+	  *receipts*)
+

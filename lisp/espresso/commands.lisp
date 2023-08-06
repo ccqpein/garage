@@ -39,10 +39,15 @@
 	))
 
 (defun install-receipt (&rest receipts)
-  (dolist (r receipts)
-	(espresso/receipts:install (espresso/receipts:look-up-receipt r)
-							   :output *command-output*
-							   :error-output *command-error*)))
+  (loop for r in receipts
+		for filename-version = (str:split ":" r)
+		if (> (length filename-version) 2)
+		  do (error "receipts too many \":\" inside")
+		else
+		  do (espresso/receipts:install
+			  (apply #'espresso/receipts:look-up-receipt filename-version)
+			  :output *command-output*
+			  :error-output *command-error*)))
 
 (setf *commands*
 	  (list (make-command :comm "install"

@@ -9,7 +9,7 @@
   :name "espresso"
   :author "ccQpein"
   :maintainer "ccQpein"
-  :defsystem-depends-on ("uiop")
+  :defsystem-depends-on ("uiop" "str" "alexandria")
   :components ((:module "libs"
 				:serial t
 				:components ((:file "commands")
@@ -17,8 +17,8 @@
 							 (:file "plugin" :depends-on ("commands"))
 							 (:file "fs" :depends-on ("commands"))
 							 ))
-
 			   (:module "plugins" :depends-on ("libs") :components ((:file "homebrew")))
-			   (:file "receipts" :depends-on ("libs"))
-			   (:file "commands" :depends-on ("libs" "plugins"))
+			   (:file "config")
+			   (:file "receipts" :depends-on ("libs" "config"))
+			   (:file "commands" :depends-on ("libs" "plugins" "receipts"))
 			   ))
