@@ -35,8 +35,13 @@ ask question about inplenments, config path, or something else
 - [ ] ros need to be replaced because it install via homebrew
 - [X] need command output async-able (maybe give additional thread?)
 +- [ ] receipt need its own output stream+
-- [ ] need to find the way how to manage the reciepts pakcages, file, and receipts (version like homebrew?)
-- [ ] config
-  - [ ] default receipts location
+- [X] need to find the way how to manage the reciepts pakcages, file, and receipts (version like homebrew?)
+- [-] config
+  - [X] default receipts location
   - [ ] custome receipts locations
+  - [ ] should have ability to change when install (install script)
 - [ ] reciept template
+- [ ] install script
+  - [ ] sbcl
+  - [ ] change config setting
+- [ ] Alias (or something else) can handle the scripts of commmands

@@ -9,6 +9,7 @@
     
   (:export #:*commands*
 		   #:*plugins-commands*
+		   
 		   #:pick-command))
 
 (in-package #:espresso/commands)
@@ -48,6 +49,14 @@
 			  (apply #'espresso/receipts:look-up-receipt filename-version)
 			  :output *command-output*
 			  :error-output *command-error*)))
+
+(defun new-receipt (name)
+  ;;:= next: the inactivate command that generate the receipt
+  )
+
+(defun list-installed ()
+  ;;:= next
+  )
 
 (setf *commands*
 	  (list (make-command :comm "install"

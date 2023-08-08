@@ -9,7 +9,7 @@
   :name "espresso"
   :author "ccQpein"
   :maintainer "ccQpein"
-  :defsystem-depends-on ("uiop" "str" "alexandria")
+  :defsystem-depends-on ("uiop" "str" "alexandria" "serapeum")
   :components ((:module "libs"
 				:serial t
 				:components ((:file "commands")
