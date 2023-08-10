@@ -10,7 +10,9 @@
 (defparameter *RECEIPTS* nil
   "receipts of this pakcage")
 
+;;; functions below
+
 (setf *RECEIPTS*
 	  (list
-	   ;;; add your receipts inside here
+;;; add your receipts inside here
 	   ))

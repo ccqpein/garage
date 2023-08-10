@@ -32,16 +32,17 @@ ask question about inplenments, config path, or something else
 
 * todo list
 
-- [ ] ros need to be replaced because it install via homebrew
 - [X] need command output async-able (maybe give additional thread?)
+- [ ] shell inaction ~-h~
 +- [ ] receipt need its own output stream+
 - [X] need to find the way how to manage the reciepts pakcages, file, and receipts (version like homebrew?)
 - [-] config
   - [X] default receipts location
   - [ ] custome receipts locations
   - [ ] should have ability to change when install (install script)
-- [ ] reciept template
+- [X] reciept template
 - [ ] install script
   - [ ] sbcl
   - [ ] change config setting
+  - [ ] ros need to be replaced because it install via homebrew
 - [ ] Alias (or something else) can handle the scripts of commmands

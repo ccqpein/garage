@@ -50,9 +50,8 @@
 			  :output *command-output*
 			  :error-output *command-error*)))
 
-(defun new-receipt (name)
-  ;;:= next: the inactivate command that generate the receipt
-  (format #:*command-output* "The name of receipt (package name):~%")
+(defun new-receipt ()
+  (format *command-output* "The name of receipt (package name):~%")
   (let ((name (read-line))
 		(template-file-path (str:concat espresso/config:*espresso-self-folder* "receipt_template")))
 	(with-open-file (f (str:concat espresso/config:*espresso-receipts-folder* name ".lisp")
@@ -61,6 +60,7 @@
 					   :if-does-not-exist :create)
 	  (format f
 			  (uiop:read-file-string template-file-path)
+			  name
 			  name)
 	  )))
 
@@ -71,4 +71,7 @@
 (setf *commands*
 	  (list (make-command :comm "install"
 						  :doc "install receipt(s)"
-						  :func #'install-receipt)))
+						  :func #'install-receipt)
+			(make-command :comm "new"
+						  :doc "make new receipt"
+						  :func #'new-receipt)))
