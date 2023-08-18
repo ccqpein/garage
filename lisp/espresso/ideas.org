@@ -29,6 +29,14 @@ ask question about inplenments, config path, or something else
 
 ** conflict resolve interface
 
+* homebrew receipt translater
+
+* install 
+install script. Python script? because most system has python installed.
+
+minimize lisp image download? and install quicklisp and sbcl release version and replaced?
+
+need keep latest version? (in case the newest sbcl has issue). Or just keep the image pre-build for espresso.
 
 * todo list
 
