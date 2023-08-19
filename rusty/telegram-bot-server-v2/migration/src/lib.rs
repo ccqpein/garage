@@ -4,6 +4,7 @@ mod m20220101_000001_create_table;
 mod m20230625_181541_gpt_groups_whitelist;
 mod m20230704_014130_reminder_table;
 mod m20230818_010422_chat_records;
+mod m20230818_194230_add_chat_records_timestamp;
 
 pub struct Migrator;
 
@@ -15,6 +16,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20230625_181541_gpt_groups_whitelist::Migration),
             Box::new(m20230704_014130_reminder_table::Migration),
             Box::new(m20230818_010422_chat_records::Migration),
+            Box::new(m20230818_194230_add_chat_records_timestamp::Migration),
         ]
     }
 }

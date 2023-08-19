@@ -1,5 +1,4 @@
 use sea_orm_migration::prelude::*;
-//use strum::{EnumIter, IntoEnumIterator};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -39,7 +38,7 @@ impl MigrationTrait for Migration {
 
 /// Learn more at https://docs.rs/sea-query#iden
 #[derive(Iden)]
-enum ChatRecords {
+pub enum ChatRecords {
     Table,
     Id,
 

@@ -22,17 +22,21 @@ lazy_static! {
 /// the number of how many messages inside the request body
 static CHAT_COUNT: usize = 40;
 
+fn get_space_info(msg: &Message) -> (String, String) {
+    match &msg.chat {
+        c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
+        MessageChat::Group(g) => (String::from("group"), g.id.to_string()),
+        MessageChat::Supergroup(g) => (String::from("supergroup"), g.id.to_string()),
+        _ => unreachable!(),
+    }
+}
+
 async fn get_reply_chain(
     msg: &Message,
     len: usize,
     db: &DatabaseConnection,
 ) -> Result<Vec<entity::chat_records::Model>, Box<dyn std::error::Error>> {
-    let (space_type, space_id) = match &msg.chat {
-        c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
-        MessageChat::Group(g) => (String::from("group"), g.id.to_string()),
-        MessageChat::Supergroup(g) => (String::from("supergroup"), g.id.to_string()),
-        _ => unreachable!(),
-    };
+    let (space_type, space_id) = get_space_info(msg);
 
     let mut msg_id = msg.id.to_string();
     let mut msgs = vec![];
@@ -79,12 +83,7 @@ fn chat_record_to_json(cr: &entity::chat_records::Model) -> Value {
 }
 
 async fn if_reply_chat_in_the_chain3(msg: &Message, db: &DatabaseConnection) -> bool {
-    let (space_type, space_id) = match &msg.chat {
-        c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
-        MessageChat::Group(g) => (String::from("group"), g.id.to_string()),
-        MessageChat::Supergroup(g) => (String::from("supergroup"), g.id.to_string()),
-        _ => unreachable!(),
-    };
+    let (space_type, space_id) = get_space_info(msg);
 
     let reply_to_id = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
@@ -101,7 +100,6 @@ async fn if_reply_chat_in_the_chain3(msg: &Message, db: &DatabaseConnection) -> 
 }
 
 async fn if_reply_chat_in_the_chain2(
-    //msg: &Message,
     space_type: &String,
     space_id: &String,
     reply_id: MessageId,
@@ -139,12 +137,7 @@ pub async fn insert_new_reply(
         None => (None, "".to_string()),
     };
 
-    let (space_type, space_id) = match &msg.chat {
-        c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
-        MessageChat::Group(g) => (String::from("group"), g.id.to_string()),
-        MessageChat::Supergroup(g) => (String::from("supergroup"), g.id.to_string()),
-        _ => unreachable!(),
-    };
+    let (space_type, space_id) = get_space_info(msg);
 
     let mut content = match replace_content {
         Some(s) => s.to_string(),
@@ -174,6 +167,7 @@ pub async fn insert_new_reply(
         reply_to: sea_orm::ActiveValue::Set(reply_to_id.map(|id| id.to_string())),
         role: sea_orm::ActiveValue::Set(role.to_string()),
         content: sea_orm::ActiveValue::Set(Some(content)),
+        create_at: sea_orm::ActiveValue::Set(chrono::offset::Utc::now().to_string()),
         ..Default::default()
     };
 
@@ -247,6 +241,7 @@ impl ChatGPT {
             stored_usernames
         );
 
+        // need to assign the static db connection
         *DB.lock().await = Some(db.clone());
 
         Ok(ChatGPT {
@@ -397,7 +392,7 @@ impl ChatGPT {
                         .send(Msg2Deliver::new(
                             "send".to_string(),
                             msg.chat_id,
-                            "sorry, something wrong from server".into(),
+                            format!("sorry, something wrong from server: {}", e.to_string()),
                             None,
                         ))
                         .await;
@@ -409,7 +404,7 @@ impl ChatGPT {
                     .send(Msg2Deliver::new(
                         "send".to_string(),
                         msg.chat_id,
-                        "sorry, something wrong from server".into(),
+                        format!("sorry, something wrong from server: {}", e.to_string()),
                         None,
                     ))
                     .await;
@@ -445,17 +440,17 @@ impl ChatGPT {
         };
 
         // if err happen
-        match result {
-            re @ Err(_) => {
+        match &result {
+            re @ Err(e) => {
                 self.deliver_sender
                     .send(Msg2Deliver::new(
                         "send".to_string(),
                         msg.chat_id,
-                        "sorry, something wrong from server".into(),
+                        format!("sorry, something wrong from server: {}", e.to_string()),
                         None,
                     ))
                     .await;
-                re
+                re.clone()
             }
             _ => Ok(()),
         }
@@ -732,5 +727,20 @@ mod tests {
         assert_eq!(trim_string_helper(a)?, r#""content" "#.to_string());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_chat_record() {
+        let new_chat_record = entity::chat_records::ActiveModel {
+            space_type: sea_orm::ActiveValue::Set("".to_string()),
+            space_id: sea_orm::ActiveValue::Set("".to_string()),
+            message_id: sea_orm::ActiveValue::Set("".to_string()),
+            reply_to: sea_orm::ActiveValue::Set(Some("".to_string())),
+            role: sea_orm::ActiveValue::Set("".to_string()),
+            content: sea_orm::ActiveValue::Set(Some("".to_string())),
+            ..Default::default()
+        };
+
+        dbg!(new_chat_record);
     }
 }

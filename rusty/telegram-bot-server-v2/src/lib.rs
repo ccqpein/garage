@@ -1,6 +1,5 @@
 #![feature(box_into_inner)]
 #![feature(associated_type_defaults)]
-//#![feature(rustc_attrs)]
 
 pub mod app;
 

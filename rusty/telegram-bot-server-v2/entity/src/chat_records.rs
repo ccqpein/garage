@@ -13,6 +13,7 @@ pub struct Model {
     pub reply_to: Option<String>,
     pub role: String,
     pub content: Option<String>,
+    pub create_at: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
