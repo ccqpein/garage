@@ -4,6 +4,7 @@ use tokio::sync::mpsc::Receiver;
 use tracing::{debug, info};
 
 use crate::app::insert_new_reply;
+use crate::app::DB;
 
 #[derive(Debug, Clone)]
 pub struct Msg2Deliver {
@@ -82,7 +83,7 @@ impl Deliver {
 
                 let (m, resp_content) = get_reply_text_msg(&resp)?;
 
-                insert_new_reply(m, "assistant", None)
+                insert_new_reply(m, "assistant", None, DB.lock().await.as_ref().unwrap())
                     .await
                     .map_err(|e| e.to_string())?;
 

@@ -1,5 +1,5 @@
 use sea_orm_migration::prelude::*;
-use strum::{EnumIter, IntoEnumIterator};
+//use strum::{EnumIter, IntoEnumIterator};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -19,8 +19,12 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(ChatRecords::ChatSpace).string().not_null())
-                    .col(ColumnDef::new(ChatRecords::ChatDetail).string().not_null())
+                    .col(ColumnDef::new(ChatRecords::SpaceType).string().not_null())
+                    .col(ColumnDef::new(ChatRecords::SpaceId).uuid().not_null())
+                    .col(ColumnDef::new(ChatRecords::MessageID).uuid().not_null())
+                    .col(ColumnDef::new(ChatRecords::ReplyTo).uuid())
+                    .col(ColumnDef::new(ChatRecords::Role).string().not_null())
+                    .col(ColumnDef::new(ChatRecords::Content).string())
                     .to_owned(),
             )
             .await
@@ -33,39 +37,19 @@ impl MigrationTrait for Migration {
     }
 }
 
-type MessageID = String;
-type GroupId = String;
-type ChatId = String;
-type SupergroupId = String;
-
 /// Learn more at https://docs.rs/sea-query#iden
-#[derive(Iden, EnumIter)]
+#[derive(Iden)]
 enum ChatRecords {
     Table,
     Id,
 
     //
-    ChatSpace {
-        kind: ChatSpaceKind,
-        id: MessageID, // message id
-        reply_to: String,
-    },
+    SpaceType, // group, private, super group
+    SpaceId,
 
-    ChatDetail {
-        role: String,
-        message: String,
-    },
-}
+    MessageID,
+    ReplyTo,
 
-#[derive(Iden)]
-enum ChatSpaceKind {
-    Group(GroupId),
-    Private(ChatId),
-    SuperGroup(SupergroupId),
-}
-
-impl Default for ChatSpaceKind {
-    fn default() -> Self {
-        Self::Private(String::new())
-    }
+    Role,
+    Content,
 }

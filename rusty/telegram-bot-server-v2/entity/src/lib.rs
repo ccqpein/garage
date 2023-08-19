@@ -2,5 +2,7 @@
 
 pub mod prelude;
 
+pub mod chat_records;
 pub mod gpt_group_whitelist;
 pub mod gpt_white_list;
+pub mod reminder;

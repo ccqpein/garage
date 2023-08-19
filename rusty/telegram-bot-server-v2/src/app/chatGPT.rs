@@ -1,7 +1,7 @@
 use super::*;
 use entity::prelude::*;
 use lazy_static::*;
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbBackend, EntityTrait, QueryFilter};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, HashSet},
@@ -16,148 +16,115 @@ use tokio::sync::Mutex;
 
 /// add tables for storing the chat
 lazy_static! {
-    static ref CHAT_CHAIN_TABLE: Mutex<HashMap<ChatSpace, Option<MessageId>>> = {
-        let m = HashMap::new();
-        Mutex::new(m)
-    };
-    static ref CHAT_DETAIL_TABLE: Mutex<HashMap<ChatSpace, ChatDetail>> = {
-        let m = HashMap::new();
-        Mutex::new(m)
-    };
+    pub static ref DB: Mutex<Option<DatabaseConnection>> = Mutex::new(None);
 }
 
 /// the number of how many messages inside the request body
 static CHAT_COUNT: usize = 40;
 
-pub struct ChatDetail {
-    role: String,
-    message: String,
-}
-
-impl ChatDetail {
-    fn new(role: &str, message: &str) -> Self {
-        Self {
-            role: role.into(),
-            message: message.into(),
-        }
-    }
-
-    fn to_json_message(&self) -> Value {
-        json!({"role": &self.role, "content": &self.message})
-    }
-}
-
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-enum ChatSpaceKind {
-    Group(GroupId),
-    Private(ChatId),
-    SuperGroup(SupergroupId),
-}
-
-impl From<&Message> for ChatSpaceKind {
-    fn from(value: &Message) -> Self {
-        match &value.chat {
-            c @ MessageChat::Private(_) => Self::Private(c.id()),
-            MessageChat::Group(g) => Self::Group(g.id),
-            MessageChat::Supergroup(g) => Self::SuperGroup(g.id),
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
-pub struct ChatSpace {
-    kind: ChatSpaceKind,
-    id: MessageId,
-}
-
-impl ChatSpace {
-    fn update_id(&mut self, id: MessageId) {
-        self.id = id
-    }
-}
-
-impl From<&Message> for ChatSpace {
-    fn from(value: &Message) -> Self {
-        Self {
-            kind: ChatSpaceKind::from(value),
-            id: value.id,
-        }
-    }
-}
-
-pub async fn if_in_chain(cs: &ChatSpace) -> bool {
-    CHAT_CHAIN_TABLE.lock().await.contains_key(cs)
-}
-
-pub async fn if_reply_chat_in_the_chain(msg: &Message) -> bool {
-    let mut cs = ChatSpace::from(msg);
-    match &msg.reply_to_message {
-        Some(m) => match m.as_ref() {
-            telegram_bot::MessageOrChannelPost::Message(mm) => {
-                cs.update_id(mm.id); // update to reply id
-                if_in_chain(&cs).await
-            }
-            telegram_bot::MessageOrChannelPost::ChannelPost(_) => false,
-        },
-        None => false,
-    }
-}
-
-//:= dont need to return error, chang it later
-/// get this and all its parent chat ids
-pub async fn get_chats_ids(
-    this_msg: &Message,
+async fn get_reply_chain(
+    msg: &Message,
     len: usize,
-) -> Result<Vec<ChatSpace>, Box<dyn std::error::Error>> {
-    let mut cs = ChatSpace::from(this_msg);
+    db: &DatabaseConnection,
+) -> Result<Vec<entity::chat_records::Model>, Box<dyn std::error::Error>> {
+    let (space_type, space_id) = match &msg.chat {
+        c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
+        MessageChat::Group(g) => (String::from("group"), g.id.to_string()),
+        MessageChat::Supergroup(g) => (String::from("supergroup"), g.id.to_string()),
+        _ => unreachable!(),
+    };
 
-    let table = CHAT_CHAIN_TABLE.lock().await;
-    let mut result = Vec::with_capacity(len);
-    let mut this;
-
+    let mut msg_id = msg.id.to_string();
+    let mut msgs = vec![];
     for _ in 0..len {
-        result.push(cs.clone());
-        this = match table.get(&cs) {
-            Some(p_id) => {
-                if let Some(id) = p_id {
-                    *id
-                } else {
-                    break;
-                }
-            }
+        let x = match ChatRecords::find()
+            .filter(
+                Condition::all()
+                    .add(entity::chat_records::Column::SpaceType.eq(&space_type))
+                    .add(entity::chat_records::Column::SpaceId.eq(&space_id))
+                    .add(entity::chat_records::Column::MessageId.eq(msg_id.to_string())),
+            )
+            .one(db)
+            .await?
+        {
+            Some(x) => x,
+            None => return Err("cannot find this message".into()),
+        };
+        msgs.push(x.clone());
+        msg_id = match x.reply_to {
+            Some(x) => x,
             None => break,
         };
-        cs.update_id(this);
     }
-    result.reverse();
-    Ok(result)
+    msgs.reverse();
+    Ok(msgs)
 }
 
 async fn make_messages_in_body(
     msg: &Message,
     len: usize,
+    db: &DatabaseConnection,
 ) -> Result<Value, Box<dyn std::error::Error>> {
-    let table = CHAT_DETAIL_TABLE.lock().await;
-    let details = get_chats_ids(msg, len)
+    let a = get_reply_chain(msg, len, db)
         .await?
-        .iter()
-        .filter_map(|id| table.get(id))
-        .map(|detail| detail.to_json_message())
+        .into_iter()
+        .map(|m| chat_record_to_json(&m))
         .collect::<Vec<_>>();
 
-    //:= if add the system message, add here
-
-    Ok(json!(details))
+    Ok(json!(a))
 }
 
-/// connect this message with its parent and add this message detail to table
-/// replace_content replace the data of message to insert.
-//:= TODO: should can accept any types of content, reply or original
+fn chat_record_to_json(cr: &entity::chat_records::Model) -> Value {
+    json!({"role": cr.role, "content": cr.content})
+}
+
+async fn if_reply_chat_in_the_chain3(msg: &Message, db: &DatabaseConnection) -> bool {
+    let (space_type, space_id) = match &msg.chat {
+        c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
+        MessageChat::Group(g) => (String::from("group"), g.id.to_string()),
+        MessageChat::Supergroup(g) => (String::from("supergroup"), g.id.to_string()),
+        _ => unreachable!(),
+    };
+
+    let reply_to_id = match &msg.reply_to_message {
+        Some(m) => match m.as_ref() {
+            telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
+                MessageKind::Text { .. } => m.id,
+                _ => return false,
+            },
+            telegram_bot::MessageOrChannelPost::ChannelPost(_) => return false,
+        },
+        None => return false,
+    };
+
+    if_reply_chat_in_the_chain2(&space_type, &space_id, reply_to_id, db).await
+}
+
+async fn if_reply_chat_in_the_chain2(
+    //msg: &Message,
+    space_type: &String,
+    space_id: &String,
+    reply_id: MessageId,
+    db: &DatabaseConnection,
+) -> bool {
+    let x = ChatRecords::find()
+        .filter(
+            Condition::all()
+                .add(entity::chat_records::Column::SpaceType.eq(space_type))
+                .add(entity::chat_records::Column::SpaceId.eq(space_id))
+                .add(entity::chat_records::Column::MessageId.eq(reply_id.to_string())),
+        )
+        .one(db)
+        .await;
+
+    x.is_ok() && x.unwrap().is_some()
+}
+
 pub async fn insert_new_reply(
     msg: &Message,
     role: &str,
     replace_content: Option<&str>,
+    db: &DatabaseConnection,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (mut reply_to_id, reply_msg_data) = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
@@ -172,6 +139,13 @@ pub async fn insert_new_reply(
         None => (None, "".to_string()),
     };
 
+    let (space_type, space_id) = match &msg.chat {
+        c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
+        MessageChat::Group(g) => (String::from("group"), g.id.to_string()),
+        MessageChat::Supergroup(g) => (String::from("supergroup"), g.id.to_string()),
+        _ => unreachable!(),
+    };
+
     let mut content = match replace_content {
         Some(s) => s.to_string(),
         None => match &msg.kind {
@@ -182,8 +156,8 @@ pub async fn insert_new_reply(
 
     // reply some post but not inside chain
     content = match reply_to_id {
-        Some(_) => {
-            if !if_reply_chat_in_the_chain(&msg).await {
+        Some(rid) => {
+            if !if_reply_chat_in_the_chain2(&space_type, &space_id, rid, db).await {
                 reply_to_id = None; // merge this two meg together
                 vec![r#"Original Post: \n""#, &reply_msg_data, r#""\n"#, &content].concat()
             } else {
@@ -193,17 +167,17 @@ pub async fn insert_new_reply(
         None => content,
     };
 
-    CHAT_CHAIN_TABLE
-        .lock()
-        .await
-        .insert(msg.into(), reply_to_id);
-    CHAT_DETAIL_TABLE
-        .lock()
-        .await
-        .insert(msg.into(), ChatDetail::new(role, &content));
+    let new_chat_record = entity::chat_records::ActiveModel {
+        space_type: sea_orm::ActiveValue::Set(space_type),
+        space_id: sea_orm::ActiveValue::Set(space_id),
+        message_id: sea_orm::ActiveValue::Set(msg.id.to_string()),
+        reply_to: sea_orm::ActiveValue::Set(reply_to_id.map(|id| id.to_string())),
+        role: sea_orm::ActiveValue::Set(role.to_string()),
+        content: sea_orm::ActiveValue::Set(Some(content)),
+        ..Default::default()
+    };
 
-    info!("insert {} with its parent {:?}", msg.id, reply_to_id);
-
+    ChatRecords::insert(new_chat_record).exec(db).await?;
     Ok(())
 }
 
@@ -272,6 +246,8 @@ impl ChatGPT {
             "these usernames added to waken_usernames directly: {:?}",
             stored_usernames
         );
+
+        *DB.lock().await = Some(db.clone());
 
         Ok(ChatGPT {
             vault_path,
@@ -393,7 +369,7 @@ impl ChatGPT {
         // }
 
         // add to reply here
-        insert_new_reply(&msg.this_message, "user", Some(&msg.data))
+        insert_new_reply(&msg.this_message, "user", Some(&msg.data), &self.db)
             .await
             .map_err(|e| e.to_string())?;
 
@@ -490,7 +466,7 @@ impl ChatGPT {
         &mut self,
         msg: &Message,
     ) -> Result<Value, Box<dyn std::error::Error>> {
-        make_messages_in_body(msg, CHAT_COUNT).await
+        make_messages_in_body(msg, CHAT_COUNT, &self.db).await
     }
 
     async fn make_chat_messages(
@@ -700,7 +676,7 @@ impl ChatGPTInput {
 
         // pass all check upper
         // check if this message reply some message in CHAT_CHAIN_TABLE
-        if if_reply_chat_in_the_chain(msg).await {
+        if if_reply_chat_in_the_chain3(msg, DB.lock().await.as_ref().unwrap()).await {
             let data = msg.kind.text().unwrap_or("".into());
             Some(Self {
                 data,
