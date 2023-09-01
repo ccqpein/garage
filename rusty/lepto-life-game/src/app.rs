@@ -1,6 +1,8 @@
-use leptos::*;
+use leptos::{html::Canvas, *};
 use leptos_meta::*;
 use leptos_router::*;
+
+use wasm_bindgen::JsCast;
 
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
@@ -37,6 +39,7 @@ fn HomePage(cx: Scope) -> impl IntoView {
     view! { cx,
         <h1>"Welcome to Leptos!"</h1>
         <button on:click=on_click>"Click Me: " {count}</button>
+        <LifeGame width=30 height=30/>
     }
 }
 
@@ -57,11 +60,48 @@ fn NotFound(cx: Scope) -> impl IntoView {
         resp.set_status(actix_web::http::StatusCode::NOT_FOUND);
     }
 
-    view! { cx,
-        <h1>"Not Found"</h1>
-    }
+    view! { cx, <h1>"Not Found"</h1> }
 }
 
 /// life game
 #[component]
-fn LifeGame(cx: Scope) -> impl IntoView {}
+fn LifeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
+    //let canva = leptos::html::canvas(cx);
+    // let canva = Canvas::default();
+    // canva.set_width(width);
+    // canva.set_height(height);
+    //println!("{:?}", canva.width());
+    //println!("{:?}", canva.get_context("2d"));
+    //println!("{:?}", &canva);
+
+    let canvas_node = create_node_ref::<Canvas>(cx);
+    // let ctx = canvas_node
+    //     .get()
+    //     .unwrap()
+    //     .get_context("2d")
+    //     .ok()
+    //     .flatten()
+    //     .expect("canvas to have context")
+    //     .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+
+    canvas_node.on_load(cx, move |canvas_ref| {
+        canvas_ref.on_mount(move |x| {
+            // get access to the canvas
+            let ctx = x
+                .get_context("2d")
+                .ok()
+                .flatten()
+                .expect("")
+                .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+            // draw rectangle on the canvas at the position (x,y) and provide width and height
+            ctx.fill_rect(10.0, 10.0, 10.0, 10.0);
+        });
+    });
+
+    //canvas_node.on_load(cx, move |ctx| {});
+
+    view! { cx,
+            <p>hello</p>
+            <canvas id="test" node_ref=canvas_node></canvas>
+    }
+}
