@@ -1,4 +1,6 @@
-use leptos::{html::Canvas, *};
+use std::time::Duration;
+
+use leptos::{html::Canvas, leptos_dom::console_log, *};
 use leptos_meta::*;
 use leptos_router::*;
 
@@ -36,10 +38,42 @@ fn HomePage(cx: Scope) -> impl IntoView {
     let (count, set_count) = create_signal(cx, 0);
     let on_click = move |_| set_count.update(|count| *count += 1);
 
+    //let (life_game, life_game_node) = life_game_new(cx, 30, 30);
+    // use_interval(cx, 1000, move || {
+    //     //console_log("hello");
+    //     let ctx = life_game_node
+    //         .get()
+    //         .unwrap()
+    //         .get_context("2d")
+    //         .ok()
+    //         .flatten()
+    //         .expect("")
+    //         .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+    //     ctx.set_fill_style(&"#000000".into());
+    //     make_board(&ctx, 30, 30);
+    // });
+
+    // set_interval(
+    //     move || {
+    //         let ctx = life_game_node
+    //             .get()
+    //             .unwrap()
+    //             .get_context("2d")
+    //             .ok()
+    //             .flatten()
+    //             .expect("")
+    //             .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+    //         ctx.set_fill_style(&"#000000".into());
+    //         make_board(&ctx, 30, 30);
+    //     },
+    //     Duration::from_secs(1),
+    // );
+
     view! { cx,
         <h1>"Welcome to Leptos!"</h1>
         <button on:click=on_click>"Click Me: " {count}</button>
-        <LifeGame width=30 height=30/>
+            <LifeGame width=30 height=30/>
+            //{life_game}
     }
 }
 
@@ -66,25 +100,11 @@ fn NotFound(cx: Scope) -> impl IntoView {
 /// life game
 #[component]
 fn LifeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
-    //let canva = leptos::html::canvas(cx);
-    // let canva = Canvas::default();
-    // canva.set_width(width);
-    // canva.set_height(height);
-    //println!("{:?}", canva.width());
-    //println!("{:?}", canva.get_context("2d"));
-    //println!("{:?}", &canva);
-
     let canvas_node = create_node_ref::<Canvas>(cx);
-    // let ctx = canvas_node
-    //     .get()
-    //     .unwrap()
-    //     .get_context("2d")
-    //     .ok()
-    //     .flatten()
-    //     .expect("canvas to have context")
-    //     .unchecked_into::<web_sys::CanvasRenderingContext2d>();
 
     canvas_node.on_load(cx, move |canvas_ref| {
+        canvas_ref.set_width(width * 20);
+        canvas_ref.set_height(height * 20);
         canvas_ref.on_mount(move |x| {
             // get access to the canvas
             let ctx = x
@@ -93,15 +113,121 @@ fn LifeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
                 .flatten()
                 .expect("")
                 .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+            ctx.set_fill_style(&"#CCCCCC".into());
+
             // draw rectangle on the canvas at the position (x,y) and provide width and height
-            ctx.fill_rect(10.0, 10.0, 10.0, 10.0);
+            make_board(&ctx, width, height);
         });
     });
 
-    //canvas_node.on_load(cx, move |ctx| {});
+    //:= doesn't work
+    // set_interval(
+    //     move || {
+    //         let ctx = canvas_node
+    //             .get()
+    //             .unwrap()
+    //             .get_context("2d")
+    //             .ok()
+    //             .flatten()
+    //             .expect("")
+    //             .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+    //         make_board(&ctx, width, height);
+    //     },
+    //     Duration::from_secs(1),
+    // );
+
+    use_interval(cx, 1000, move || {
+        //console_log("hello");
+        let ctx = canvas_node
+            .get()
+            .unwrap()
+            .get_context("2d")
+            .ok()
+            .flatten()
+            .expect("")
+            .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+        ctx.set_fill_style(&"#000000".into());
+        make_board(&ctx, 30, 30);
+    });
 
     view! { cx,
             <p>hello</p>
             <canvas id="test" node_ref=canvas_node></canvas>
     }
+}
+
+fn life_game_new(cx: Scope, width: u32, height: u32) -> (impl IntoView, NodeRef<Canvas>) {
+    let canvas_node = create_node_ref::<Canvas>(cx);
+
+    canvas_node.on_load(cx, move |canvas_ref| {
+        canvas_ref.set_width(width * 20);
+        canvas_ref.set_height(height * 20);
+        canvas_ref.on_mount(move |x| {
+            // get access to the canvas
+            let ctx = x
+                .get_context("2d")
+                .ok()
+                .flatten()
+                .expect("")
+                .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+            ctx.set_fill_style(&"#CCCCCC".into());
+
+            // draw rectangle on the canvas at the position (x,y) and provide width and height
+            make_board(&ctx, width, height);
+        });
+    });
+
+    use_interval(cx, 1000, move || {
+        //console_log("hello");
+        let ctx = canvas_node
+            .get()
+            .unwrap()
+            .get_context("2d")
+            .ok()
+            .flatten()
+            .expect("")
+            .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+        ctx.set_fill_style(&"#000000".into());
+        make_board(&ctx, 30, 30);
+    });
+
+    (
+        view! { cx,
+                <p>hello</p>
+                <canvas id="test" node_ref=canvas_node></canvas>
+        },
+        canvas_node,
+    )
+}
+
+fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
+    for r in 0..row {
+        for c in 0..col {
+            b.fill_rect(20.0 * c as f64, 20.0 * r as f64, 19.0, 19.0);
+            //b.clear_rect(10.0 * c as f64, 10.0 * r as f64, 9.0, 9.0);
+        }
+    }
+}
+
+pub fn use_interval<F>(cx: Scope, interval_millis: u64, f: F)
+where
+    F: Fn() + Clone + 'static,
+{
+    create_effect(cx, move |prev_handle: Option<IntervalHandle>| {
+        // effects get their previous return value as an argument
+        // each time the effect runs, it will return the interval handle
+        // so if we have a previous one, we cancel it
+        if let Some(prev_handle) = prev_handle {
+            prev_handle.clear();
+        };
+
+        // here, we return the handle
+        set_interval_with_handle(
+            f.clone(),
+            // this is the only reactive access, so this effect will only
+            // re-run when the interval changes
+            Duration::from_millis(interval_millis),
+        )
+        .expect("could not create interval")
+    });
 }
