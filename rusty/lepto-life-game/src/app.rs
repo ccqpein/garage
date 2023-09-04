@@ -1,6 +1,7 @@
 use std::time::Duration;
 
-use leptos::{html::Canvas, leptos_dom::console_log, *};
+use crate::snake::*;
+use leptos::{html::Canvas, *};
 use leptos_meta::*;
 use leptos_router::*;
 
@@ -38,42 +39,11 @@ fn HomePage(cx: Scope) -> impl IntoView {
     let (count, set_count) = create_signal(cx, 0);
     let on_click = move |_| set_count.update(|count| *count += 1);
 
-    //let (life_game, life_game_node) = life_game_new(cx, 30, 30);
-    // use_interval(cx, 1000, move || {
-    //     //console_log("hello");
-    //     let ctx = life_game_node
-    //         .get()
-    //         .unwrap()
-    //         .get_context("2d")
-    //         .ok()
-    //         .flatten()
-    //         .expect("")
-    //         .unchecked_into::<web_sys::CanvasRenderingContext2d>();
-    //     ctx.set_fill_style(&"#000000".into());
-    //     make_board(&ctx, 30, 30);
-    // });
-
-    // set_interval(
-    //     move || {
-    //         let ctx = life_game_node
-    //             .get()
-    //             .unwrap()
-    //             .get_context("2d")
-    //             .ok()
-    //             .flatten()
-    //             .expect("")
-    //             .unchecked_into::<web_sys::CanvasRenderingContext2d>();
-    //         ctx.set_fill_style(&"#000000".into());
-    //         make_board(&ctx, 30, 30);
-    //     },
-    //     Duration::from_secs(1),
-    // );
-
     view! { cx,
         <h1>"Welcome to Leptos!"</h1>
         <button on:click=on_click>"Click Me: " {count}</button>
             <LifeGame width=30 height=30/>
-            //{life_game}
+            <SnakeGame width=30 height=30/>
     }
 }
 
