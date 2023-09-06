@@ -1,0 +1,10 @@
+#+STARTUP: content
+#+TODO: NEXT(n) TODO(t) PROCESSING(p) WAITING(w) MAYBE(m) | DONE(d) CANCELLED(c)
+* Go generate fun
+** Step 1: Parser
+*** TODO application use tree-sitter of golang
+*** TODO go generate embedding with the parser
+go generater has a lot env var, can use to find the code location. and parse the next block of code
+** Step 2: Generater
+*** TODO generate all possible value of type
+*** TODO those  possible values embed into test function 

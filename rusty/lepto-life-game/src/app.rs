@@ -37,13 +37,13 @@ pub fn App(cx: Scope) -> impl IntoView {
 fn HomePage(cx: Scope) -> impl IntoView {
     // Creates a reactive value to update the button
     let (count, set_count) = create_signal(cx, 0);
-    let on_click = move |_| set_count.update(|count| *count += 1);
+    //let on_click = move |_| set_count.update(|count| *count += 1);
 
     view! { cx,
         <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
-            <LifeGame width=30 height=30/>
-            <SnakeGame width=30 height=30/>
+        // <button on:click=on_click>"Click Me: " {count}</button>
+        // <LifeGame width=30 height=30/>
+        <SnakeGame width=30 height=30/>
     }
 }
 
@@ -121,8 +121,10 @@ fn LifeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     });
 
     view! { cx,
-            <p>hello</p>
-            <canvas id="test" node_ref=canvas_node></canvas>
+        <p>
+            hello
+        </p>
+        <canvas id="test" node_ref=canvas_node></canvas>
     }
 }
 
@@ -163,8 +165,10 @@ fn life_game_new(cx: Scope, width: u32, height: u32) -> (impl IntoView, NodeRef<
 
     (
         view! { cx,
-                <p>hello</p>
-                <canvas id="test" node_ref=canvas_node></canvas>
+            <p>
+                hello
+            </p>
+            <canvas id="test" node_ref=canvas_node></canvas>
         },
         canvas_node,
     )
