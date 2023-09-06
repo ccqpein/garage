@@ -1,4 +1,9 @@
-use std::{cell::RefCell, collections::VecDeque, error::Error, rc::Rc, time::Duration};
+use std::{
+    cell::RefCell,
+    collections::{HashSet, VecDeque},
+    rc::Rc,
+    time::Duration,
+};
 
 use leptos::{html::Canvas, leptos_dom::console_log, *};
 use wasm_bindgen::JsCast;
@@ -15,6 +20,7 @@ enum Direction {
 #[derive(Clone, Debug)]
 struct Snake {
     body: VecDeque<(u32, u32)>,
+    food_farm: HashSet<(u32, u32)>,
     dir: Direction,
 }
 
@@ -27,9 +33,18 @@ impl Snake {
         let head = (width / 2, height / 2);
         let tail = (head.0 - 1, head.1);
         //console_log(&format!("{:?}", head));
+
+        let mut food_farm = HashSet::new();
+        for r in 0..height {
+            for c in 0..width {
+                food_farm.insert((c, r));
+            }
+        }
+
         Ok(Self {
             body: vec![head, tail].into(),
             dir: Direction::Right,
+            food_farm,
         })
     }
 
@@ -39,61 +54,103 @@ impl Snake {
         }
     }
 
-    fn one_step_move(&mut self, food: &(u32, u32), b: &CanvasRenderingContext2d) {
+    fn pick_food(&mut self) -> Option<(u32, u32)> {
+        let snake_body = self.body.iter().cloned().collect::<HashSet<_>>();
+        self.food_farm.difference(&snake_body).next().cloned()
+    }
+
+    fn one_step_move(
+        &mut self,
+        food: &(u32, u32),
+        b: &CanvasRenderingContext2d,
+    ) -> Option<(u32, u32)> {
         let head = self.body.get(0).unwrap().clone();
         //console_log(&format!("{:?}", self.dir));
         match self.dir {
             Direction::Up => {
-                if head.1 - 1 == food.1 {
+                if head.1 - 1 == food.1 && head.0 == food.0 {
                     self.body.push_front((head.0, head.1 - 1));
                     self.draw_board(b, (head.0, head.1 - 1), "#000000");
-                //:= random pick the food
+                    match self.pick_food() {
+                        Some(f) => {
+                            //self.draw_board(b, (head.0, head.1 - 1), "#000000");
+                            self.draw_board(b, f, "#f20505");
+                            return Some(f);
+                        }
+                        None => None, //:= win,
+                    }
                 } else {
+                    //:= dead check
+
                     self.body.push_front((head.0, head.1 - 1));
                     self.draw_board(b, (head.0, head.1 - 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
-                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC")
+                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    None
                 }
             }
             Direction::Down => {
-                if head.1 + 1 == food.1 {
+                if head.1 + 1 == food.1 && head.0 == food.0 {
                     self.body.push_front((head.0, head.1 + 1));
-                    self.draw_board(b, (head.0, head.1), "#000000");
-                //:= random pick the food
+                    self.draw_board(b, (head.0, head.1 + 1), "#000000");
+                    match self.pick_food() {
+                        Some(f) => {
+                            //self.draw_board(b, (head.0, head.1), "#000000");
+                            self.draw_board(b, f, "#f20505");
+                            return Some(f);
+                        }
+                        None => None, //:= win,
+                    }
                 } else {
                     self.body.push_front((head.0, head.1 + 1));
                     self.draw_board(b, (head.0, head.1 + 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
-                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC")
+                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    None
                 }
             }
             Direction::Left => {
-                if head.0 - 1 == food.0 {
+                if head.0 - 1 == food.0 && head.1 == food.1 {
                     self.body.push_front((head.0 - 1, head.1));
                     self.draw_board(b, (head.0 - 1, head.1), "#000000");
-                //:= random pick the food
+                    match self.pick_food() {
+                        Some(f) => {
+                            //self.draw_board(b, (head.0, head.1), "#000000");
+                            self.draw_board(b, f, "#f20505");
+                            return Some(f);
+                        }
+                        None => None, //:= win,
+                    }
                 } else {
                     self.body.push_front((head.0 - 1, head.1));
                     self.draw_board(b, (head.0 - 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    None
                 }
             }
             Direction::Right => {
-                if head.0 + 1 == food.0 {
+                if head.0 + 1 == food.0 && head.1 == food.1 {
                     self.body.push_front((head.0 + 1, head.1));
-
                     self.draw_board(b, (head.0 + 1, head.1), "#000000");
-                //:= random pick the food
+                    match self.pick_food() {
+                        Some(f) => {
+                            //self.draw_board(b, (head.0, head.1), "#000000");
+                            self.draw_board(b, f, "#f20505");
+                            return Some(f);
+                        }
+                        None => None, //:= win,
+                    }
                 } else {
                     self.body.push_front((head.0 + 1, head.1));
                     self.draw_board(b, (head.0 + 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    None
                 }
             }
         }
@@ -121,8 +178,10 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     let canvas_node = create_node_ref::<Canvas>(cx);
 
     let s = Rc::new(RefCell::new(Snake::new(width, height).unwrap()));
-    let s1 = s.clone();
+    let food = RefCell::new(s.borrow_mut().pick_food().unwrap());
 
+    let s1 = s.clone();
+    let food1 = food.clone();
     // draw board
     canvas_node.on_load(cx, move |canvas_ref| {
         canvas_ref.set_width(width * 20);
@@ -140,19 +199,19 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
             // draw rectangle on the canvas at the position (x,y) and provide width and height
             make_board(&ctx, width, height);
             s1.borrow().init_draw(&ctx);
+            s1.borrow().draw_board(&ctx, *food1.borrow(), "#f20505");
         });
     });
 
     //let (x, y) = create_signal(cx, Direction::Right);
     let s2 = s.clone();
     window_event_listener(ev::keypress, move |ev| {
-        //console_log(&ev.char_code().to_string());
-        //console_log(&format!("{:?}", s2.borrow().dir));
         s2.borrow_mut().change_direction(&ev.char_code());
     });
 
     // refresh
-    use_interval(cx, 1000, move || {
+    use_interval(cx, 400, move || {
+        //console_log(&format!("{:?}", food.borrow()));
         let ctx = canvas_node
             .get()
             .unwrap()
@@ -161,7 +220,12 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
             .flatten()
             .expect("")
             .unchecked_into::<web_sys::CanvasRenderingContext2d>();
-        s.borrow_mut().one_step_move(&(30, 30), &ctx);
+
+        let last_food = food.borrow().clone();
+        match s.borrow_mut().one_step_move(&last_food, &ctx) {
+            Some(f) => *food.borrow_mut() = f,
+            None => (),
+        }
     });
 
     view! { cx, <canvas id="snake" node_ref=canvas_node></canvas> }
@@ -171,7 +235,6 @@ fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
     for r in 0..row {
         for c in 0..col {
             b.fill_rect(20.0 * c as f64, 20.0 * r as f64, 19.0, 19.0);
-            //b.clear_rect(10.0 * c as f64, 10.0 * r as f64, 9.0, 9.0);
         }
     }
 }
