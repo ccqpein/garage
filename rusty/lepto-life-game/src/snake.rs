@@ -20,6 +20,8 @@ enum Direction {
 #[derive(Clone, Debug)]
 struct Snake {
     body: VecDeque<(u32, u32)>,
+    width: u32,
+    height: u32,
     food_farm: HashSet<(u32, u32)>,
     dir: Direction,
 }
@@ -45,6 +47,8 @@ impl Snake {
             body: vec![head, tail].into(),
             dir: Direction::Right,
             food_farm,
+            width,
+            height,
         })
     }
 
@@ -59,98 +63,125 @@ impl Snake {
         self.food_farm.difference(&snake_body).next().cloned()
     }
 
+    fn in_body(&self, point: &(u32, u32)) -> bool {
+        self.body.contains(point)
+    }
+
+    // fn touch_edge(&self, point: &(u32, u32)) -> bool{
+
+    // }
+
     fn one_step_move(
         &mut self,
         food: &(u32, u32),
         b: &CanvasRenderingContext2d,
-    ) -> Option<(u32, u32)> {
+    ) -> (Option<(u32, u32)>, bool) {
+        // new food and dead or not
         let head = self.body.get(0).unwrap().clone();
         //console_log(&format!("{:?}", self.dir));
         match self.dir {
             Direction::Up => {
+                if head.1 == 0 {
+                    return (None, true);
+                }
+
                 if head.1 - 1 == food.1 && head.0 == food.0 {
                     self.body.push_front((head.0, head.1 - 1));
                     self.draw_board(b, (head.0, head.1 - 1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            //self.draw_board(b, (head.0, head.1 - 1), "#000000");
                             self.draw_board(b, f, "#f20505");
-                            return Some(f);
+                            (Some(f), false)
                         }
-                        None => None, //:= win,
+                        None => (None, false),
                     }
+                } else if self.in_body(&(head.0, head.1 - 1)) {
+                    (None, true)
                 } else {
-                    //:= dead check
-
                     self.body.push_front((head.0, head.1 - 1));
                     self.draw_board(b, (head.0, head.1 - 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
-                    None
+                    (None, false)
                 }
             }
             Direction::Down => {
+                if head.1 + 1 == self.height {
+                    return (None, true);
+                }
+
                 if head.1 + 1 == food.1 && head.0 == food.0 {
                     self.body.push_front((head.0, head.1 + 1));
                     self.draw_board(b, (head.0, head.1 + 1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            //self.draw_board(b, (head.0, head.1), "#000000");
                             self.draw_board(b, f, "#f20505");
-                            return Some(f);
+                            (Some(f), false)
                         }
-                        None => None, //:= win,
+                        None => (None, false),
                     }
+                } else if self.in_body(&(head.0, head.1 + 1)) {
+                    (None, true)
                 } else {
                     self.body.push_front((head.0, head.1 + 1));
                     self.draw_board(b, (head.0, head.1 + 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
-                    None
+                    (None, false)
                 }
             }
             Direction::Left => {
+                if head.0 == 0 {
+                    return (None, true);
+                }
+
                 if head.0 - 1 == food.0 && head.1 == food.1 {
                     self.body.push_front((head.0 - 1, head.1));
                     self.draw_board(b, (head.0 - 1, head.1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            //self.draw_board(b, (head.0, head.1), "#000000");
                             self.draw_board(b, f, "#f20505");
-                            return Some(f);
+                            (Some(f), false)
                         }
-                        None => None, //:= win,
+                        None => (None, false),
                     }
+                } else if self.in_body(&(head.0 - 1, head.1)) {
+                    (None, true)
                 } else {
                     self.body.push_front((head.0 - 1, head.1));
                     self.draw_board(b, (head.0 - 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
-                    None
+                    (None, false)
                 }
             }
             Direction::Right => {
+                if head.0 + 1 == self.width {
+                    return (None, true);
+                }
+
                 if head.0 + 1 == food.0 && head.1 == food.1 {
                     self.body.push_front((head.0 + 1, head.1));
                     self.draw_board(b, (head.0 + 1, head.1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            //self.draw_board(b, (head.0, head.1), "#000000");
                             self.draw_board(b, f, "#f20505");
-                            return Some(f);
+                            (Some(f), false)
                         }
-                        None => None, //:= win,
+                        None => (None, false),
                     }
+                } else if self.in_body(&(head.0 + 1, head.1)) {
+                    (None, true)
                 } else {
                     self.body.push_front((head.0 + 1, head.1));
                     self.draw_board(b, (head.0 + 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
-                    None
+                    (None, false)
                 }
             }
         }
@@ -209,6 +240,9 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
         s2.borrow_mut().change_direction(&ev.char_code());
     });
 
+    // dead flag
+    let (dead, set_dead) = create_signal(cx, false);
+
     // refresh
     use_interval(cx, 400, move || {
         //console_log(&format!("{:?}", food.borrow()));
@@ -223,12 +257,18 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
 
         let last_food = food.borrow().clone();
         match s.borrow_mut().one_step_move(&last_food, &ctx) {
-            Some(f) => *food.borrow_mut() = f,
-            None => (),
+            (Some(f), _) => *food.borrow_mut() = f,
+            (None, true) => set_dead(true), //console_log("dead"), //:= dead
+            (None, false) => (),
         }
     });
 
-    view! { cx, <canvas id="snake" node_ref=canvas_node></canvas> }
+    view! { cx, <StatusBar dead=dead/> <canvas id="snake" node_ref=canvas_node></canvas> }
+}
+
+#[component]
+fn StatusBar(cx: Scope, dead: ReadSignal<bool>) -> impl IntoView {
+    view! {cx, <p>Dead?: {dead}</p>}
 }
 
 fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
@@ -243,6 +283,7 @@ fn use_interval<F>(cx: Scope, interval_millis: u64, f: F)
 where
     F: Fn() + Clone + 'static,
 {
+    //:= https://leptos-rs.github.io/leptos/reactivity/14_create_effect.html
     create_effect(cx, move |prev_handle: Option<IntervalHandle>| {
         if let Some(prev_handle) = prev_handle {
             prev_handle.clear();
