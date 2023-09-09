@@ -67,10 +67,6 @@ impl Snake {
         self.body.contains(point)
     }
 
-    // fn touch_edge(&self, point: &(u32, u32)) -> bool{
-
-    // }
-
     fn one_step_move(
         &mut self,
         food: &(u32, u32),
@@ -202,6 +198,20 @@ impl Snake {
             _ => {}
         }
     }
+
+    fn reset(&mut self, ctx: &CanvasRenderingContext2d, food: Rc<RefCell<(u32, u32)>>) {
+        let head = (self.width / 2, self.height / 2);
+        let tail = (head.0 - 1, head.1);
+        self.body = vec![head, tail].into();
+
+        make_board(&ctx, self.width, self.height);
+        self.init_draw(&ctx);
+
+        let new_food = self.pick_food();
+        *food.borrow_mut() = new_food.unwrap();
+
+        self.draw_board(&ctx, new_food.unwrap(), "#f20505");
+    }
 }
 
 #[component]
@@ -209,7 +219,7 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     let canvas_node = create_node_ref::<Canvas>(cx);
 
     let s = Rc::new(RefCell::new(Snake::new(width, height).unwrap()));
-    let food = RefCell::new(s.borrow_mut().pick_food().unwrap());
+    let food = Rc::new(RefCell::new(s.borrow_mut().pick_food().unwrap()));
 
     let s1 = s.clone();
     let food1 = food.clone();
@@ -234,7 +244,6 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
         });
     });
 
-    //let (x, y) = create_signal(cx, Direction::Right);
     let s2 = s.clone();
     window_event_listener(ev::keypress, move |ev| {
         s2.borrow_mut().change_direction(&ev.char_code());
@@ -244,31 +253,52 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     let (dead, set_dead) = create_signal(cx, false);
 
     // refresh
-    use_interval(cx, 400, move || {
-        //console_log(&format!("{:?}", food.borrow()));
-        let ctx = canvas_node
-            .get()
-            .unwrap()
-            .get_context("2d")
-            .ok()
-            .flatten()
-            .expect("")
-            .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+    use_interval(
+        cx,
+        400,
+        move || {
+            console_log(&format!("{:?}", food.borrow()));
+            let ctx = canvas_node
+                .get()
+                .unwrap()
+                .get_context("2d")
+                .ok()
+                .flatten()
+                .expect("")
+                .unchecked_into::<web_sys::CanvasRenderingContext2d>();
 
-        let last_food = food.borrow().clone();
-        match s.borrow_mut().one_step_move(&last_food, &ctx) {
-            (Some(f), _) => *food.borrow_mut() = f,
-            (None, true) => set_dead(true), //console_log("dead"), //:= dead
-            (None, false) => (),
-        }
-    });
+            let last_food = food.borrow().clone();
+            match s.borrow_mut().one_step_move(&last_food, &ctx) {
+                (Some(f), _) => *food.borrow_mut() = f,
+                (None, true) => set_dead(true), //console_log("dead"), //:= dead
+                (None, false) => (),
+            }
+        },
+        dead,
+    );
 
-    view! { cx, <StatusBar dead=dead/> <canvas id="snake" node_ref=canvas_node></canvas> }
+    view! { cx,
+            <StatusBar dead=dead/>
+            <Restart set_dead=set_dead/> //:= need reload
+        <canvas id="snake" node_ref=canvas_node></canvas>
+    }
 }
 
 #[component]
 fn StatusBar(cx: Scope, dead: ReadSignal<bool>) -> impl IntoView {
-    view! {cx, <p>Dead?: {dead}</p>}
+    view! { cx, <p>"Dead?" : {dead}</p> }
+}
+
+#[component]
+fn Restart(cx: Scope, set_dead: WriteSignal<bool>) -> impl IntoView {
+    view! { cx,
+        <button on:click=move |_| {
+            set_dead(false);
+
+        }>
+            "Restart"
+        </button>
+    }
 }
 
 fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
@@ -279,20 +309,29 @@ fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
     }
 }
 
-fn use_interval<F>(cx: Scope, interval_millis: u64, f: F)
+fn use_interval<F>(cx: Scope, interval_millis: u64, f: F, stop: ReadSignal<bool>)
 where
     F: Fn() + Clone + 'static,
 {
-    //:= https://leptos-rs.github.io/leptos/reactivity/14_create_effect.html
-    create_effect(cx, move |prev_handle: Option<IntervalHandle>| {
-        if let Some(prev_handle) = prev_handle {
-            prev_handle.clear();
-        };
+    create_effect(
+        cx,
+        move |prev_handle: Option<IntervalHandle>| -> IntervalHandle {
+            if stop() {
+                if let Some(prev_handle) = prev_handle {
+                    prev_handle.clear();
+                };
+                prev_handle.unwrap()
+            } else {
+                if let Some(prev_handle) = prev_handle {
+                    prev_handle.clear();
+                };
 
-        //console_log("hello"); // just run once
+                //console_log("hello"); // just run once
 
-        // here, we return the handle
-        set_interval_with_handle(f.clone(), Duration::from_millis(interval_millis))
-            .expect("could not create interval")
-    });
+                // here, we return the handle
+                set_interval_with_handle(f.clone(), Duration::from_millis(interval_millis))
+                    .expect("could not create interval")
+            }
+        },
+    );
 }
