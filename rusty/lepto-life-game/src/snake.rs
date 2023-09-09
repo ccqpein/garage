@@ -7,7 +7,7 @@ use std::{
 
 use leptos::{html::Canvas, leptos_dom::console_log, *};
 use wasm_bindgen::JsCast;
-use web_sys::CanvasRenderingContext2d;
+//use web_sys::CanvasRenderingContext2d;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Direction {
@@ -17,17 +17,18 @@ enum Direction {
     Right,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct Snake {
     body: VecDeque<(u32, u32)>,
     width: u32,
     height: u32,
     food_farm: HashSet<(u32, u32)>,
     dir: Direction,
+    canvas: NodeRef<Canvas>,
 }
 
 impl Snake {
-    fn new(width: u32, height: u32) -> Result<Self, String> {
+    fn new(width: u32, height: u32, canvas: NodeRef<Canvas>) -> Result<Self, String> {
         if width < 2 || height < 2 {
             return Err("too small width or height".to_string());
         }
@@ -49,12 +50,13 @@ impl Snake {
             food_farm,
             width,
             height,
+            canvas,
         })
     }
 
-    fn init_draw(&self, b: &CanvasRenderingContext2d) {
+    fn init_draw(&self) {
         for p in &self.body {
-            self.draw_board(b, *p, "#000000")
+            self.draw_board(*p, "#000000")
         }
     }
 
@@ -67,11 +69,7 @@ impl Snake {
         self.body.contains(point)
     }
 
-    fn one_step_move(
-        &mut self,
-        food: &(u32, u32),
-        b: &CanvasRenderingContext2d,
-    ) -> (Option<(u32, u32)>, bool) {
+    fn one_step_move(&mut self, food: &(u32, u32)) -> (Option<(u32, u32)>, bool) {
         // new food and dead or not
         let head = self.body.get(0).unwrap().clone();
         //console_log(&format!("{:?}", self.dir));
@@ -83,10 +81,10 @@ impl Snake {
 
                 if head.1 - 1 == food.1 && head.0 == food.0 {
                     self.body.push_front((head.0, head.1 - 1));
-                    self.draw_board(b, (head.0, head.1 - 1), "#000000");
+                    self.draw_board((head.0, head.1 - 1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            self.draw_board(b, f, "#f20505");
+                            self.draw_board(f, "#f20505");
                             (Some(f), false)
                         }
                         None => (None, false),
@@ -95,10 +93,10 @@ impl Snake {
                     (None, true)
                 } else {
                     self.body.push_front((head.0, head.1 - 1));
-                    self.draw_board(b, (head.0, head.1 - 1), "#000000");
+                    self.draw_board((head.0, head.1 - 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
-                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    self.draw_board((tail.0, tail.1), "#CCCCCC");
                     (None, false)
                 }
             }
@@ -109,10 +107,10 @@ impl Snake {
 
                 if head.1 + 1 == food.1 && head.0 == food.0 {
                     self.body.push_front((head.0, head.1 + 1));
-                    self.draw_board(b, (head.0, head.1 + 1), "#000000");
+                    self.draw_board((head.0, head.1 + 1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            self.draw_board(b, f, "#f20505");
+                            self.draw_board(f, "#f20505");
                             (Some(f), false)
                         }
                         None => (None, false),
@@ -121,10 +119,10 @@ impl Snake {
                     (None, true)
                 } else {
                     self.body.push_front((head.0, head.1 + 1));
-                    self.draw_board(b, (head.0, head.1 + 1), "#000000");
+                    self.draw_board((head.0, head.1 + 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
-                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    self.draw_board((tail.0, tail.1), "#CCCCCC");
                     (None, false)
                 }
             }
@@ -135,10 +133,10 @@ impl Snake {
 
                 if head.0 - 1 == food.0 && head.1 == food.1 {
                     self.body.push_front((head.0 - 1, head.1));
-                    self.draw_board(b, (head.0 - 1, head.1), "#000000");
+                    self.draw_board((head.0 - 1, head.1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            self.draw_board(b, f, "#f20505");
+                            self.draw_board(f, "#f20505");
                             (Some(f), false)
                         }
                         None => (None, false),
@@ -147,10 +145,10 @@ impl Snake {
                     (None, true)
                 } else {
                     self.body.push_front((head.0 - 1, head.1));
-                    self.draw_board(b, (head.0 - 1, head.1), "#000000");
+                    self.draw_board((head.0 - 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
-                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    self.draw_board((tail.0, tail.1), "#CCCCCC");
                     (None, false)
                 }
             }
@@ -161,10 +159,10 @@ impl Snake {
 
                 if head.0 + 1 == food.0 && head.1 == food.1 {
                     self.body.push_front((head.0 + 1, head.1));
-                    self.draw_board(b, (head.0 + 1, head.1), "#000000");
+                    self.draw_board((head.0 + 1, head.1), "#000000");
                     match self.pick_food() {
                         Some(f) => {
-                            self.draw_board(b, f, "#f20505");
+                            self.draw_board(f, "#f20505");
                             (Some(f), false)
                         }
                         None => (None, false),
@@ -173,18 +171,26 @@ impl Snake {
                     (None, true)
                 } else {
                     self.body.push_front((head.0 + 1, head.1));
-                    self.draw_board(b, (head.0 + 1, head.1), "#000000");
+                    self.draw_board((head.0 + 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
-                    self.draw_board(b, (tail.0, tail.1), "#CCCCCC");
+                    self.draw_board((tail.0, tail.1), "#CCCCCC");
                     (None, false)
                 }
             }
         }
     }
 
-    fn draw_board(&self, b: &CanvasRenderingContext2d, pos: (u32, u32), color: &str) {
-        //console_log(&format!("{}, {}", &pos.0, &pos.1));
+    fn draw_board(&self, pos: (u32, u32), color: &str) {
+        let b = self
+            .canvas
+            .get_untracked()
+            .unwrap()
+            .get_context("2d")
+            .ok()
+            .flatten()
+            .expect("")
+            .unchecked_into::<web_sys::CanvasRenderingContext2d>();
         b.set_fill_style(&color.into());
         b.fill_rect(20.0 * pos.0 as f64, 20.0 * pos.1 as f64, 19.0, 19.0)
     }
@@ -199,18 +205,29 @@ impl Snake {
         }
     }
 
-    fn reset(&mut self, ctx: &CanvasRenderingContext2d, food: Rc<RefCell<(u32, u32)>>) {
+    fn reset(&mut self, food: Rc<RefCell<(u32, u32)>>) {
         let head = (self.width / 2, self.height / 2);
         let tail = (head.0 - 1, head.1);
         self.body = vec![head, tail].into();
 
+        self.dir = Direction::Right;
+
+        let ctx = self
+            .canvas
+            .get()
+            .unwrap()
+            .get_context("2d")
+            .ok()
+            .flatten()
+            .expect("")
+            .unchecked_into::<web_sys::CanvasRenderingContext2d>();
         make_board(&ctx, self.width, self.height);
-        self.init_draw(&ctx);
+        self.init_draw();
 
         let new_food = self.pick_food();
         *food.borrow_mut() = new_food.unwrap();
 
-        self.draw_board(&ctx, new_food.unwrap(), "#f20505");
+        self.draw_board(new_food.unwrap(), "#f20505");
     }
 }
 
@@ -218,7 +235,9 @@ impl Snake {
 pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     let canvas_node = create_node_ref::<Canvas>(cx);
 
-    let s = Rc::new(RefCell::new(Snake::new(width, height).unwrap()));
+    let s = Rc::new(RefCell::new(
+        Snake::new(width, height, canvas_node.clone()).unwrap(),
+    ));
     let food = Rc::new(RefCell::new(s.borrow_mut().pick_food().unwrap()));
 
     let s1 = s.clone();
@@ -235,12 +254,11 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
                 .flatten()
                 .expect("")
                 .unchecked_into::<web_sys::CanvasRenderingContext2d>();
-            ctx.set_fill_style(&"#CCCCCC".into());
 
             // draw rectangle on the canvas at the position (x,y) and provide width and height
             make_board(&ctx, width, height);
-            s1.borrow().init_draw(&ctx);
-            s1.borrow().draw_board(&ctx, *food1.borrow(), "#f20505");
+            s1.borrow().init_draw();
+            s1.borrow().draw_board(*food1.borrow(), "#f20505");
         });
     });
 
@@ -253,33 +271,28 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     let (dead, set_dead) = create_signal(cx, false);
 
     // refresh
+    let food2 = food.clone();
+    let s3 = s.clone();
     use_interval(
         cx,
         400,
         move || {
-            console_log(&format!("{:?}", food.borrow()));
-            let ctx = canvas_node
-                .get()
-                .unwrap()
-                .get_context("2d")
-                .ok()
-                .flatten()
-                .expect("")
-                .unchecked_into::<web_sys::CanvasRenderingContext2d>();
+            console_log(&format!("{:?}", food2.borrow()));
 
-            let last_food = food.borrow().clone();
-            match s.borrow_mut().one_step_move(&last_food, &ctx) {
-                (Some(f), _) => *food.borrow_mut() = f,
-                (None, true) => set_dead(true), //console_log("dead"), //:= dead
+            let last_food = food2.borrow().clone();
+            match s3.borrow_mut().one_step_move(&last_food) {
+                (Some(f), _) => *food2.borrow_mut() = f,
+                (None, true) => set_dead(true), //console_log("dead")
                 (None, false) => (),
             }
         },
         dead,
     );
 
+    //:= need some guidance
     view! { cx,
             <StatusBar dead=dead/>
-            <Restart set_dead=set_dead/> //:= need reload
+            <Restart set_dead=set_dead s=s food=food/>
         <canvas id="snake" node_ref=canvas_node></canvas>
     }
 }
@@ -290,10 +303,16 @@ fn StatusBar(cx: Scope, dead: ReadSignal<bool>) -> impl IntoView {
 }
 
 #[component]
-fn Restart(cx: Scope, set_dead: WriteSignal<bool>) -> impl IntoView {
+fn Restart(
+    cx: Scope,
+    set_dead: WriteSignal<bool>,
+    s: Rc<RefCell<Snake>>,
+    food: Rc<RefCell<(u32, u32)>>,
+) -> impl IntoView {
     view! { cx,
         <button on:click=move |_| {
             set_dead(false);
+            s.borrow_mut().reset(food.clone());
 
         }>
             "Restart"
@@ -302,6 +321,7 @@ fn Restart(cx: Scope, set_dead: WriteSignal<bool>) -> impl IntoView {
 }
 
 fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
+    b.set_fill_style(&"#CCCCCC".into());
     for r in 0..row {
         for c in 0..col {
             b.fill_rect(20.0 * c as f64, 20.0 * r as f64, 19.0, 19.0);
