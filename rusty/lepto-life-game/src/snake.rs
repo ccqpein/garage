@@ -1,3 +1,7 @@
+//:= need more doc
+//:= need to know how to deploy
+use rand::rngs::ThreadRng;
+use rand::seq::SliceRandom;
 use std::{
     cell::RefCell,
     collections::{HashSet, VecDeque},
@@ -25,6 +29,9 @@ struct Snake {
     food_farm: HashSet<(u32, u32)>,
     dir: Direction,
     canvas: NodeRef<Canvas>,
+
+    // random
+    rng: ThreadRng,
 }
 
 impl Snake {
@@ -51,6 +58,7 @@ impl Snake {
             width,
             height,
             canvas,
+            rng: rand::thread_rng(),
         })
     }
 
@@ -62,7 +70,8 @@ impl Snake {
 
     fn pick_food(&mut self) -> Option<(u32, u32)> {
         let snake_body = self.body.iter().cloned().collect::<HashSet<_>>();
-        self.food_farm.difference(&snake_body).next().cloned()
+        let slice = self.food_farm.difference(&snake_body).collect::<Vec<_>>();
+        slice.choose(&mut self.rng).cloned().copied()
     }
 
     fn in_body(&self, point: &(u32, u32)) -> bool {
@@ -277,7 +286,7 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
         cx,
         400,
         move || {
-            console_log(&format!("{:?}", food2.borrow()));
+            //console_log(&format!("{:?}", food2.borrow()));
 
             let last_food = food2.borrow().clone();
             match s3.borrow_mut().one_step_move(&last_food) {
@@ -291,8 +300,8 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
 
     //:= need some guidance
     view! { cx,
-            <StatusBar dead=dead/>
-            <Restart set_dead=set_dead s=s food=food/>
+        <StatusBar dead=dead/>
+        <Restart set_dead=set_dead s=s food=food/>
         <canvas id="snake" node_ref=canvas_node></canvas>
     }
 }
@@ -313,10 +322,7 @@ fn Restart(
         <button on:click=move |_| {
             set_dead(false);
             s.borrow_mut().reset(food.clone());
-
-        }>
-            "Restart"
-        </button>
+        }>"Restart"</button>
     }
 }
 
