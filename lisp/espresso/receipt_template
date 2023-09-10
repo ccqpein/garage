@@ -2,7 +2,8 @@
   (:use #:CL
 		#:espresso/receipts
 		#:espresso/libs/fs
-		#:espresso/libs/shell-util)
+		#:espresso/libs/shell-util
+		#:espresso/config)
   (:export *RECEIPTS*))
 
 (in-package #:espresso/receipts/~a)
@@ -10,7 +11,7 @@
 (defparameter *RECEIPTS* nil
   "receipts of this pakcage")
 
-;;; functions below
+;;; your things below
 
 (setf *RECEIPTS*
 	  (list

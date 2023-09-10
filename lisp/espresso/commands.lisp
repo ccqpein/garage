@@ -68,6 +68,10 @@
   ;;:= next
   )
 
+(defun update-receipt (&rest receipts)
+  ;;:= next
+  ) 
+
 (setf *commands*
 	  (list (make-command :comm "install"
 						  :doc "install receipt(s)"

@@ -14,7 +14,8 @@
 (defparameter *RECEIPTS* nil
   "receipts of this pakcage")
 
-(defun echo ()
+(defun echo (&rest rest)
+  (declare (ignore rest))
   (format *receipts-output* "inside hello~%~%")
   (shell-run-program "echo hello && sleep 1 && echo awfe && sleep 1 && echo fefeff" :output *receipts-output*))
 

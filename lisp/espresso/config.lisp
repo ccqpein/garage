@@ -6,6 +6,7 @@
 		   #:*espresso-receipts-folder*
 		   #:*espresso-custome-receipts-folder*
 		   #:*espresso-config-folder*
+		   #:*espresso-cache-folder*
 		   ))
 
 (in-package #:espresso/config)
@@ -22,5 +23,5 @@
    (uiop:getenv "ESPRESSO_CONFIG")
    "~/.config/espresso/")) 
 
-(defvar *espresso-cache-folder* #P"~/Desktop"
+(defvar *espresso-cache-folder* #P"~/.cache/espresso/"
 		"cache folder to download stuffs the receipt need")

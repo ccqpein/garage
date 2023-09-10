@@ -23,7 +23,9 @@
   ((receipt-version :initarg :receipt-version
 					:accessor receipt-version)
    (install-func :initarg :install-func
-				 :accessor install-func)))
+				 :accessor install-func)
+   (update-func :initarg :update-func
+				:accessor update-func)))
 
 (defun look-up-receipt (filename &optional (version filename))
   "filename:version should be emacs:emacs or emacs:master"
@@ -58,7 +60,12 @@
 (defmethod install ((r standard-receipt) &rest args &key (output *receipts-output*) (error-output *receipts-error*) &allow-other-keys)
   (let ((*receipts-output* output)
 		(*receipts-error* error-output))
-	(funcall (install-func r))))
+	(apply (install-func r) args)))
+
+(defmethod update ((r standard-receipt) &rest args &key (output *receipts-output*) (error-output *receipts-error*) &allow-other-keys)
+  (let ((*receipts-output* output)
+		(*receipts-error* error-output))
+	(apply (update-func r) args)))
 
 (defun register-receipt (name receipt)
   (setf (gethash name *receipts-table*) receipt))

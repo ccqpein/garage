@@ -298,17 +298,20 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
         dead,
     );
 
-    //:= need some guidance
     view! { cx,
-        <StatusBar dead=dead/>
-        <Restart set_dead=set_dead s=s food=food/>
-        <canvas id="snake" node_ref=canvas_node></canvas>
+            <StatusBar/>
+            <Restart set_dead=set_dead s=s food=food/>
+            <br/>
+            <canvas id="snake" node_ref=canvas_node></canvas>
+            {move || {if dead() {leptos::window().alert_with_message("Dead, click restart").unwrap()}}}
     }
 }
 
 #[component]
-fn StatusBar(cx: Scope, dead: ReadSignal<bool>) -> impl IntoView {
-    view! { cx, <p>"Dead?" : {dead}</p> }
+fn StatusBar(cx: Scope) -> impl IntoView {
+    view! { cx,
+    <p>"W A S D => Up Left Down Right"</p>
+    }
 }
 
 #[component]
