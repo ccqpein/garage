@@ -6,7 +6,7 @@ howebrew stuff can be plugin
 ** recept
 all package receipts location.
 
-** lib
+** libs
 all lisp files of this project
 
 ** db
@@ -22,12 +22,12 @@ need think about the way to store the packages. the way should be flexible, can 
 ** config path
 default is ~~/.config/xxx~, can change with env var.
 
+in ~config.lisp~
+
 * interface
 
 ** shell interface
 ask question about inplenments, config path, or something else
-
-** conflict resolve interface
 
 * homebrew receipt translater
 
@@ -54,3 +54,7 @@ need keep latest version? (in case the newest sbcl has issue). Or just keep the 
   - [ ] change config setting
   - [ ] ros need to be replaced because it install via homebrew
 - [ ] Alias (or something else) can handle the scripts of commmands
+- [ ] more output, like which dir we are in, which folder we are deleting
+- [X] delete rename to uninstall?
+- [ ] reinstall & clean command/receipt slots
+

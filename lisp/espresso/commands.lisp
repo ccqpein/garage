@@ -69,8 +69,37 @@
   )
 
 (defun update-receipt (&rest receipts)
-  ;;:= next
-  ) 
+  (loop for r in receipts
+		for filename-version = (str:split ":" r)
+		if (> (length filename-version) 2)
+		  do (error "receipts too many \":\" inside")
+		else
+		  do (espresso/receipts:update
+			  (apply #'espresso/receipts:look-up-receipt filename-version)
+			  :output *command-output*
+			  :error-output *command-error*)))
+
+(defun upgrade-receipt (&rest receipts)
+  (loop for r in receipts
+		for filename-version = (str:split ":" r)
+		if (> (length filename-version) 2)
+		  do (error "receipts too many \":\" inside")
+		else
+		  do (espresso/receipts:upgrade
+			  (apply #'espresso/receipts:look-up-receipt filename-version)
+			  :output *command-output*
+			  :error-output *command-error*)))
+
+(defun uninstall-receipt (&rest receipts)
+  (loop for r in receipts
+		for filename-version = (str:split ":" r)
+		if (> (length filename-version) 2)
+		  do (error "receipts too many \":\" inside")
+		else
+		  do (espresso/receipts:uninstall
+			  (apply #'espresso/receipts:look-up-receipt filename-version)
+			  :output *command-output*
+			  :error-output *command-error*)))
 
 (setf *commands*
 	  (list (make-command :comm "install"
@@ -78,4 +107,13 @@
 						  :func #'install-receipt)
 			(make-command :comm "new"
 						  :doc "make new receipt"
-						  :func #'new-receipt)))
+						  :func #'new-receipt)
+			(make-command :comm "update"
+						  :doc "update the reciepts"
+						  :func #'update-receipt)
+			(make-command :comm "upgrade"
+						  :doc "upgrade the reciepts"
+						  :func #'upgrade-receipt)
+			(make-command :comm "uninstall"
+						  :doc "uninstall the reciepts"
+						  :func #'uninstall-receipt)))

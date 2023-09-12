@@ -13,7 +13,7 @@
 
 ;;; your things below
 
-(defparameter *download-folder* (pathname (format nil "~a~a" *espresso-cache-folder* "asdf")))
+(defparameter *download-folder* (pathname (format nil "~a~a" *espresso-cache-folder* "asdf/")))
 
 (defun download-asdf-git-repo ()
   (unless (if-file-exist *download-folder*)
@@ -65,13 +65,21 @@
 	(shell-run-program
 	 "git pull"
 	 :output *receipts-output*
-	 :error-output *receipts-error*)
-	
-	(shell-run-program
+	 :error-output *receipts-error*)	
+	))
+
+(defun upgrade (&rest rest)
+  (declare (ignore rest))
+  (uiop:with-current-directory (*download-folder*)
+   	(shell-run-program
 	 "tools/asdf-tools install-asdf sbcl"
 	 :output *receipts-output*
 	 :error-output *receipts-error*)
 	))
+
+(defun uninstall (&rest rest)
+  (declare (ignore rest))
+  (uiop:delete-directory-tree *download-folder* :validate t))
 
 (setf *RECEIPTS*
 	  (list
@@ -79,6 +87,6 @@
 	   (make-instance 'standard-receipt
 					  :receipt-version "master"
 					  :install-func (lambda () (install "master"))
-					  :update-func #'update)
-
-	   ))
+					  :update-func #'update
+					  ;;:upgrade-func #'upgrade
+					  :uninstall-func #'uninstall)))
