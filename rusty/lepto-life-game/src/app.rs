@@ -43,7 +43,7 @@ fn HomePage(cx: Scope) -> impl IntoView {
         <h1>"Welcome to Leptos!"</h1>
         // <button on:click=on_click>"Click Me: " {count}</button>
         // <LifeGame width=30 height=30/>
-        <SnakeGame width=10 height=10/>
+        <SnakeGame width=3 height=3/>
     }
 }
 

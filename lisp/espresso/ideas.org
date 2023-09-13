@@ -38,6 +38,19 @@ minimize lisp image download? and install quicklisp and sbcl release version and
 
 need keep latest version? (in case the newest sbcl has issue). Or just keep the image pre-build for espresso.
 
+* commands
+
+** install
+
+** update
+
+** uninstall
+
+** new
+
+** upgrade
+
+
 * todo list
 
 - [X] need command output async-able (maybe give additional thread?)
@@ -57,4 +70,5 @@ need keep latest version? (in case the newest sbcl has issue). Or just keep the 
 - [ ] more output, like which dir we are in, which folder we are deleting
 - [X] delete rename to uninstall?
 - [ ] reinstall & clean command/receipt slots
+- [ ] info command for receipts
 

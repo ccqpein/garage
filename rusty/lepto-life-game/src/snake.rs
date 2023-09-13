@@ -78,14 +78,14 @@ impl Snake {
         self.body.contains(point)
     }
 
-    fn one_step_move(&mut self, food: &(u32, u32)) -> (Option<(u32, u32)>, bool) {
+    fn one_step_move(&mut self, food: &(u32, u32)) -> (Option<(u32, u32)>, bool, bool) {
         // new food and dead or not
         let head = self.body.get(0).unwrap().clone();
         //console_log(&format!("{:?}", self.dir));
         match self.dir {
             Direction::Up => {
                 if head.1 == 0 {
-                    return (None, true);
+                    return (None, true, false);
                 }
 
                 if head.1 - 1 == food.1 && head.0 == food.0 {
@@ -94,24 +94,24 @@ impl Snake {
                     match self.pick_food() {
                         Some(f) => {
                             self.draw_board(f, "#f20505");
-                            (Some(f), false)
+                            (Some(f), false, false)
                         }
-                        None => (None, false),
+                        None => (None, false, true),
                     }
                 } else if self.in_body(&(head.0, head.1 - 1)) {
-                    (None, true)
+                    (None, true, false)
                 } else {
                     self.body.push_front((head.0, head.1 - 1));
                     self.draw_board((head.0, head.1 - 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board((tail.0, tail.1), "#CCCCCC");
-                    (None, false)
+                    (None, false, false)
                 }
             }
             Direction::Down => {
                 if head.1 + 1 == self.height {
-                    return (None, true);
+                    return (None, true, false);
                 }
 
                 if head.1 + 1 == food.1 && head.0 == food.0 {
@@ -120,24 +120,24 @@ impl Snake {
                     match self.pick_food() {
                         Some(f) => {
                             self.draw_board(f, "#f20505");
-                            (Some(f), false)
+                            (Some(f), false, false)
                         }
-                        None => (None, false),
+                        None => (None, false, true),
                     }
                 } else if self.in_body(&(head.0, head.1 + 1)) {
-                    (None, true)
+                    (None, true, false)
                 } else {
                     self.body.push_front((head.0, head.1 + 1));
                     self.draw_board((head.0, head.1 + 1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board((tail.0, tail.1), "#CCCCCC");
-                    (None, false)
+                    (None, false, false)
                 }
             }
             Direction::Left => {
                 if head.0 == 0 {
-                    return (None, true);
+                    return (None, true, false);
                 }
 
                 if head.0 - 1 == food.0 && head.1 == food.1 {
@@ -146,24 +146,24 @@ impl Snake {
                     match self.pick_food() {
                         Some(f) => {
                             self.draw_board(f, "#f20505");
-                            (Some(f), false)
+                            (Some(f), false, false)
                         }
-                        None => (None, false),
+                        None => (None, false, true),
                     }
                 } else if self.in_body(&(head.0 - 1, head.1)) {
-                    (None, true)
+                    (None, true, false)
                 } else {
                     self.body.push_front((head.0 - 1, head.1));
                     self.draw_board((head.0 - 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board((tail.0, tail.1), "#CCCCCC");
-                    (None, false)
+                    (None, false, false)
                 }
             }
             Direction::Right => {
                 if head.0 + 1 == self.width {
-                    return (None, true);
+                    return (None, true, false);
                 }
 
                 if head.0 + 1 == food.0 && head.1 == food.1 {
@@ -172,19 +172,19 @@ impl Snake {
                     match self.pick_food() {
                         Some(f) => {
                             self.draw_board(f, "#f20505");
-                            (Some(f), false)
+                            (Some(f), false, false)
                         }
-                        None => (None, false),
+                        None => (None, false, true),
                     }
                 } else if self.in_body(&(head.0 + 1, head.1)) {
-                    (None, true)
+                    (None, true, false)
                 } else {
                     self.body.push_front((head.0 + 1, head.1));
                     self.draw_board((head.0 + 1, head.1), "#000000");
 
                     let tail = self.body.pop_back().unwrap();
                     self.draw_board((tail.0, tail.1), "#CCCCCC");
-                    (None, false)
+                    (None, false, false)
                 }
             }
         }
@@ -279,31 +279,40 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     // dead flag
     let (dead, set_dead) = create_signal(cx, false);
 
+    // win flag
+    let (win, set_win) = create_signal(cx, false);
+
     // refresh
     let food2 = food.clone();
     let s3 = s.clone();
     use_interval(
         cx,
-        400,
+        500,
         move || {
             //console_log(&format!("{:?}", food2.borrow()));
 
             let last_food = food2.borrow().clone();
             match s3.borrow_mut().one_step_move(&last_food) {
-                (Some(f), _) => *food2.borrow_mut() = f,
-                (None, true) => set_dead(true), //console_log("dead")
-                (None, false) => (),
+                (Some(f), _, _) => *food2.borrow_mut() = f,
+                (None, true, _) => set_dead(true), //console_log("dead")
+                (None, false, true) => {
+                    set_win(true);
+                    //set_dead(true);
+                }
+                _ => {}
             }
         },
         dead,
+        win,
     );
 
     view! { cx,
             <StatusBar/>
-            <Restart set_dead=set_dead s=s food=food/>
+            <Restart set_dead=set_dead set_win=set_win s=s food=food/>
             <br/>
             <canvas id="snake" node_ref=canvas_node></canvas>
             {move || {if dead() {leptos::window().alert_with_message("Dead, click restart").unwrap()}}}
+            {move || {if win() {leptos::window().alert_with_message("You win! Click restart start new").unwrap()}}}
     }
 }
 
@@ -318,12 +327,14 @@ fn StatusBar(cx: Scope) -> impl IntoView {
 fn Restart(
     cx: Scope,
     set_dead: WriteSignal<bool>,
+    set_win: WriteSignal<bool>,
     s: Rc<RefCell<Snake>>,
     food: Rc<RefCell<(u32, u32)>>,
 ) -> impl IntoView {
     view! { cx,
         <button on:click=move |_| {
             set_dead(false);
+            set_win(false);
             s.borrow_mut().reset(food.clone());
         }>"Restart"</button>
     }
@@ -338,14 +349,19 @@ fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
     }
 }
 
-fn use_interval<F>(cx: Scope, interval_millis: u64, f: F, stop: ReadSignal<bool>)
-where
+fn use_interval<F>(
+    cx: Scope,
+    interval_millis: u64,
+    f: F,
+    stop: ReadSignal<bool>,
+    win: ReadSignal<bool>,
+) where
     F: Fn() + Clone + 'static,
 {
     create_effect(
         cx,
         move |prev_handle: Option<IntervalHandle>| -> IntervalHandle {
-            if stop() {
+            if stop() || win() {
                 if let Some(prev_handle) = prev_handle {
                     prev_handle.clear();
                 };
