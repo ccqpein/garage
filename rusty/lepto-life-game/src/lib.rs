@@ -4,8 +4,7 @@ use cfg_if::cfg_if;
 
 cfg_if! {
 if #[cfg(feature = "hydrate")] {
-
-  use wasm_bindgen::prelude::wasm_bindgen;
+    use wasm_bindgen::prelude::wasm_bindgen;
 
     #[wasm_bindgen]
     pub fn hydrate() {
