@@ -15,7 +15,7 @@ pub fn App(cx: Scope) -> impl IntoView {
     view! { cx,
         // injects a stylesheet into the document <head>
         // id=leptos means cargo-leptos will hot-reload this stylesheet
-            <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
+        <Stylesheet id="leptos" href="/pkg/leptos_start.css"/>
 
         // sets the document title
         <Title text="Welcome to Leptos"/>
@@ -25,7 +25,7 @@ pub fn App(cx: Scope) -> impl IntoView {
             <main>
                 <Routes>
                     <Route path="" view=HomePage/>
-                    //<Route path="/*any" view=NotFound/>
+                // <Route path="/*any" view=NotFound/>
                 </Routes>
             </main>
         </Router>
@@ -40,7 +40,7 @@ fn HomePage(cx: Scope) -> impl IntoView {
     //let on_click = move |_| set_count.update(|count| *count += 1);
 
     view! { cx,
-        <h1>"Welcome to Leptos!"</h1>
+        // <h1>"Welcome to Leptos!"</h1>
         // <button on:click=on_click>"Click Me: " {count}</button>
         // <LifeGame width=30 height=30/>
         <SnakeGame width=10 height=10/>
