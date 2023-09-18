@@ -1,6 +1,11 @@
 (defpackage #:espresso/receipts/emacs
-  (:use #:CL #:espresso/receipts)
+  (:use #:CL)
+  (:import-from #:espresso/receipts
+				#:*receipts-output*
+				#:*receipts-error*
 
+				#:standard-receipt)
+  
   (:import-from #:espresso/libs/fs
 				#:if-file-exist)
 
@@ -47,11 +52,11 @@
 	 :output *receipts-output*
 	 :error-output *receipts-error*)))
 
-(defun install (&rest rest)
+(defun install (version &rest rest)
   (declare (ignore rest))
   (download-souce-code)
   (uiop:with-current-directory (*download-folder*)
-	(shell-run-program "./build-emacs-for-macos"
+	(shell-run-program (format nil "./build-emacs-for-macos ~a" version)
 					   :output *receipts-output*
 					   :error-output *receipts-error*)
 	))
@@ -73,10 +78,20 @@
 					   :error-output *receipts-error*)
 	))
 
-(push (make-instance 'standard-receipt
-					 :receipt-version "master"
-					 :install-func #'install
-					 :update-func #'update
-					 :upgrade-func #'upgrade)
-	  *receipts*)
+(setf *receipts*
+	  (list (make-instance 'standard-receipt
+						   :receipt-version "master"
+						   :install-func (lambda (&rest rest)
+										   (declare (ignore rest))
+										   (install ""))
+						   :update-func #'update
+						   :upgrade-func #'upgrade)
+			(make-instance 'standard-receipt
+						   :receipt-version "29"
+						   :install-func (lambda (&rest rest)
+										   (declare (ignore rest))
+										   (install "emacs-29"))
+						   :update-func #'update
+						   :upgrade-func #'upgrade)
 
+			))

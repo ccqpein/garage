@@ -41,7 +41,9 @@
   (declare (string filename version))
   (let ((r (gethash (str:concat filename ":" version) *receipts-table*))
 		)
-	(or	r
+	(or	(if r (progn (format t "Find recipe ~a on version ~a~%" filename version)
+					 r)
+			nil)
 		(progn
 		  ;;:= need to load fasl file too
 		  (load (format nil "~a/~a.lisp" *espresso-receipts-folder* filename))
@@ -53,7 +55,10 @@
 		   filename)
 			   
 		  ;; 
-		  (gethash (str:concat filename ":" version) *receipts-table*)))))
+		  (alexandria:if-let (r (gethash (str:concat filename ":" version) *receipts-table*))
+			(progn (format t "Find recipe ~a on version ~a~%" filename version)
+				   r)
+			(format t "Cannot find recipe ~a on version ~a~%" filename version))))))
 
 (defun load-all-receipts-from-package (package filename)
   (let ((all-rs (eval (find-symbol "*RECEIPTS*" package))))
@@ -67,6 +72,7 @@
 						r))))
 
 (defmethod install ((r standard-receipt) &rest args &key (output *receipts-output*) (error-output *receipts-error*) &allow-other-keys)
+  (format t "in re install")
   (let ((*receipts-output* output)
 		(*receipts-error* error-output))
 	(apply (install-func r) args)))

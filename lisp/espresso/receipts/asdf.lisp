@@ -1,9 +1,16 @@
 (defpackage #:espresso/receipts/asdf
   (:use #:CL
-		#:espresso/receipts
 		#:espresso/libs/fs
 		#:espresso/libs/shell-util
-		#:espresso/config)
+		#:espresso/config
+		)
+  
+  (:import-from #:espresso/receipts
+				#:*receipts-output*
+				#:*receipts-error*
+
+				#:standard-receipt)
+  
   (:export *RECEIPTS*))
 
 (in-package #:espresso/receipts/asdf)
@@ -86,7 +93,9 @@
 ;;; add your receipts inside here
 	   (make-instance 'standard-receipt
 					  :receipt-version "master"
-					  :install-func (lambda () (install "master"))
+					  :install-func (lambda (&rest rest)
+									  (declare (ignore rest))
+									  (install "master"))
 					  :update-func #'update
 					  ;;:upgrade-func #'upgrade
 					  :uninstall-func #'uninstall)))

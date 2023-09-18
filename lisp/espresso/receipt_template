@@ -1,9 +1,16 @@
 (defpackage #:espresso/receipts/~a
   (:use #:CL
-		#:espresso/receipts
 		#:espresso/libs/fs
 		#:espresso/libs/shell-util
-		#:espresso/config)
+		#:espresso/config
+		)
+  
+  (:import-from #:espresso/receipts
+				#:*receipts-output*
+				#:*receipts-error*
+
+				#:standard-receipt)
+  
   (:export *RECEIPTS*))
 
 (in-package #:espresso/receipts/~a)
