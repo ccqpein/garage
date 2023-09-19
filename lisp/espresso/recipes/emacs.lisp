@@ -1,10 +1,10 @@
-(defpackage #:espresso/receipts/emacs
+(defpackage #:espresso/recipes/emacs
   (:use #:CL)
-  (:import-from #:espresso/receipts
-				#:*receipts-output*
-				#:*receipts-error*
+  (:import-from #:espresso/recipes
+				#:*recipes-output*
+				#:*recipes-error*
 
-				#:standard-receipt)
+				#:standard-recipe)
   
   (:import-from #:espresso/libs/fs
 				#:if-file-exist)
@@ -12,12 +12,12 @@
   (:import-from #:espresso/libs/shell-util
 				#:shell-run-program)
 
-  (:export *RECEIPTS*))
+  (:export *RECIPES*))
 
-(in-package #:espresso/receipts/emacs)
+(in-package #:espresso/recipes/emacs)
 
-(defparameter *RECEIPTS* nil
-  "receipts of this pakcage")
+(defparameter *RECIPES* nil
+  "recipes of this pakcage")
 
 ;; cache folder
 (defparameter *download-folder* (pathname "~/Downloads/build-emacs-for-macos/"))
@@ -32,14 +32,14 @@
 ;; 	   (format nil
 ;; 			   "git clone https://github.com/jimeh/build-emacs-for-macos.git ~a"
 ;; 			   download-path)
-;; 	   :output *receipts-output*
-;; 	   :error-output *receipts-error*))
+;; 	   :output *recipes-output*
+;; 	   :error-output *recipes-error*))
 
 ;; 	(uiop:with-current-directory (download-path)
 ;; 	  (format t "jump inside ~a~%" download-path)
 ;; 	  (shell-run-program "./build-emacs-for-macos"
-;; 				   :output *receipts-output*
-;; 				   :error-output *receipts-error*)
+;; 				   :output *recipes-output*
+;; 				   :error-output *recipes-error*)
 ;; 	  )))
 
 (defun download-souce-code ()
@@ -49,16 +49,16 @@
 	 (format nil
 			 "git clone https://github.com/jimeh/build-emacs-for-macos.git ~a"
 			 *download-folder*)
-	 :output *receipts-output*
-	 :error-output *receipts-error*)))
+	 :output *recipes-output*
+	 :error-output *recipes-error*)))
 
 (defun install (version &rest rest)
   (declare (ignore rest))
   (download-souce-code)
   (uiop:with-current-directory (*download-folder*)
 	(shell-run-program (format nil "./build-emacs-for-macos ~a" version)
-					   :output *receipts-output*
-					   :error-output *receipts-error*)
+					   :output *recipes-output*
+					   :error-output *recipes-error*)
 	))
 
 (defun update (&rest rest)
@@ -66,28 +66,28 @@
   (uiop:with-current-directory (*download-folder*)
 	(shell-run-program
 	 "git pull"
-	 :output *receipts-output*
-	 :error-output *receipts-error*)
+	 :output *recipes-output*
+	 :error-output *recipes-error*)
 	))
 
 (defun upgrade (&rest rest)
   (declare (ignore rest))
   (uiop:with-current-directory (*download-folder*)
 	(shell-run-program "./build-emacs-for-macos"
-					   :output *receipts-output*
-					   :error-output *receipts-error*)
+					   :output *recipes-output*
+					   :error-output *recipes-error*)
 	))
 
-(setf *receipts*
-	  (list (make-instance 'standard-receipt
-						   :receipt-version "master"
+(setf *recipes*
+	  (list (make-instance 'standard-recipe
+						   :recipe-version "master"
 						   :install-func (lambda (&rest rest)
 										   (declare (ignore rest))
 										   (install ""))
 						   :update-func #'update
 						   :upgrade-func #'upgrade)
-			(make-instance 'standard-receipt
-						   :receipt-version "29"
+			(make-instance 'standard-recipe
+						   :recipe-version "29"
 						   :install-func (lambda (&rest rest)
 										   (declare (ignore rest))
 										   (install "emacs-29"))

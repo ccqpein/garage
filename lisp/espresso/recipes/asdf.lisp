@@ -1,22 +1,22 @@
-(defpackage #:espresso/receipts/asdf
+(defpackage #:espresso/recipes/asdf
   (:use #:CL
 		#:espresso/libs/fs
 		#:espresso/libs/shell-util
 		#:espresso/config
 		)
   
-  (:import-from #:espresso/receipts
-				#:*receipts-output*
-				#:*receipts-error*
+  (:import-from #:espresso/recipes
+				#:*recipes-output*
+				#:*recipes-error*
 
-				#:standard-receipt)
+				#:standard-recipe)
   
-  (:export *RECEIPTS*))
+  (:export *RECIPES*))
 
-(in-package #:espresso/receipts/asdf)
+(in-package #:espresso/recipes/asdf)
 
-(defparameter *RECEIPTS* nil
-  "receipts of this pakcage")
+(defparameter *RECIPES* nil
+  "recipes of this pakcage")
 
 ;;; your things below
 
@@ -28,15 +28,15 @@
 	 (format nil
 			 "git clone https://github.com/fare/asdf.git ~a"
 			 *download-folder*)
-	 :output *receipts-output*
-	 :error-output *receipts-error*)
+	 :output *recipes-output*
+	 :error-output *recipes-error*)
 
 	;; install dependcies after download
 	(uiop:with-current-directory (*download-folder*)
 	  (shell-run-program
 	   "git submodule update --init"
-	   :output *receipts-output*
-	   :error-output *receipts-error*))
+	   :output *recipes-output*
+	   :error-output *recipes-error*))
 	))
 
 (defun checkout-git-version (version)
@@ -45,8 +45,8 @@
 	 (format nil
 			 "git checkout ~a"
 			 version)
-	 :output *receipts-output*
-	 :error-output *receipts-error*)))
+	 :output *recipes-output*
+	 :error-output *recipes-error*)))
 
 (defun install (version &rest rest)
   (declare (ignore rest))
@@ -55,15 +55,15 @@
   (uiop:with-current-directory (*download-folder*)
 	(shell-run-program
 	 "git pull"
-	 :output *receipts-output*
-	 :error-output *receipts-error*)
+	 :output *recipes-output*
+	 :error-output *recipes-error*)
 	
 	(checkout-git-version version)
 	
 	(shell-run-program
 	 "tools/asdf-tools install-asdf sbcl"
-	 :output *receipts-output*
-	 :error-output *receipts-error*)
+	 :output *recipes-output*
+	 :error-output *recipes-error*)
 	))
 
 (defun update (&rest rest)
@@ -71,8 +71,8 @@
   (uiop:with-current-directory (*download-folder*)
 	(shell-run-program
 	 "git pull"
-	 :output *receipts-output*
-	 :error-output *receipts-error*)	
+	 :output *recipes-output*
+	 :error-output *recipes-error*)	
 	))
 
 (defun upgrade (&rest rest)
@@ -80,19 +80,19 @@
   (uiop:with-current-directory (*download-folder*)
    	(shell-run-program
 	 "tools/asdf-tools install-asdf sbcl"
-	 :output *receipts-output*
-	 :error-output *receipts-error*)
+	 :output *recipes-output*
+	 :error-output *recipes-error*)
 	))
 
 (defun uninstall (&rest rest)
   (declare (ignore rest))
   (uiop:delete-directory-tree *download-folder* :validate t))
 
-(setf *RECEIPTS*
+(setf *RECIPES*
 	  (list
-;;; add your receipts inside here
-	   (make-instance 'standard-receipt
-					  :receipt-version "master"
+;;; add your recipes inside here
+	   (make-instance 'standard-recipe
+					  :recipe-version "master"
 					  :install-func (lambda (&rest rest)
 									  (declare (ignore rest))
 									  (install "master"))

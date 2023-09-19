@@ -3,8 +3,8 @@
   (:export #:*espresso-self-folder*
 		   #:*espresso-libs-folder*
 		   #:*espresso-bins-folder*
-		   #:*espresso-receipts-folder*
-		   #:*espresso-custome-receipts-folder*
+		   #:*espresso-recipes-folder*
+		   #:*espresso-custome-recipes-folder*
 		   #:*espresso-config-folder*
 		   #:*espresso-cache-folder*
 		   ))
@@ -15,8 +15,8 @@
 (defvar *espresso-self-folder* "~/Code/garage/lisp/espresso/") ;;:= for developing 
 (defvar *espresso-libs-folder* (str:concat *espresso-self-folder* "lib/"))
 (defvar *espresso-bins-folder* (str:concat *espresso-self-folder* "bin/"))
-(defvar *espresso-receipts-folder* (str:concat *espresso-self-folder* "receipts/"))
-(defvar *espresso-custome-receipts-folder*)
+(defvar *espresso-recipes-folder* (str:concat *espresso-self-folder* "recipes/"))
+(defvar *espresso-custome-recipes-folder*)
 
 (defvar *espresso-config-folder*
   (or
@@ -24,4 +24,4 @@
    "~/.config/espresso/")) 
 
 (defvar *espresso-cache-folder* #P"~/.cache/espresso/"
-		"cache folder to download stuffs the receipt need")
+		"cache folder to download stuffs the recipe need")

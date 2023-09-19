@@ -39,22 +39,22 @@
 			  if p return p))
 	))
 
-(defun install-receipt (&rest receipts)
-  (loop for r in receipts
+(defun install-recipe (&rest recipes)
+  (loop for r in recipes
 		for filename-version = (str:split ":" r)
 		if (> (length filename-version) 2)
-		  do (error "receipts too many \":\" inside")
+		  do (error "recipes too many \":\" inside")
 		else
-		  do (espresso/receipts:install
-			  (apply #'espresso/receipts:look-up-receipt filename-version)
+		  do (espresso/recipes:install
+			  (apply #'espresso/recipes:look-up-recipe filename-version)
 			  :output *command-output*
 			  :error-output *command-error*)))
 
-(defun new-receipt ()
-  (format *command-output* "The name of receipt (package name):~%")
+(defun new-recipe ()
+  (format *command-output* "The name of recipe (package name):~%")
   (let ((name (read-line))
-		(template-file-path (str:concat espresso/config:*espresso-self-folder* "receipt_template")))
-	(with-open-file (f (str:concat espresso/config:*espresso-receipts-folder* name ".lisp")
+		(template-file-path (str:concat espresso/config:*espresso-self-folder* "recipe_template")))
+	(with-open-file (f (str:concat espresso/config:*espresso-recipes-folder* name ".lisp")
 					   :direction :output
 					   :if-exists :error
 					   :if-does-not-exist :create)
@@ -68,52 +68,52 @@
   ;;:= next
   )
 
-(defun update-receipt (&rest receipts)
-  (loop for r in receipts
+(defun update-recipe (&rest recipes)
+  (loop for r in recipes
 		for filename-version = (str:split ":" r)
 		if (> (length filename-version) 2)
-		  do (error "receipts too many \":\" inside")
+		  do (error "recipes too many \":\" inside")
 		else
-		  do (espresso/receipts:update
-			  (apply #'espresso/receipts:look-up-receipt filename-version)
+		  do (espresso/recipes:update
+			  (apply #'espresso/recipes:look-up-recipe filename-version)
 			  :output *command-output*
 			  :error-output *command-error*)))
 
-(defun upgrade-receipt (&rest receipts)
-  (loop for r in receipts
+(defun upgrade-recipe (&rest recipes)
+  (loop for r in recipes
 		for filename-version = (str:split ":" r)
 		if (> (length filename-version) 2)
-		  do (error "receipts too many \":\" inside")
+		  do (error "recipes too many \":\" inside")
 		else
-		  do (espresso/receipts:upgrade
-			  (apply #'espresso/receipts:look-up-receipt filename-version)
+		  do (espresso/recipes:upgrade
+			  (apply #'espresso/recipes:look-up-recipe filename-version)
 			  :output *command-output*
 			  :error-output *command-error*)))
 
-(defun uninstall-receipt (&rest receipts)
-  (loop for r in receipts
+(defun uninstall-recipe (&rest recipes)
+  (loop for r in recipes
 		for filename-version = (str:split ":" r)
 		if (> (length filename-version) 2)
-		  do (error "receipts too many \":\" inside")
+		  do (error "recipes too many \":\" inside")
 		else
-		  do (espresso/receipts:uninstall
-			  (apply #'espresso/receipts:look-up-receipt filename-version)
+		  do (espresso/recipes:uninstall
+			  (apply #'espresso/recipes:look-up-recipe filename-version)
 			  :output *command-output*
 			  :error-output *command-error*)))
 
 (setf *commands*
 	  (list (make-command :comm "install"
-						  :doc "install receipt(s)"
-						  :func #'install-receipt)
+						  :doc "install recipe(s)"
+						  :func #'install-recipe)
 			(make-command :comm "new"
-						  :doc "make new receipt"
-						  :func #'new-receipt)
+						  :doc "make new recipe"
+						  :func #'new-recipe)
 			(make-command :comm "update"
 						  :doc "update the reciepts"
-						  :func #'update-receipt)
+						  :func #'update-recipe)
 			(make-command :comm "upgrade"
 						  :doc "upgrade the reciepts"
-						  :func #'upgrade-receipt)
+						  :func #'upgrade-recipe)
 			(make-command :comm "uninstall"
 						  :doc "uninstall the reciepts"
-						  :func #'uninstall-receipt)))
+						  :func #'uninstall-recipe)))

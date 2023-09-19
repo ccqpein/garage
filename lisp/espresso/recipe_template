@@ -1,0 +1,26 @@
+(defpackage #:espresso/recipes/~a
+  (:use #:CL
+		#:espresso/libs/fs
+		#:espresso/libs/shell-util
+		#:espresso/config
+		)
+  
+  (:import-from #:espresso/recipes
+				#:*recipes-output*
+				#:*recipes-error*
+
+				#:standard-recipe)
+  
+  (:export *RECIPES*))
+
+(in-package #:espresso/recipes/~a)
+
+(defparameter *RECIPES* nil
+  "recipes of this pakcage")
+
+;;; your things below
+
+(setf *RECIPES*
+	  (list
+;;; add your recipes inside here
+	   ))

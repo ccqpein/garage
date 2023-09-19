@@ -19,6 +19,6 @@
 							 ))
 			   (:module "plugins" :depends-on ("libs") :components ((:file "homebrew")))
 			   (:file "config")
-			   (:file "receipts" :depends-on ("libs" "config"))
-			   (:file "commands" :depends-on ("libs" "plugins" "receipts" "config"))
+			   (:file "recipes" :depends-on ("libs" "config"))
+			   (:file "commands" :depends-on ("libs" "plugins" "recipes" "config"))
 			   ))

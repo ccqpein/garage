@@ -4,7 +4,7 @@
 howebrew stuff can be plugin
 
 ** recept
-all package receipts location.
+all package recipes location.
 
 ** libs
 all lisp files of this project
@@ -29,7 +29,7 @@ in ~config.lisp~
 ** shell interface
 ask question about inplenments, config path, or something else
 
-* homebrew receipt translater
+* homebrew recipe translater
 
 * install 
 install script. Python script? because most system has python installed.
@@ -55,11 +55,11 @@ need keep latest version? (in case the newest sbcl has issue). Or just keep the 
 
 - [X] need command output async-able (maybe give additional thread?)
 - [ ] shell inaction ~-h~
-+- [ ] receipt need its own output stream+
-- [X] need to find the way how to manage the reciepts pakcages, file, and receipts (version like homebrew?)
++- [ ] recipe need its own output stream+
+- [X] need to find the way how to manage the reciepts pakcages, file, and recipes (version like homebrew?)
 - [-] config
-  - [X] default receipts location
-  - [ ] custome receipts locations
+  - [X] default recipes location
+  - [ ] custome recipes locations
   - [ ] should have ability to change when install (install script)
 - [X] reciept template
 - [ ] install script
@@ -69,6 +69,7 @@ need keep latest version? (in case the newest sbcl has issue). Or just keep the 
 - [ ] Alias (or something else) can handle the scripts of commmands
 - [ ] more output, like which dir we are in, which folder we are deleting
 - [X] delete rename to uninstall?
-- [ ] reinstall & clean command/receipt slots
-- [ ] info command for receipts
+- [ ] reinstall & clean command/recipe slots
+- [ ] info command for recipes
+- [ ] document
 
