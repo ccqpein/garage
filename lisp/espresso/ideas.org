@@ -72,4 +72,4 @@ need keep latest version? (in case the newest sbcl has issue). Or just keep the 
 - [ ] reinstall & clean command/recipe slots
 - [ ] info command for recipes
 - [ ] document
-
+- [ ] load plugins like recipes in commands

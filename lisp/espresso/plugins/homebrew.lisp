@@ -4,7 +4,8 @@
 		#:espresso/libs/shell-util)
 
   (:import-from #:espresso/libs/command
-				#:*command-output*)
+				#:*command-output*
+				#:*command-error*)
   
   (:export *commands*
 		   *plugin-name*))
@@ -15,25 +16,37 @@
   (shell-run-program
    (format nil "brew install~{~^ ~a~}" args)
    :output
-   *command-output*))
+   *command-output*
+   :error-output
+   *command-error*
+   ))
 
 (defun bupdate (&rest args)
   (shell-run-program
    "brew update"
    :output
-   *command-output*))
+   *command-output*
+   :error-output
+   *command-error*
+   ))
 
 (defun blist (&rest args)
   (shell-run-program
    "brew list"
    :output
-   *command-output*))
+   *command-output*
+   :error-output
+   *command-error*
+   ))
 
 (defun buninstall (&rest args)
   (shell-run-program
    (format nil "brew uninstall~{~^ ~a~}" args)
    :output
-   *command-output*))
+   *command-output*
+   :error-output
+   *command-error*
+   ))
 
 (defparameter *plugin-name* "homebrew")
 
