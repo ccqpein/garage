@@ -50,6 +50,8 @@ need keep latest version? (in case the newest sbcl has issue). Or just keep the 
 
 ** upgrade
 
+** list-installed
+
 
 * todo list
 
@@ -73,3 +75,5 @@ need keep latest version? (in case the newest sbcl has issue). Or just keep the 
 - [ ] info command for recipes
 - [ ] document
 - [ ] load plugins like recipes in commands
+- [ ] list-install
+  - [ ] check if the recipes are installed or not
