@@ -26,7 +26,7 @@
 
 (defclass standard-recipe (root-recipe)
   ((recipe-version :initarg :recipe-version
-					:accessor recipe-version)
+				   :accessor recipe-version)
    (install-func :initarg :install-func
 				 :accessor install-func)
    (update-func :initarg :update-func
@@ -34,7 +34,9 @@
    (upgrade-func :initarg :upgrade-func
 				 :accessor upgrade-func)
    (uninstall-func :initarg :uninstall-func
-				   :accessor uninstall-func)))
+				   :accessor uninstall-func)
+   (installed-verify :initarg :installed-verify
+					 :accessor installed-verify)))
 
 (defun look-up-recipe (filename &optional (version filename))
   "filename:version should be emacs:emacs or emacs:master"
@@ -90,7 +92,8 @@
 (defmethod uninstall ((r standard-recipe) &rest args &key (output *recipes-output*) (error-output *recipes-error*) &allow-other-keys)
   (let ((*recipes-output* output)
 		(*recipes-error* error-output))
-	(apply (uninstall-func r) args)))
+	(if (apply (installed-verify r) args)
+		(apply (uninstall-func r) args))))
 
 (defun register-recipe (name recipe)
   (setf (gethash name *recipes-table*) recipe))

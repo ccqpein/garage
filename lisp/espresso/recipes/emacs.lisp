@@ -22,26 +22,6 @@
 ;; cache folder
 (defparameter *download-folder* (pathname "~/Downloads/build-emacs-for-macos/"))
 
-;; (defun download-and-build-souce-code ()
-;;   (let ((download-path (pathname (format nil
-;; 										 "~a/build-emacs-for-macos"
-;; 										 *download-folder*))))
-;; 	(format t "download-path: ~a~%" download-path)
-;; 	(unless (if-file-exist download-path)
-;; 	  (shell-run-program
-;; 	   (format nil
-;; 			   "git clone https://github.com/jimeh/build-emacs-for-macos.git ~a"
-;; 			   download-path)
-;; 	   :output *recipes-output*
-;; 	   :error-output *recipes-error*))
-
-;; 	(uiop:with-current-directory (download-path)
-;; 	  (format t "jump inside ~a~%" download-path)
-;; 	  (shell-run-program "./build-emacs-for-macos"
-;; 				   :output *recipes-output*
-;; 				   :error-output *recipes-error*)
-;; 	  )))
-
 (defun download-souce-code ()
   (format t "download-path: ~a~%" *download-folder*)
   (unless (if-file-exist *download-folder*)
@@ -78,6 +58,8 @@
 					   :error-output *recipes-error*)
 	))
 
+(defun installed-verify (&rest rest))
+
 (setf *recipes*
 	  (list (make-instance 'standard-recipe
 						   :recipe-version "master"
@@ -93,5 +75,4 @@
 										   (install "emacs-29"))
 						   :update-func #'update
 						   :upgrade-func #'upgrade)
-
 			))
