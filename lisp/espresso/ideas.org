@@ -28,6 +28,7 @@ in ~config.lisp~
 
 ** shell interface
 ask question about inplenments, config path, or something else
+[[https://docs.stevelosh.com/adopt/usage/][use Adopt?]]
 
 * homebrew recipe translater
 
