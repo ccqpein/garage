@@ -74,7 +74,6 @@
 						r))))
 
 (defmethod install ((r standard-recipe) &rest args &key (output *recipes-output*) (error-output *recipes-error*) &allow-other-keys)
-  (format t "in re install")
   (let ((*recipes-output* output)
 		(*recipes-error* error-output))
 	(apply (install-func r) args)))
