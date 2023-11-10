@@ -470,7 +470,7 @@ impl ChatGPT {
     ) -> Result<Value, Box<dyn std::error::Error>> {
         let body = self.get_reply_chain(msg).await?;
         let body = json!({
-            "model": "gpt-4",
+            "model": "gpt-4-1106-preview",
             "messages": body
         });
 
