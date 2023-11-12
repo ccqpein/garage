@@ -1,0 +1,16 @@
+* Note
+
+** install requirements
+#+begin_src shell
+pip install -r requirements.txt
+#+end_src
+
+** run example
+#+begin_src shell
+  curl -X POST -H "Content-Type: application/json" -d '[{"role": "user", "content": "hello world"}]' http://127.0.0.1:8080/chat
+#+end_src
+
+#+RESULTS:
+| Hello! How can I assist you today? If you have any questions or need information on a specific topic | feel free to ask. |
+
+
