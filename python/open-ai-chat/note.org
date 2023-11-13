@@ -11,6 +11,11 @@ pip install -r requirements.txt
 #+end_src
 
 #+RESULTS:
-| Hello! How can I assist you today? If you have any questions or need information on a specific topic | feel free to ask. |
+| Hello! How can I assist you today? If you have any questions or need information on a particular topic | feel free to ask. |
 
 
+#+begin_src shell
+  curl -X POST -H "Content-Type: application/json" -d '{"prompt": "a white siamese cat","size": "512x512"}' http://127.0.0.1:8080/image_DALLE3
+#+end_src
+
+#+RESULTS:
