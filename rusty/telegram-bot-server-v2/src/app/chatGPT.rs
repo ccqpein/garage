@@ -1,7 +1,9 @@
 use super::*;
 use entity::prelude::*;
 use lazy_static::*;
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbBackend, EntityTrait, QueryFilter};
+use sea_orm::{
+    ColumnTrait, Condition, DatabaseConnection, DbBackend, EntityTrait, QueryFilter, QuerySelect,
+};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, HashSet},
@@ -22,6 +24,7 @@ lazy_static! {
 /// the number of how many messages inside the request body
 static CHAT_COUNT: usize = 40;
 
+/// get the group type. Return the group type and the group id
 fn get_space_info(msg: &Message) -> (String, String) {
     match &msg.chat {
         c @ MessageChat::Private(_) => (String::from("private"), c.id().to_string()),
@@ -40,13 +43,14 @@ async fn get_reply_chain(
 
     let mut msg_id = msg.id.to_string();
     let mut msgs = vec![];
+
     for _ in 0..len {
         let x = match ChatRecords::find()
             .filter(
                 Condition::all()
                     .add(entity::chat_records::Column::SpaceType.eq(&space_type))
                     .add(entity::chat_records::Column::SpaceId.eq(&space_id))
-                    .add(entity::chat_records::Column::MessageId.eq(msg_id.to_string())),
+                    .add(entity::chat_records::Column::MessageId.eq(&msg_id)),
             )
             .one(db)
             .await?
@@ -54,7 +58,9 @@ async fn get_reply_chain(
             Some(x) => x,
             None => return Err("cannot find this message".into()),
         };
+
         msgs.push(x.clone());
+        // update the msg_id
         msg_id = match x.reply_to {
             Some(x) => x,
             None => break,
@@ -290,6 +296,43 @@ impl ChatGPT {
         Ok(())
     }
 
+    /// get the last CHAT_COUNT replies of this msg_id
+    async fn get_reply_chain(
+        &mut self,
+        msg: &Message,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        make_messages_in_body(msg, CHAT_COUNT, &self.db).await
+    }
+
+    /// get the reply chain and make the
+    async fn make_chat_messages(
+        &mut self,
+        msg: &Message,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        let body = self.get_reply_chain(msg).await?;
+        let body = json!({
+            "model": "gpt-4-1106-preview",
+            "messages": body
+        });
+
+        Ok(body)
+    }
+
+    async fn make_chat_messages2(
+        &mut self,
+        msg: &Message,
+    ) -> Result<Value, Box<dyn std::error::Error>> {
+        self.get_reply_chain(msg).await
+    }
+
+    async fn call_py_openai_client(&self, endpoint: impl AsRef<str>, body: String) {
+        //:= NEXT: call python part
+    }
+
+    //:= TODO
+    /// clean the message older than 3600 * 24 * 5
+    async fn clean_table() {}
+
     //:= TODO: return value should be used by chat gpt app
     async fn download_file(&self) {}
 
@@ -376,6 +419,7 @@ impl ChatGPT {
 
         debug!("body: {}", body.to_string());
 
+        //:= change this to call the python part with make_chat_messages2
         let response_from_chat_gpt = match self
             .reqwest_client
             .post("https://api.openai.com/v1/chat/completions")
@@ -455,31 +499,6 @@ impl ChatGPT {
             _ => Ok(()),
         }
     }
-
-    /// get the last ten replies of this msg_id
-    async fn get_reply_chain(
-        &mut self,
-        msg: &Message,
-    ) -> Result<Value, Box<dyn std::error::Error>> {
-        make_messages_in_body(msg, CHAT_COUNT, &self.db).await
-    }
-
-    async fn make_chat_messages(
-        &mut self,
-        msg: &Message,
-    ) -> Result<Value, Box<dyn std::error::Error>> {
-        let body = self.get_reply_chain(msg).await?;
-        let body = json!({
-            "model": "gpt-4-1106-preview",
-            "messages": body
-        });
-
-        Ok(body)
-    }
-
-    //:= TODO
-    /// clean the message older than 3600 * 24 * 5
-    async fn clean_table() {}
 }
 
 fn trim_string_helper(s: String) -> Result<String, String> {
@@ -508,6 +527,10 @@ fn trim_string_helper(s: String) -> Result<String, String> {
         .trim_start_matches(['\n', ',', ' '])
         .to_string())
 }
+
+/*
+The App impl below
+ */
 
 #[async_trait]
 impl App for ChatGPT {
@@ -707,9 +730,9 @@ impl AppConsumer for ChatGPTInputConsumer {
 
 #[cfg(test)]
 mod tests {
-    //use super::*;
+    use sea_orm::QueryTrait;
 
-    use super::trim_string_helper;
+    use super::*;
 
     #[test]
     fn test_clean_text() {
@@ -742,5 +765,22 @@ mod tests {
         };
 
         dbg!(new_chat_record);
+    }
+
+    #[test]
+    fn test_query_chat_record() {
+        let a = ChatRecords::find()
+            .filter(
+                Condition::all()
+                    .add(entity::chat_records::Column::SpaceType.eq("type"))
+                    .add(entity::chat_records::Column::SpaceId.eq("id"))
+                    .add(entity::chat_records::Column::MessageId.eq("id")),
+            )
+            //:=DEL: .one(db)
+            .limit(Some(100))
+            .build(DbBackend::Postgres)
+            .to_string();
+
+        dbg!(a);
     }
 }

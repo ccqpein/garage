@@ -186,8 +186,17 @@ async fn the_start_of_today_in_utc() -> Result<DateTime<Utc>, String> {
     let now_eastern = now_utc.with_timezone(&New_York);
 
     let dt = New_York
-        .ymd(now_eastern.year(), now_eastern.month(), now_eastern.day())
-        .and_hms(0, 0, 0);
+        .with_ymd_and_hms(
+            now_eastern.year(),
+            now_eastern.month(),
+            now_eastern.day(),
+            0,
+            0,
+            0,
+        )
+        .unwrap();
+    //:= DEL: .ymd(now_eastern.year(), now_eastern.month(), now_eastern.day())
+    //:= DEL: .and_hms(0, 0, 0);
 
     Ok(dt.with_timezone(&Utc))
 }
@@ -278,8 +287,8 @@ mod tests {
 
     #[test]
     fn test_make_start_of_today_local_in_utc() {
-        let data = NaiveDate::from_ymd(2021, 3, 17);
-        let time = NaiveTime::from_hms(0, 0, 0);
+        let data = NaiveDate::from_ymd_opt(2021, 3, 17).unwrap();
+        let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
         let dt: NaiveDateTime = data.and_time(time);
 
         // this test gonna failed when I am not in EST lol
@@ -292,8 +301,8 @@ mod tests {
         );
 
         // test winter time
-        let data = NaiveDate::from_ymd(2021, 2, 25);
-        let time = NaiveTime::from_hms(0, 0, 0);
+        let data = NaiveDate::from_ymd_opt(2021, 2, 25).unwrap();
+        let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
         let dt: NaiveDateTime = data.and_time(time);
 
         let date_time: DateTime<Local> = Local.from_local_datetime(&dt).unwrap();
@@ -305,8 +314,8 @@ mod tests {
         );
 
         //
-        let data = NaiveDate::from_ymd(2021, 3, 22);
-        let time = NaiveTime::from_hms(0, 0, 0);
+        let data = NaiveDate::from_ymd_opt(2021, 3, 22).unwrap();
+        let time = NaiveTime::from_hms_opt(0, 0, 0).unwrap();
         let dt: NaiveDateTime = data.and_time(time);
 
         let date_time: DateTime<Local> = Local.from_local_datetime(&dt).unwrap();
@@ -326,7 +335,7 @@ mod tests {
 
     #[test]
     fn test_make_start_of_today_est_in_utc() {
-        let date_time: DateTime<Utc> = Utc.ymd(2021, 2, 25).and_hms(5, 0, 0);
+        let date_time: DateTime<Utc> = Utc.with_ymd_and_hms(2021, 2, 25, 5, 0, 0).unwrap();
         let est = date_time.with_timezone(&New_York);
 
         assert_eq!(
@@ -334,11 +343,11 @@ mod tests {
             "2021-02-25T00:00:00-05:00"
         );
 
-        let date_time: DateTime<Utc> = Utc.ymd(2021, 2, 25).and_hms(4, 59, 59);
+        let date_time: DateTime<Utc> = Utc.with_ymd_and_hms(2021, 2, 25, 4, 59, 59).unwrap();
         let est = date_time.with_timezone(&New_York); // one day before
         let new_york_d = New_York
-            .ymd(est.year(), est.month(), est.day())
-            .and_hms(0, 0, 0)
+            .with_ymd_and_hms(est.year(), est.month(), est.day(), 0, 0, 0)
+            .unwrap()
             .with_timezone(&Utc);
 
         assert_eq!(
@@ -347,7 +356,7 @@ mod tests {
         );
 
         // summer time
-        let date_time: DateTime<Utc> = Utc.ymd(2021, 5, 25).and_hms(4, 0, 0);
+        let date_time: DateTime<Utc> = Utc.with_ymd_and_hms(2021, 5, 25, 4, 0, 0).unwrap();
         let est = date_time.with_timezone(&New_York);
 
         assert_eq!(
@@ -355,11 +364,11 @@ mod tests {
             "2021-05-25T00:00:00-04:00"
         );
 
-        let date_time: DateTime<Utc> = Utc.ymd(2021, 5, 25).and_hms(3, 59, 59);
+        let date_time: DateTime<Utc> = Utc.with_ymd_and_hms(2021, 5, 25, 3, 59, 59).unwrap();
         let est = date_time.with_timezone(&New_York);
         let new_york_d = New_York
-            .ymd(est.year(), est.month(), est.day())
-            .and_hms(0, 0, 0)
+            .with_ymd_and_hms(est.year(), est.month(), est.day(), 0, 0, 0)
+            .unwrap()
             .with_timezone(&Utc);
 
         assert_eq!(
