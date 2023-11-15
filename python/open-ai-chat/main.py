@@ -12,14 +12,26 @@ logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
+        logging.debug("Making openai client")
         self.client = OpenAI()
+        logging.debug("Done make openai client")
         super().__init__(*args, **kwargs)
+        logging.debug("Finish server init")
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        message = "Hello, World!"
+        self.wfile.write(bytes(message, "utf8"))
+        return
 
     def do_POST(self):
         if self.path == '/chat':
             self.chat_handle()
         elif self.path == '/image_DALLE3':
             self.DALLE3_handle()
+        return
 
     # handlers below
     def chat_handle(self):
@@ -45,6 +57,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(f'{e}'.encode())
+        return
 
     def DALLE3_handle(self):
         data = {}
@@ -68,6 +81,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(f'{e}'.encode())
+        return
 
 
 def run(server_class=HTTPServer,
@@ -84,6 +98,7 @@ def run(server_class=HTTPServer,
         logging.error(f"Error in running server: {e}")
         sys.stderr.write(f"Error: {e}\n")
         sys.stderr.flush()
+    return
 
 
 if __name__ == "__main__":
