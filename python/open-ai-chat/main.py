@@ -3,6 +3,11 @@ from chat import chat_completions
 from dallE import image_generate_dalle3
 import json
 from openai import OpenAI
+import logging
+import sys
+
+
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -68,12 +73,19 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 def run(server_class=HTTPServer,
         handler_class=SimpleHTTPRequestHandler,
         addr="127.0.0.1", port=8080):
-
     server_address = (addr, port)
-    httpd = server_class(server_address, handler_class)
-    print(f"Starting httpd server on {addr}:{port}")
-    httpd.serve_forever()
+    logging.debug("Starting server setup")
+
+    try:
+        httpd = server_class(server_address, handler_class)
+        logging.debug(f"Starting httpd server on {addr}:{port}")
+        httpd.serve_forever()
+    except Exception as e:
+        logging.error(f"Error in running server: {e}")
+        sys.stderr.write(f"Error: {e}\n")
+        sys.stderr.flush()
 
 
 if __name__ == "__main__":
+    logging.debug("Script start")
     run()

@@ -325,8 +325,26 @@ impl ChatGPT {
         self.get_reply_chain(msg).await
     }
 
-    async fn call_py_openai_client(&self, endpoint: impl AsRef<str>, body: String) {
+    async fn call_py_openai_client(
+        &self,
+        endpoint: impl AsRef<str>,
+        body: String,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         //:= NEXT: call python part
+        match self
+            .reqwest_client
+            .post("127.0.0.1:")
+            .header("Content-Type", "application/json")
+            .body(body.to_string())
+            .send()
+            .await
+        {
+            Ok(v) => v
+                .text()
+                .await
+                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
+            Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
+        }
     }
 
     //:= TODO
