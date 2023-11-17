@@ -325,25 +325,18 @@ impl ChatGPT {
         self.get_reply_chain(msg).await
     }
 
-    async fn call_py_openai_client(
-        &self,
-        endpoint: impl AsRef<str>,
-        body: String,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    async fn call_py_openai_client(&self, endpoint: &str, body: &str) -> Result<String, String> {
         //:= NEXT: call python part
         match self
             .reqwest_client
-            .post("127.0.0.1:")
+            .post(format!("http://127.0.0.1:8080{}", endpoint))
             .header("Content-Type", "application/json")
             .body(body.to_string())
             .send()
             .await
         {
-            Ok(v) => v
-                .text()
-                .await
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
-            Err(e) => Err(Box::new(e) as Box<dyn std::error::Error>),
+            Ok(v) => v.text().await.map_err(|e| e.to_string()),
+            Err(e) => Err(e.to_string()),
         }
     }
 
@@ -430,25 +423,86 @@ impl ChatGPT {
             .map_err(|e| e.to_string())?;
 
         // start to call open ai
+        /*
         let body = self
             .make_chat_messages(&msg.this_message)
             .await
             .map_err(|e| e.to_string())?;
 
-        debug!("body: {}", body.to_string());
+        debug!("body: {}", body.to_string());*/
 
         //:= change this to call the python part with make_chat_messages2
-        let response_from_chat_gpt = match self
-            .reqwest_client
-            .post("https://api.openai.com/v1/chat/completions")
-            .bearer_auth(&self.openai_token)
-            .header("Content-Type", "application/json")
-            .body(body.to_string())
-            .send()
+
+        let body = self
+            .make_chat_messages2(&msg.this_message)
             .await
+            .map_err(|e| e.to_string())?;
+
+        debug!("body: {}", body.to_string());
+
+        let result = match self.call_py_openai_client("/chat", &body.to_string()).await {
+            Ok(s) => {
+                //let deliver_msg = trim_string_helper(s)?;
+                let deliver_msg = s;
+
+                debug!("delivery msg: {}", deliver_msg);
+
+                match self
+                    .deliver_sender
+                    .send(Msg2Deliver::new(
+                        "reply_to".to_string(),
+                        msg.chat_id,
+                        deliver_msg,
+                        Some(msg.this_message.id),
+                    ))
+                    .await
+                {
+                    Err(e) => Err(e.to_string()),
+                    _ => Ok(()),
+                }
+            }
+            Err(e) => {
+                self.deliver_sender
+                    .send(Msg2Deliver::new(
+                        "send".to_string(),
+                        msg.chat_id,
+                        format!("sorry, something wrong from server: {}", e.to_string()),
+                        None,
+                    ))
+                    .await;
+                return Err(e.to_string());
+            }
+        };
+
+        /*
+        let result = match self
+            .make_chat_messages2(&msg.this_message)
+            .await
+            .map_err(|e| e.to_string())
         {
-            Ok(v) => match v.json::<serde_json::Value>().await {
-                Ok(vv) => vv,
+            Ok(v) => match self
+                .call_py_openai_client("/chat", v.as_str().unwrap_or(""))
+                .await
+            {
+                Ok(s) => {
+                    let deliver_msg = trim_string_helper(s)?;
+
+                    debug!("delivery msg: {}", deliver_msg);
+
+                    match self
+                        .deliver_sender
+                        .send(Msg2Deliver::new(
+                            "reply_to".to_string(),
+                            msg.chat_id,
+                            deliver_msg,
+                            Some(msg.this_message.id),
+                        ))
+                        .await
+                    {
+                        Err(e) => Err(e.to_string()),
+                        _ => Ok(()),
+                    }
+                }
                 Err(e) => {
                     self.deliver_sender
                         .send(Msg2Deliver::new(
@@ -470,36 +524,73 @@ impl ChatGPT {
                         None,
                     ))
                     .await;
-                return Err(e.to_string());
+                return Err(e);
             }
-        };
-
-        debug!("response: {}", response_from_chat_gpt.to_string());
-
-        let role = &response_from_chat_gpt["choices"][0]["message"]["role"];
-        let content = &response_from_chat_gpt["choices"][0]["message"]["content"];
-
-        let result = if !role.is_null() && !content.is_null() {
-            let deliver_msg = trim_string_helper(content.to_string())?;
-
-            debug!("delivery msg: {}", deliver_msg);
-
-            match self
-                .deliver_sender
-                .send(Msg2Deliver::new(
-                    "reply_to".to_string(),
-                    msg.chat_id,
-                    deliver_msg,
-                    Some(msg.this_message.id),
-                ))
+        };*/
+        /*
+            let response_from_chat_gpt = match self
+                .reqwest_client
+                .post("https://api.openai.com/v1/chat/completions")
+                .bearer_auth(&self.openai_token)
+                .header("Content-Type", "application/json")
+                .body(body.to_string())
+                .send()
                 .await
             {
-                Err(e) => Err(e.to_string()),
-                _ => Ok(()),
-            }
-        } else {
-            Err("getting role or content has issue".to_string())
+                Ok(v) => match v.json::<serde_json::Value>().await {
+                    Ok(vv) => vv,
+                    Err(e) => {
+                        self.deliver_sender
+                            .send(Msg2Deliver::new(
+                                "send".to_string(),
+                                msg.chat_id,
+                                format!("sorry, something wrong from server: {}", e.to_string()),
+                                None,
+                            ))
+                            .await;
+                        return Err(e.to_string());
+                    }
+                },
+                Err(e) => {
+                    self.deliver_sender
+                        .send(Msg2Deliver::new(
+                            "send".to_string(),
+                            msg.chat_id,
+                            format!("sorry, something wrong from server: {}", e.to_string()),
+                            None,
+                        ))
+                        .await;
+                    return Err(e.to_string());
+                }
+            };
+
+            debug!("response: {}", response_from_chat_gpt.to_string());
+
+            let role = &response_from_chat_gpt["choices"][0]["message"]["role"];
+            let content = &response_from_chat_gpt["choices"][0]["message"]["content"];
+
+            let result = if !role.is_null() && !content.is_null() {
+                let deliver_msg = trim_string_helper(content.to_string())?;
+
+                debug!("delivery msg: {}", deliver_msg);
+
+                match self
+                    .deliver_sender
+                    .send(Msg2Deliver::new(
+                        "reply_to".to_string(),
+                        msg.chat_id,
+                        deliver_msg,
+                        Some(msg.this_message.id),
+                    ))
+                    .await
+                {
+                    Err(e) => Err(e.to_string()),
+                    _ => Ok(()),
+                }
+            } else {
+                Err("getting role or content has issue".to_string())
         };
+            */
 
         // if err happen
         match &result {
