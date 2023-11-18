@@ -83,6 +83,10 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(f'{e}'.encode())
         return
 
+    def func_call_handle(self):
+        # todo
+        return
+
 
 def run(server_class=HTTPServer,
         handler_class=SimpleHTTPRequestHandler,

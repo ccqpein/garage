@@ -1,5 +1,4 @@
 from typing import List
-from openai import OpenAI
 
 MODEL = "gpt-4-1106-preview"
 
