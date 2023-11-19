@@ -9,14 +9,11 @@ import sys
 
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
+CLIENT = OpenAI()
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):
-        logging.debug("Making openai client")
-        self.client = OpenAI()
-        logging.debug("Done make openai client")
+    def __init__(self, *args, **kwargs):        
         super().__init__(*args, **kwargs)
-        logging.debug("Finish server init")
 
     def do_GET(self):
         self.send_response(200)
@@ -47,7 +44,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # call open ai
         try:
-            response = chat_completions(self.client, data)
+            response = chat_completions(CLIENT, data)
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -71,7 +68,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_error(400, "Invalid JSON")
 
         try:
-            response = image_generate_dalle3(self.client, data)
+            response = image_generate_dalle3(CLIENT, data)
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
