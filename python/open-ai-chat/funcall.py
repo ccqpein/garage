@@ -1,10 +1,10 @@
 from openai import OpenAI
 
 
-def func_example():
+def reminder_example():
     f = make_funcall_tool(
         "make_reminder",
-        "make reminder with time range, like 12h, 1d, 30min; or timestamp only has hours (24) and min like 14:34",
+        "make reminder with time range, like 12h, 1d, 30m (only accept s, m, h, d); or timestamp only has hours (24) and min like 14:34",
         {
             "type": "object",
             "properties": {
@@ -12,7 +12,7 @@ def func_example():
                     "type": "string",
                     "description": "the content we are trying to reminder",
                 },
-                "timestamp": {"type": "string", "enum": ["loop range", "specific timestamp (hours:mins)"]},
+                "timestamp": {"type": "string", "description": "loop range or specific timestamp (hours:mins)"},
             },
         }
     )

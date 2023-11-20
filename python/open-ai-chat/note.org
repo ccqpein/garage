@@ -11,7 +11,7 @@ pip install -r requirements.txt
 #+end_src
 
 #+RESULTS:
-| Hello! How can I assist you today? If you have any questions or need information on a particular topic | feel free to ask. |
+| {"content": "Hello! How can I assist you today? If you have any questions or need help with something | feel free to ask."} |
 
 
 #+begin_src shell
@@ -19,3 +19,17 @@ pip install -r requirements.txt
 #+end_src
 
 #+RESULTS:
+
+#+begin_src shell
+  curl -X POST -H "Content-Type: application/json" -d '[{"role": "user", "content": "reminder me to check soup every 3h"}]' http://127.0.0.1:8080/chat
+#+end_src
+
+#+RESULTS:
+| {"content": null | tool_calls: {"name": "make_reminder" | arguments: {"content": "check soup" | timestamp: "3h"}}} |
+
+#+begin_src shell
+  curl -X POST -H "Content-Type: application/json" -d '[{"role": "user", "content": "reminder me to check soup at 13:00"}]' http://127.0.0.1:8080/chat
+#+end_src
+
+#+RESULTS:
+| {"content": null | tool_calls: {"name": "make_reminder" | arguments: {"content": "check soup" | timestamp: "13:00"}}} |

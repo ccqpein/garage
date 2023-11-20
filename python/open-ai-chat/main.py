@@ -1,6 +1,7 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from chat import chat_completions
 from dallE import image_generate_dalle3
+from funcall import reminder_example
 import json
 from openai import OpenAI
 import logging
@@ -10,9 +11,11 @@ import sys
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
 CLIENT = OpenAI()
+FUNCS = [reminder_example()]
+
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, **kwargs):        
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
@@ -44,7 +47,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # call open ai
         try:
-            response = chat_completions(CLIENT, data)
+            response = chat_completions(CLIENT, data, FUNCS)
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()

@@ -4,6 +4,7 @@ use lazy_static::*;
 use sea_orm::{
     ColumnTrait, Condition, DatabaseConnection, DbBackend, EntityTrait, QueryFilter, QuerySelect,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::{HashMap, HashSet},
@@ -640,6 +641,20 @@ impl ChatGPTInput {
     }
 }
 
+//:= NEXT: should I add these two to reminder file?
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+struct OpenAIAgentResponse {
+    content: Option<String>,
+    tool_calls: Option<ToolCalls>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+struct ToolCalls {
+    name: String,
+    arguments: Value,
+}
+
+// ChatGPTInputConsumer type
 pub struct ChatGPTInputConsumer {
     sender: Sender<ChatGPTInput>,
 }
@@ -711,5 +726,41 @@ mod tests {
             .to_string();
 
         dbg!(a);
+    }
+
+    #[test]
+    fn test_parse_openai_agent_response() {
+        let testcase = r#"
+{"content": "Hello! How can I assist you today? If you have any questions or need help with something feel free to ask."}
+"#;
+
+        let result: OpenAIAgentResponse = serde_json::from_str(testcase).unwrap();
+        //dbg!(&result);
+        assert_eq!(
+            result,
+            OpenAIAgentResponse {
+                content: Some(r#"Hello! How can I assist you today? If you have any questions or need help with something feel free to ask."#.to_string()),
+                tool_calls: None,
+            }
+        );
+
+        let testcase = r#"{"content": null, "tool_calls": {"name": "make_reminder", "arguments": {"content": "check soup", "timestamp": "3h"}}}
+"#;
+
+        let result: OpenAIAgentResponse = serde_json::from_str(testcase).unwrap();
+        //dbg!(&result);
+        assert_eq!(
+            result,
+            OpenAIAgentResponse {
+                content: None,
+                tool_calls: Some(ToolCalls {
+                    name: "make_reminder".to_string(),
+                    arguments: serde_json::from_str(
+                        r#"{"content": "check soup", "timestamp": "3h"}"#
+                    )
+                    .unwrap(),
+                }),
+            }
+        );
     }
 }

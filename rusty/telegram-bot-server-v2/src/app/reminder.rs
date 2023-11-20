@@ -27,7 +27,7 @@ lazy_static! {
 const REMINDER_APP_NAME: AppName = AppName("Reminder");
 
 /// add reminder to this chat window
-async fn add_reminder(
+pub async fn add_reminder(
     chatid: ChatId,
     time: ReminderTime,
     content: String,
