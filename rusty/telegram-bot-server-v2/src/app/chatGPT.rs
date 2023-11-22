@@ -1,3 +1,4 @@
+///:= need to handle some ? and result in gpt run
 use super::*;
 use entity::prelude::*;
 use lazy_static::*;
@@ -275,7 +276,11 @@ impl ChatGPT {
         self.get_reply_chain(msg).await
     }
 
-    async fn call_py_openai_client(&self, endpoint: &str, body: &str) -> Result<String, String> {
+    async fn call_py_openai_client(
+        &self,
+        endpoint: &str,
+        body: &str,
+    ) -> Result<OpenAIAgentResponse, String> {
         match self
             .reqwest_client
             .post(format!("http://127.0.0.1:8080{}", endpoint))
@@ -284,7 +289,10 @@ impl ChatGPT {
             .send()
             .await
         {
-            Ok(v) => v.text().await.map_err(|e| e.to_string()),
+            Ok(v) => v
+                .json::<OpenAIAgentResponse>()
+                .await
+                .map_err(|e| e.to_string()),
             Err(e) => Err(e.to_string()),
         }
     }
@@ -361,12 +369,13 @@ impl ChatGPT {
             (a, b, c) => return Err(format!("unmatched pattern: {:?}, {:?}, {:?}", a, b, c)),
         };
 
-        //:= NEXT: download file here
+        //:= if download file, download file here
         // let file_loc = if let Some(f) = reply_msg_is_media(&msg) {
         // 	self.download_file(f)?
         // }
 
         // add to reply here
+        //:= need to change for function call
         insert_new_reply(&msg.this_message, "user", Some(&msg.data), &self.db)
             .await
             .map_err(|e| e.to_string())?;
@@ -379,39 +388,82 @@ impl ChatGPT {
 
         debug!("chat_message_to_openai_agent: {}", body.to_string());
 
-        let result = match self.call_py_openai_client("/chat", &body.to_string()).await {
-            Ok(s) => {
-                //let deliver_msg = trim_string_helper(s)?;
-                let deliver_msg = s;
+        let result: Result<_, _> =
+            match self.call_py_openai_client("/chat", &body.to_string()).await {
+                Ok(s) => {
+                    //:= DEL: let deliver_msg = trim_string_helper(s)?;
+                    let a_response = s;
 
-                debug!("delivery msg: {}", deliver_msg);
+                    debug!("response from agent: {:?}", a_response);
 
-                match self
-                    .deliver_sender
-                    .send(Msg2Deliver::new(
-                        "reply_to".to_string(),
-                        msg.chat_id,
-                        deliver_msg,
-                        Some(msg.this_message.id),
-                    ))
-                    .await
-                {
-                    Err(e) => Err(e.to_string()),
-                    _ => Ok(()),
+                    match (a_response.content, a_response.tool_calls) {
+                        (Some(deliver_msg), None) => {
+                            // insert_new_reply(&msg.this_message, "user", Some(&msg.data), &self.db)
+                            //     .await
+                            //     .map_err(|e| e.to_string())?;
+
+                            match self
+                                .deliver_sender
+                                .send(Msg2Deliver::new(
+                                    "reply_to".to_string(), //:= if funcall, shouln't reply_to
+                                    msg.chat_id,
+                                    deliver_msg,
+                                    Some(msg.this_message.id),
+                                ))
+                                .await
+                            {
+                                Err(e) => Err(e.to_string()),
+                                _ => Ok(()),
+                            }
+                        }
+                        (None, None) => Err("openai agent response the empty result".into()),
+                        (None, Some(tc)) => {
+                            let deliver_msg = tc.run(self, msg.chat_id).await?;
+                            if let Some(dm) = deliver_msg {
+                                match self
+                                    .deliver_sender
+                                    .send(Msg2Deliver::new(
+                                        "reply_to".to_string(), //:= if funcall, shouln't reply_to
+                                        msg.chat_id,
+                                        dm,
+                                        Some(msg.this_message.id),
+                                    ))
+                                    .await
+                                {
+                                    Err(e) => Err(e.to_string()),
+                                    _ => Ok(()),
+                                }
+                            } else {
+                                Ok(())
+                            }
+                        }
+                        (Some(deliver_msg), Some(tc)) => {
+                            // insert_new_reply(&msg.this_message, "user", Some(&msg.data), &self.db)
+                            //     .await
+                            //     .map_err(|e| e.to_string())?;
+                            let deliver_msg = format!(
+                                "{} (with funcall response {})",
+                                deliver_msg,
+                                tc.run(self, msg.chat_id).await?.unwrap_or("".to_string())
+                            );
+                            match self
+                                .deliver_sender
+                                .send(Msg2Deliver::new(
+                                    "reply_to".to_string(), //:= if funcall, shouln't reply_to
+                                    msg.chat_id,
+                                    deliver_msg,
+                                    Some(msg.this_message.id),
+                                ))
+                                .await
+                            {
+                                Err(e) => Err(e.to_string()),
+                                _ => Ok(()),
+                            }
+                        }
+                    }
                 }
-            }
-            Err(e) => {
-                self.deliver_sender
-                    .send(Msg2Deliver::new(
-                        "send".to_string(),
-                        msg.chat_id,
-                        format!("sorry, something wrong from server: {}", e.to_string()),
-                        None,
-                    ))
-                    .await;
-                return Err(e.to_string());
-            }
-        };
+                Err(e) => Err(e.to_string()),
+            };
 
         // if err happen
         match &result {
@@ -641,17 +693,60 @@ impl ChatGPTInput {
     }
 }
 
-//:= NEXT: should I add these two to reminder file?
+//:= NEXT: Need to handled response in major function...
+//:= , and function add_reminder is pub now
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct OpenAIAgentResponse {
     content: Option<String>,
     tool_calls: Option<ToolCalls>,
 }
 
+impl OpenAIAgentResponse {
+    fn has_tool_calls(&self) -> bool {
+        self.tool_calls.is_some()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct ToolCalls {
     name: String,
     arguments: Value,
+}
+
+impl ToolCalls {
+    fn is_empty(&self) -> bool {
+        self.name.is_empty()
+    }
+
+    fn name_and_arguments(&self) -> (&String, &Value) {
+        (&self.name, &self.arguments)
+    }
+
+    async fn run(&self, x: &ChatGPT, chatid: ChatId) -> Result<Option<String>, String> {
+        match self.name.as_str() {
+            "make_reminder" => {
+                let content = self
+                    .arguments
+                    .get("content")
+                    .ok_or("cannot get content in args".to_string())?
+                    .as_str()
+                    .ok_or("cannot get as string".to_string())?
+                    .to_string();
+                let time = ReminderTime::parse(
+                    self.arguments
+                        .get("timestamp")
+                        .ok_or("cannot get timestamp in args".to_string())?
+                        .as_str()
+                        .ok_or("cannot get as string".to_string())?,
+                )?;
+                add_reminder(chatid, time, content, x.deliver_sender.clone())
+                    .await
+                    .map_err(|e| e.to_string())?;
+                Ok(None)
+            }
+            n @ _ => Ok(Some(format!("no {} function on bot side", n))),
+        }
+    }
 }
 
 // ChatGPTInputConsumer type
@@ -762,5 +857,14 @@ mod tests {
                 }),
             }
         );
+
+        // dbg!(result
+        //     .tool_calls
+        //     .unwrap()
+        //     .arguments
+        //     .get("timestamp")
+        //     .unwrap()
+        //     .as_str()
+        //     .unwrap());
     }
 }

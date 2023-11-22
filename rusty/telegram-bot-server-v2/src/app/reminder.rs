@@ -239,7 +239,7 @@ impl ReminderTime {
     /// parse reminder string like 11m/23s/1h/2d
     /// only accept s, m, h, d
     /// or specifically time like 12:45
-    fn parse(s: &str) -> Result<Self, String> {
+    pub fn parse(s: &str) -> Result<Self, String> {
         // if give number directly, it should be seconds
         if let Ok(ss) = s.parse::<u64>() {
             return Ok(Self::from_sec(ss));
@@ -756,5 +756,15 @@ impl App for Reminder {
     async fn run(mut self) -> Result<(), String> {
         Reminder::run(&mut self).await;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_time_parse() {
+        assert!(ReminderTime::parse("12h").is_ok());
     }
 }
