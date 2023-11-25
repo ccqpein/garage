@@ -18,10 +18,11 @@ use tokio::{
 use tracing::debug;
 
 lazy_static! {
-    static ref REMINDERS_TABLE: Mutex<HashMap<ChatId, HashMap<usize, oneshot::Sender<bool>>>> = {
-        let m = HashMap::new();
-        Mutex::new(m)
-    };
+    static ref REMINDERS_TABLE: Mutex<HashMap<ChatId, HashMap<usize, oneshot::Sender<bool>>>> =
+        {
+            let m = HashMap::new();
+            Mutex::new(m)
+        };
 }
 
 const REMINDER_APP_NAME: AppName = AppName("Reminder");
@@ -485,13 +486,14 @@ fn read_reminder_body(mut c: Cursor<String>, msg: &Message) -> Option<String> {
 
     // read the body of message
     let mut body = vec![];
-    let body_lenght = match c.read_to_end(&mut body) {
-        Ok(n) => n,
-        Err(e) => {
-            debug!("read body err: {}", e.to_string());
-            return None;
-        }
-    };
+    let body_lenght =
+        match c.read_to_end(&mut body) {
+            Ok(n) => n,
+            Err(e) => {
+                debug!("read body err: {}", e.to_string());
+                return None;
+            }
+        };
 
     if body_lenght == 0 {
         None
@@ -537,6 +539,7 @@ impl Reminder {
     pub async fn run(&mut self) {
         while let Some(ref rem_input) = self.receiver.recv().await {
             match &rem_input.command {
+                //:= telegram change it logic, this init remember maybe change
                 ReminderComm::InitReminder(time) => {
                     // let status of this chat updated
                     self.status_checker_sender
@@ -544,9 +547,9 @@ impl Reminder {
                             StatusCheckerInput::new(
                                 REMINDER_APP_NAME,
                                 rem_input.chat_id,
-                                ChatStatus::ReminderApp(ReminderStatus::ReminderPending(
-                                    time.clone(),
-                                )),
+                                ChatStatus::ReminderApp(
+                                    ReminderStatus::ReminderPending(time.clone())
+                                ),
                                 Operate::Update,
                                 None,
                             )
