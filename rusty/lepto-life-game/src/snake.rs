@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-use leptos::{html::Canvas, leptos_dom::console_log, *};
+use leptos::{html::Canvas, leptos_dom::helpers::IntervalHandle, *};
 use wasm_bindgen::JsCast;
 //use web_sys::CanvasRenderingContext2d;
 
@@ -241,8 +241,8 @@ impl Snake {
 }
 
 #[component]
-pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
-    let canvas_node = create_node_ref::<Canvas>(cx);
+pub fn SnakeGame(width: u32, height: u32) -> impl IntoView {
+    let canvas_node = create_node_ref::<Canvas>();
 
     let s = Rc::new(RefCell::new(
         Snake::new(width, height, canvas_node.clone()).unwrap(),
@@ -252,7 +252,7 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     let s1 = s.clone();
     let food1 = food.clone();
     // draw board
-    canvas_node.on_load(cx, move |canvas_ref| {
+    canvas_node.on_load(move |canvas_ref| {
         canvas_ref.set_width(width * 20);
         canvas_ref.set_height(height * 20);
         canvas_ref.on_mount(move |x| {
@@ -277,16 +277,15 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
     });
 
     // dead flag
-    let (dead, set_dead) = create_signal(cx, false);
+    let (dead, set_dead) = create_signal(false);
 
     // win flag
-    let (win, set_win) = create_signal(cx, false);
+    let (win, set_win) = create_signal(false);
 
     // refresh
     let food2 = food.clone();
     let s3 = s.clone();
     use_interval(
-        cx,
         500,
         move || {
             //console_log(&format!("{:?}", food2.borrow()));
@@ -306,7 +305,7 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
         win,
     );
 
-    view! { cx,
+    view! {
         <StatusBar/>
         <Restart set_dead=set_dead set_win=set_win s=s food=food/>
         <br/>
@@ -325,19 +324,18 @@ pub fn SnakeGame(cx: Scope, width: u32, height: u32) -> impl IntoView {
 }
 
 #[component]
-fn StatusBar(cx: Scope) -> impl IntoView {
-    view! { cx, <p>"W A S D => Up Left Down Right"</p> }
+fn StatusBar() -> impl IntoView {
+    view! { <p>"W A S D => Up Left Down Right"</p> }
 }
 
 #[component]
 fn Restart(
-    cx: Scope,
     set_dead: WriteSignal<bool>,
     set_win: WriteSignal<bool>,
     s: Rc<RefCell<Snake>>,
     food: Rc<RefCell<(u32, u32)>>,
 ) -> impl IntoView {
-    view! { cx,
+    view! {
         <button on:click=move |_| {
             set_dead(false);
             set_win(false);
@@ -355,17 +353,11 @@ fn make_board(b: &web_sys::CanvasRenderingContext2d, row: u32, col: u32) {
     }
 }
 
-fn use_interval<F>(
-    cx: Scope,
-    interval_millis: u64,
-    f: F,
-    stop: ReadSignal<bool>,
-    win: ReadSignal<bool>,
-) where
+fn use_interval<F>(interval_millis: u64, f: F, stop: ReadSignal<bool>, win: ReadSignal<bool>)
+where
     F: Fn() + Clone + 'static,
 {
     create_effect(
-        cx,
         move |prev_handle: Option<IntervalHandle>| -> IntervalHandle {
             if stop() || win() {
                 if let Some(prev_handle) = prev_handle {

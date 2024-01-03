@@ -20,8 +20,13 @@
 
 ;;; your things below
 
-(defun install-sbcl ()
+(defun download-sbcl-source-code ()
+  (shell-run-program
+   (format nil "wget -P ~a ~a"
+           *espresso-cache-folder*
+           "https://downloads.sourceforge.net/project/sbcl/sbcl/2.4.0/sbcl-2.4.0-source.tar.bz2")))
 
+(defun install-sbcl ()
   )
 
 (setf *RECIPES*
