@@ -7,14 +7,14 @@ from openai import OpenAI
 import logging
 import sys
 
-
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+#logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
 CLIENT = OpenAI()
 FUNCS = [reminder_example()]
 
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -90,7 +90,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
 def run(server_class=HTTPServer,
         handler_class=SimpleHTTPRequestHandler,
-        addr="127.0.0.1", port=8080):
+        addr="127.0.0.1",
+        port=8080):
     server_address = (addr, port)
     logging.debug("Starting server setup")
 
