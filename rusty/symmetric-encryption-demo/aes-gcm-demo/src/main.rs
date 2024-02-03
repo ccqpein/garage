@@ -1,10 +1,12 @@
-use std::{env, fs};
+use std::{
+    env,
+    fs::{self, File},
+    io::BufReader,
+};
 
 use aes_gcm::{
     aead::{Aead, AeadCore, KeyInit, OsRng},
-    Aes256Gcm,
-    Key, // Or `Aes128Gcm`
-    Nonce,
+    AeadInPlace, Aes128Gcm, Aes256Gcm, Key, Nonce,
 };
 
 fn read_file(path: &str) -> Vec<u8> {
@@ -21,6 +23,27 @@ fn read_file(path: &str) -> Vec<u8> {
     std::fs::read(&file_path).unwrap()
 }
 
+fn ctr_test(path: &str) {
+    let content = read_file(path);
+    let key = Aes128Gcm::generate_key(OsRng);
+    //dbg!(key);
+
+    let cipher = Aes128Gcm::new(&key);
+    let nonce = Aes128Gcm::generate_nonce(&mut OsRng);
+
+    let mut encrypted_data = vec![];
+
+    let tag = cipher
+        .encrypt_in_place_detached(&nonce, &content, &mut encrypted_data)
+        .unwrap();
+
+    let mut decrypted_data = vec![];
+    match cipher.decrypt_in_place_detached(&nonce, &encrypted_data, &mut decrypted_data, &tag) {
+        Ok(_) => assert_eq!(content, decrypted_data),
+        Err(e) => panic!("{:?}", e),
+    }
+}
+
 fn main() {
     let key = Aes256Gcm::generate_key(OsRng);
     //dbg!(key);
@@ -34,7 +57,7 @@ fn main() {
     //     .unwrap();
     // let plaintext = cipher.decrypt(&nonce, ciphertext.as_ref()).unwrap();
 
-    // small file
+    /////// small file
     let content = read_file("/data/paper.pdf");
     let ciphertext = cipher.encrypt(&nonce, content.as_ref()).unwrap();
     let plaintext = cipher.decrypt(&nonce, ciphertext.as_ref()).unwrap();
@@ -44,12 +67,14 @@ fn main() {
     let ciphertext2 = cipher.encrypt(&nonce, content.as_ref()).unwrap();
     assert_eq!(ciphertext2, ciphertext);
 
-    // read big file
+    //////// read big file
 
     // let content = read_file("/data/movie.mkv");
-
     // let ciphertext = cipher.encrypt(&nonce, content.as_ref()).unwrap();
     // let plaintext = cipher.decrypt(&nonce, ciphertext.as_ref()).unwrap();
 
     // assert_eq!(plaintext, content);
+
+    ////// test ctr
+    ctr_test("/data/paper.pdf");
 }
