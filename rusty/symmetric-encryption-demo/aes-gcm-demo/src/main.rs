@@ -1,7 +1,7 @@
 use std::{
     env,
     fs::{self, File},
-    io::BufReader,
+    io::{BufReader, Write},
 };
 
 use aes_gcm::{
@@ -23,25 +23,29 @@ fn read_file(path: &str) -> Vec<u8> {
     std::fs::read(&file_path).unwrap()
 }
 
-fn ctr_test(path: &str) {
-    let content = read_file(path);
+fn aes_ctr_test(input_path: &str, output_path: &str) {
+    let mut content = read_file(input_path);
     let key = Aes128Gcm::generate_key(OsRng);
-    //dbg!(key);
 
     let cipher = Aes128Gcm::new(&key);
     let nonce = Aes128Gcm::generate_nonce(&mut OsRng);
 
-    let mut encrypted_data = vec![];
-
     let tag = cipher
-        .encrypt_in_place_detached(&nonce, &content, &mut encrypted_data)
+        .encrypt_in_place_detached(&nonce, &[], &mut content)
         .unwrap();
+    //dbg!(&tag);
+    //let mut decrypted_data = vec![];
+    let current_path = env::current_dir()
+        .unwrap()
+        .into_os_string()
+        .into_string()
+        .unwrap();
+    let mut output_file = File::open(current_path + output_path).unwrap();
 
-    let mut decrypted_data = vec![];
-    match cipher.decrypt_in_place_detached(&nonce, &encrypted_data, &mut decrypted_data, &tag) {
-        Ok(_) => assert_eq!(content, decrypted_data),
+    match cipher.decrypt_in_place_detached(&nonce, &[], &mut content, &tag) {
+        Ok(_) => output_file.write_all(&content),
         Err(e) => panic!("{:?}", e),
-    }
+    };
 }
 
 fn main() {
@@ -76,5 +80,6 @@ fn main() {
     // assert_eq!(plaintext, content);
 
     ////// test ctr
-    ctr_test("/data/paper.pdf");
+    aes_ctr_test("/data/paper.pdf", "/data/outpaper.pdf");
+    //aes_ctr_test("/data/movie.mkv", "/data/movieOut.mkv");
 }
