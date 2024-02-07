@@ -1,4 +1,4 @@
-from typing import Dict, String
+from typing import Dict
 
 default_dalle3_prompt = {
     "model": "dall-e-3",
@@ -21,7 +21,7 @@ def image_generate_dalle3(client, prompt):
     return response.data[0].url
 
 
-def image_edit_dalle2(client, image: String, mask: String, prompt):
+def image_edit_dalle2(client, image: str, mask: str, prompt):
     #:= todo: need to know how to edit pic
 
     response = client.images.edit(

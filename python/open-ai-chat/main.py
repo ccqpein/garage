@@ -47,7 +47,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         # call open ai
         try:
-            response = chat_completions(CLIENT, data, FUNCS)
+            response = chat_completions(CLIENT, data, False, FUNCS)
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
