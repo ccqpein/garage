@@ -151,11 +151,33 @@ pub enum ErrorKind {
     FormatError,
 }
 
-#[derive(Debug, PartialEq, TildeAble2, Clone)]
+#[derive(Debug, PartialEq, TildeAble, Clone)]
 pub enum TildeKind {
     /// ~C ~:C
     #[implTo(char)]
     Char,
+}
+
+// cannot overwrote implement
+
+// impl<T> TildeKindChar for T {
+//     fn format(&self, tkind: &TildeKind, buf: &mut String) -> Result<(), TildeError> {
+//         Err(TildeError::new(ErrorKind::EmptyImplenmentError, "haven't implenmented yet").into())
+//     }
+// }
+
+impl TildeKindChar for char {
+    fn format(&self, tkind: &TildeKind, buf: &mut String) -> Result<(), TildeError> {
+        Err(TildeError::new(ErrorKind::EmptyImplenmentError, "haven't implenmented yet").into())
+        //Ok(())
+    }
+}
+
+impl TildeKindChar for char {
+    fn format(&self, tkind: &TildeKind, buf: &mut String) -> Result<(), TildeError> {
+        //Err(TildeError::new(ErrorKind::EmptyImplenmentError, "haven't implenmented yet").into())
+        Ok(())
+    }
 }
 
 ////////// test super trait
@@ -164,4 +186,16 @@ struct A {}
 
 impl A {
     fn function_inside() {}
+}
+
+///////////
+
+pub trait TildeAble2: TildeKindChar {}
+
+impl<T: TildeKindChar> TildeAble2 for T {}
+
+//impl<T: TildeKindChar> TildeAble2 for T {}
+
+pub fn v2_test<T: TildeAble2>(t: T, tkind: &TildeKind, buf: &mut String) {
+    <T as TildeKindChar>::format(&t, tkind, buf);
 }
