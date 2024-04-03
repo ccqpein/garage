@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{CarryableUnit, CarryableUnitMut};
+use super::*;
 
 #[derive(Debug)]
 pub struct Hex(u8);
@@ -17,8 +17,8 @@ impl TryFrom<u8> for Hex {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         if value > 15 {
             Err(FROM_ERR)
-        }else {
-            Ok(HEX_TABLE_VIEW[value as usize])
+        } else {
+            Ok(Hex(value))
         }
     }
 }
@@ -40,8 +40,6 @@ impl CarryableUnit for Hex {
         }
     }
 }
-
-
 
 impl CarryableUnitMut for Hex {
     type ItemMut = bool;
