@@ -4,6 +4,7 @@ use chrono_tz::America::New_York;
 use lazy_static::*;
 use std::{
     collections::HashMap,
+    fs::File,
     io::{BufRead, BufReader, Cursor, Read},
 };
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
@@ -18,11 +19,10 @@ use tokio::{
 use tracing::debug;
 
 lazy_static! {
-    static ref REMINDERS_TABLE: Mutex<HashMap<ChatId, HashMap<usize, oneshot::Sender<bool>>>> =
-        {
-            let m = HashMap::new();
-            Mutex::new(m)
-        };
+    static ref REMINDERS_TABLE: Mutex<HashMap<ChatId, HashMap<usize, oneshot::Sender<bool>>>> = {
+        let m = HashMap::new();
+        Mutex::new(m)
+    };
 }
 
 const REMINDER_APP_NAME: AppName = AppName("Reminder");
@@ -331,11 +331,35 @@ impl ReminderComm {
 
 pub struct ReminderInputConsumer {
     snd: Sender<ReminderInput>,
+    vault_path: String,
 }
 
 impl ReminderInputConsumer {
-    pub fn new(snd: Sender<ReminderInput>) -> Self {
-        Self { snd }
+    pub fn new(snd: Sender<ReminderInput>, vault_path: String) -> Self {
+        Self { snd, vault_path }
+    }
+
+    pub fn from_white_list(&self, m: &Message) -> Result<(), String> {
+        let f = BufReader::new(
+            File::open(self.vault_path.clone() + "/myname").map_err(|e| e.to_string())?,
+        );
+        let my_name = f
+            .lines()
+            .next()
+            .ok_or("Read 'myname' failed".to_string())?
+            .map_err(|e| e.to_string())?;
+
+        if let Some(uid) = &m.from.username
+            && *uid != my_name
+        {
+            Err(format!(
+                "{} try to call reminder. whole message: {:?}",
+                m.from.username.clone().unwrap_or("".to_string()),
+                m
+            ))
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -486,14 +510,13 @@ fn read_reminder_body(mut c: Cursor<String>, msg: &Message) -> Option<String> {
 
     // read the body of message
     let mut body = vec![];
-    let body_lenght =
-        match c.read_to_end(&mut body) {
-            Ok(n) => n,
-            Err(e) => {
-                debug!("read body err: {}", e.to_string());
-                return None;
-            }
-        };
+    let body_lenght = match c.read_to_end(&mut body) {
+        Ok(n) => n,
+        Err(e) => {
+            debug!("read body err: {}", e.to_string());
+            return None;
+        }
+    };
 
     if body_lenght == 0 {
         None
@@ -510,6 +533,8 @@ fn read_reminder_body(mut c: Cursor<String>, msg: &Message) -> Option<String> {
 
 /// Reminder app
 pub struct Reminder {
+    vault_path: String,
+
     sender: Sender<ReminderInput>,
     receiver: Receiver<ReminderInput>,
 
@@ -522,9 +547,11 @@ impl Reminder {
     pub fn new(
         deliver_sender: Sender<Msg2Deliver>,
         status_checker_sender: Sender<StatusCheckerInput>,
+        vault_path: String,
     ) -> Self {
         let (snd, rev) = mpsc::channel(10);
         Self {
+            vault_path,
             sender: snd,
             receiver: rev,
             status_checker_sender,
@@ -547,9 +574,9 @@ impl Reminder {
                             StatusCheckerInput::new(
                                 REMINDER_APP_NAME,
                                 rem_input.chat_id,
-                                ChatStatus::ReminderApp(
-                                    ReminderStatus::ReminderPending(time.clone())
-                                ),
+                                ChatStatus::ReminderApp(ReminderStatus::ReminderPending(
+                                    time.clone(),
+                                )),
                                 Operate::Update,
                                 None,
                             )
@@ -730,6 +757,7 @@ async fn awaiting_reminder(
 #[async_trait]
 impl AppConsumer for ReminderInputConsumer {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
+        self.from_white_list(msg)?;
         match ReminderInput::from_msg_v2(msg) {
             Some(input) => {
                 self.snd.send(input).await.map_err(|e| e.to_string())?;
@@ -753,7 +781,7 @@ impl App for Reminder {
     type Consumer = ReminderInputConsumer;
 
     fn consumer(&self) -> Self::Consumer {
-        ReminderInputConsumer::new(self.sender.clone())
+        ReminderInputConsumer::new(self.sender.clone(), self.vault_path.clone())
     }
 
     async fn run(mut self) -> Result<(), String> {

@@ -1,7 +1,7 @@
 from typing import List
 import json
 
-MODEL = "gpt-4-1106-preview"
+MODEL = "gpt-4-turbo"
 
 
 def chat_completions(

@@ -55,7 +55,11 @@ async fn making_app_layer(
     rt.spawn(gc.run());
 
     // reminder app
-    let reminder_app = app::Reminder::new(deliver_sender.clone(), status_checker.sender());
+    let reminder_app = app::Reminder::new(
+        deliver_sender.clone(),
+        status_checker.sender(),
+        opts.vault.clone(),
+    );
     status_checker
         .reminder_catcher(reminder_app.sender())
         .await
