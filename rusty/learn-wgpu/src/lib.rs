@@ -5,6 +5,8 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+mod vertex;
+
 pub fn run1_1() {
     env_logger::init();
     let event_loop = EventLoop::new();
