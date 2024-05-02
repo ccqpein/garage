@@ -36,8 +36,21 @@ fn get_space_info(msg: &Message) -> (String, String) {
     }
 }
 
-fn chat_record_to_json(cr: &entity::chat_records::Model) -> Value {
-    json!({"role": cr.role, "content": cr.content})
+fn chat_record_to_json(cr: &entity::chat_records::Model) -> Result<Value, String> {
+    // let Ok(cc) =
+    //     serde_json::from_str::<Value>(cr.content.as_ref().map(|s| s.as_str()).unwrap_or(""))
+    // else {
+    //     return Err(format!("content {:?} cannot parsed to value", cr.content));
+    // };
+
+    let cc = match serde_json::from_str::<Value>(cr.content.as_ref().map(|s| s.as_str()).unwrap()) {
+        Ok(cc) => cc,
+        Err(_) => {
+            // pure string cannot parse to Vlaue
+            json!(cr.content.as_ref().unwrap_or(&String::new()))
+        }
+    };
+    Ok(json!({"role": cr.role, "content": cc}))
 }
 
 async fn if_reply_chat_in_the_chain3(msg: &Message, db: &DatabaseConnection) -> bool {
@@ -117,6 +130,9 @@ pub async fn insert_new_reply(
         }
         None => content,
     };
+
+    // transfer to json obj directly
+    content = json!([{"type":"text", "text": content}]).to_string();
 
     let new_chat_record = entity::chat_records::ActiveModel {
         space_type: sea_orm::ActiveValue::Set(space_type),
@@ -258,7 +274,7 @@ impl ChatGPT {
                 None => return Err("cannot find this message".into()),
             };
 
-            msgs.push(chat_record_to_json(&x));
+            msgs.push(chat_record_to_json(&x)?);
             // update the msg_id
             msg_id = match x.reply_to {
                 Some(x) => x,
@@ -391,7 +407,6 @@ impl ChatGPT {
         let result: Result<_, _> =
             match self.call_py_openai_client("/chat", &body.to_string()).await {
                 Ok(s) => {
-                    //:= DEL: let deliver_msg = trim_string_helper(s)?;
                     let a_response = s;
 
                     debug!("response from agent: {:?}", a_response);
@@ -866,5 +881,36 @@ mod tests {
         //     .unwrap()
         //     .as_str()
         //     .unwrap());
+    }
+
+    #[test]
+    fn test_json_list_parser() {
+        let a_data = r#"{"type":"text", "text": "Who won the world series in 2020?"}"#;
+        let a: Value = serde_json::from_str(a_data).unwrap();
+
+        let re = json!({"role": "user", "content": "content"});
+        dbg!(&a);
+        dbg!(&re);
+
+        let b = r#"hello"#;
+        //let bb = serde_json::from_str::<Value>(&b).unwrap();
+        let bb = json!(b);
+        dbg!(&bb);
+
+        let re2 = json!({"role": "user", "content": a});
+        dbg!(&re2);
+        dbg!(&re2.to_string());
+
+        let re2 = json!({"role": "user", "content": a_data});
+        dbg!(&re2);
+
+        // assert_eq!(
+        //     a_data,
+        //     json!({"type":"text", "text": "Who won the world series in 2020?"}).to_string()
+        // )
+
+        dbg!(json!({"a": "a"}).to_string());
+        //let bb = "a".to_string();
+        dbg!(json!({"a": bb}).to_string());
     }
 }
