@@ -83,9 +83,15 @@ impl Deliver {
 
                 let (m, resp_content) = get_reply_text_msg(&resp)?;
 
-                insert_new_reply(m, "assistant", None, DB.lock().await.as_ref().unwrap())
-                    .await
-                    .map_err(|e| e.to_string())?;
+                insert_new_reply(
+                    m,
+                    "assistant",
+                    None,
+                    DB.lock().await.as_ref().unwrap(),
+                    &None,
+                )
+                .await
+                .map_err(|e| e.to_string())?;
 
                 Ok(())
             }

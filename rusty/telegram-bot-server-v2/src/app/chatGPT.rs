@@ -15,7 +15,7 @@ use std::{
     time::Duration,
 };
 use telegram_bot::{
-    ChatId, GroupId, MessageChat, MessageId, MessageKind, MessageText, SupergroupId,
+    ChatId, GroupId, MessageChat, MessageId, MessageKind, MessageText, SupergroupId, ToFileRef,
 };
 use tokio::sync::Mutex;
 
@@ -90,12 +90,20 @@ pub async fn insert_new_reply(
     role: &str,
     replace_content: Option<&str>,
     db: &DatabaseConnection,
+    downloader: &Option<FileDownloader>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (mut reply_to_id, reply_msg_data) = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
             telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
                 MessageKind::Text { data, .. } => (Some(m.id), data.to_string()),
-                _ => return Err("only support the text".into()),
+                MessageKind::Photo { data, .. } => (Some(m.id), {
+                    if let Some(dl) = downloader {
+                        dl.download_file(data.last().unwrap()).await?;
+                    }
+
+                    String::new()
+                }),
+                _ => return Err("not support kind".into()),
             },
             telegram_bot::MessageOrChannelPost::ChannelPost(_) => {
                 return Err("ChannelPost isn't support yet".into())
@@ -316,9 +324,6 @@ impl ChatGPT {
     /// clean the message older than 3600 * 24 * 5
     async fn clean_table() {}
 
-    //:= TODO: return value should be used by chat gpt app
-    async fn download_file(&self) {}
-
     async fn handle_chat(&mut self, msg: ChatGPTInput) -> Result<(), String> {
         // check if chat legal or not
         let data = match (msg.group_id, msg.user_name.as_str(), msg.data.as_str()) {
@@ -390,10 +395,15 @@ impl ChatGPT {
         // }
 
         // add to reply here
-        //:= need to change for function call
-        insert_new_reply(&msg.this_message, "user", Some(&msg.data), &self.db)
-            .await
-            .map_err(|e| e.to_string())?;
+        insert_new_reply(
+            &msg.this_message,
+            "user",
+            Some(&msg.data),
+            &self.db,
+            &self.file_downloader,
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
         // start to call open ai
         let body = self

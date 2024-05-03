@@ -133,7 +133,7 @@ fn main() -> std::io::Result<()> {
     // make deliver
     let (deliver_sender1, deliver_receiver1) = mpsc::channel::<Msg2Deliver>(5);
     let mut delvr1 = Deliver::new(Api::new(token1), deliver_receiver1);
-    let downloader = FileDownloader::new(Api::new(token1)).unwrap();
+    let downloader = FileDownloader::new(token1).unwrap();
 
     let (deliver_sender2, deliver_receiver2) = mpsc::channel::<Msg2Deliver>(5);
     let mut delvr2 = Deliver::new(Api::new(token2), deliver_receiver2);

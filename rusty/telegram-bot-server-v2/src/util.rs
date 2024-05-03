@@ -13,13 +13,15 @@ use std::io::Write;
 
 pub struct FileDownloader {
     api: Api,
+    token: String,
     reqwest_client: reqwest::Client,
     folder: String,
     files_exist: HashSet<String>,
 }
 
 impl FileDownloader {
-    pub fn new(api: Api) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(token: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let api = Api::new(token);
         let current_path = env::current_exe()?;
         let parent_path = current_path
             .parent()
@@ -46,6 +48,7 @@ impl FileDownloader {
 
         Ok(Self {
             api,
+            token: token.to_string(),
             reqwest_client: reqwest::Client::new(),
             files_exist: files,
             folder: path
@@ -58,7 +61,7 @@ impl FileDownloader {
 
     //:= need to get the file type, like "mime_type: Some("audio/ogg")"
     //:= audio/ogg need to transfer mp3? or not?
-    async fn download_file(
+    pub async fn download_file(
         &self,
         file_ref: impl ToFileRef,
     ) -> Result<String, Box<dyn std::error::Error>> {
@@ -77,7 +80,12 @@ impl FileDownloader {
                 }
 
                 let mut f = std::fs::File::create(path.clone())?;
-                let f_url = file_path.ok_or::<String>("file path is nil".into())?;
+                let f_url = "https://api.telegram.org/file/bot".to_string()
+                    + &self.token
+                    + "/"
+                    + file_path
+                        .ok_or::<String>("file path is nil".into())?
+                        .as_str();
                 debug!("f_url is {f_url}"); //:= just want to know what is f_url
                 let r = self.reqwest_client.get(f_url).send().await?;
 
