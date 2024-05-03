@@ -8,6 +8,7 @@ use std::{fs::File, io::BufReader};
 use telegram_bot::UpdateKind;
 use telegram_bot::{types::Update, Api, Message};
 use telegram_bot_server_v2::app::{App as botApp, AppLayer};
+use telegram_bot_server_v2::util::FileDownloader;
 use telegram_bot_server_v2::*;
 use tokio::runtime::{self, Runtime};
 use tokio::sync::mpsc;
@@ -42,6 +43,7 @@ async fn making_app_layer(
     deliver_sender: &Sender<Msg2Deliver>,
     opts: &Opts,
     db: &DatabaseConnection,
+    downloader: FileDownloader,
 ) {
     // need make status checker first
     let mut status_checker = app::StatusChecker::new();
@@ -73,9 +75,14 @@ async fn making_app_layer(
     // rt.spawn(echo.run());
 
     // make chat_gpt
-    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db)
-        .await
-        .unwrap();
+    let chat_gpt = app::ChatGPT::new(
+        deliver_sender.clone(),
+        opts.vault.clone(),
+        db,
+        Some(downloader),
+    )
+    .await
+    .unwrap();
     al.register_app(&chat_gpt);
     rt.spawn(chat_gpt.run());
 
@@ -95,7 +102,7 @@ async fn making_app_layer_2(
     db: &DatabaseConnection,
 ) {
     // make chat_gpt
-    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db)
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db, None)
         .await
         .unwrap();
     al.register_app(&chat_gpt);
@@ -126,6 +133,7 @@ fn main() -> std::io::Result<()> {
     // make deliver
     let (deliver_sender1, deliver_receiver1) = mpsc::channel::<Msg2Deliver>(5);
     let mut delvr1 = Deliver::new(Api::new(token1), deliver_receiver1);
+    let downloader = FileDownloader::new(Api::new(token1)).unwrap();
 
     let (deliver_sender2, deliver_receiver2) = mpsc::channel::<Msg2Deliver>(5);
     let mut delvr2 = Deliver::new(Api::new(token2), deliver_receiver2);
@@ -145,7 +153,15 @@ fn main() -> std::io::Result<()> {
         let db_path = "sqlite://".to_string() + &opts.vault + "/db/sqlite.db?mode=rwc";
         let db_conn = Database::connect(db_path).await.unwrap();
 
-        making_app_layer(&mut applayer1, &rt, &deliver_sender1, &opts, &db_conn).await;
+        making_app_layer(
+            &mut applayer1,
+            &rt,
+            &deliver_sender1,
+            &opts,
+            &db_conn,
+            downloader,
+        )
+        .await;
         making_app_layer_2(&mut applayer2, &rt, &deliver_sender2, &opts, &db_conn).await;
     });
 

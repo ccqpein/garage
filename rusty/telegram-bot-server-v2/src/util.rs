@@ -11,7 +11,7 @@ use tracing::debug;
 //use std::fs::File;
 use std::io::Write;
 
-struct FileDownloader {
+pub struct FileDownloader {
     api: Api,
     reqwest_client: reqwest::Client,
     folder: String,
@@ -19,7 +19,7 @@ struct FileDownloader {
 }
 
 impl FileDownloader {
-    fn new(api: Api) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(api: Api) -> Result<Self, Box<dyn std::error::Error>> {
         let current_path = env::current_exe()?;
         let parent_path = current_path
             .parent()
@@ -78,6 +78,7 @@ impl FileDownloader {
 
                 let mut f = std::fs::File::create(path.clone())?;
                 let f_url = file_path.ok_or::<String>("file path is nil".into())?;
+                debug!("f_url is {f_url}"); //:= just want to know what is f_url
                 let r = self.reqwest_client.get(f_url).send().await?;
 
                 // write file

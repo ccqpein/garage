@@ -1,3 +1,4 @@
+use super::util::*;
 ///:= need to handle some ? and result in gpt run
 use super::*;
 use entity::prelude::*;
@@ -37,16 +38,11 @@ fn get_space_info(msg: &Message) -> (String, String) {
 }
 
 fn chat_record_to_json(cr: &entity::chat_records::Model) -> Result<Value, String> {
-    // let Ok(cc) =
-    //     serde_json::from_str::<Value>(cr.content.as_ref().map(|s| s.as_str()).unwrap_or(""))
-    // else {
-    //     return Err(format!("content {:?} cannot parsed to value", cr.content));
-    // };
-
     let cc = match serde_json::from_str::<Value>(cr.content.as_ref().map(|s| s.as_str()).unwrap()) {
         Ok(cc) => cc,
         Err(_) => {
-            // pure string cannot parse to Vlaue
+            // pure string cannot from_str to value
+            // use json! can handle the pure string
             json!(cr.content.as_ref().unwrap_or(&String::new()))
         }
     };
@@ -158,6 +154,7 @@ pub struct ChatGPT {
 
     openai_token: String,
     reqwest_client: reqwest::Client,
+    file_downloader: Option<FileDownloader>,
 
     waken_groups: HashSet<String>,
     waken_usernames: HashSet<String>,
@@ -173,6 +170,7 @@ impl ChatGPT {
         deliver_sender: Sender<Msg2Deliver>,
         vault_path: String,
         db: &DatabaseConnection,
+        downloader: Option<FileDownloader>,
     ) -> Result<Self, String> {
         let (sender, receiver) = mpsc::channel(10);
         // cache my id
@@ -225,6 +223,7 @@ impl ChatGPT {
             sender,
             receiver,
             deliver_sender,
+            file_downloader: downloader,
             waken_groups: stored_groups,
             waken_usernames: stored_usernames,
             reqwest_client: reqwest::Client::builder()
