@@ -1,6 +1,7 @@
 use super::util::*;
 ///:= need to handle some ? and result in gpt run
 use super::*;
+use base64::encode;
 use entity::prelude::*;
 use lazy_static::*;
 use sea_orm::{
@@ -85,6 +86,27 @@ async fn if_reply_chat_in_the_chain2(
     x.is_ok() && x.unwrap().is_some()
 }
 
+// Function to encode an image to base64
+fn encode_image(image_path: &str) -> Result<String, Box<dyn std::error::Error>> {
+    // Open the file
+    let mut image_file = File::open(image_path)?;
+
+    // Read the file's contents into a vector
+    let mut buffer = Vec::new();
+    image_file.read_to_end(&mut buffer)?;
+
+    // Encode the contents of the file
+    let encoded_image = encode(&buffer);
+
+    Ok(encoded_image)
+}
+
+/// used for reading reply message type
+enum ReplyData {
+    Text(String),
+    Image(String),
+}
+
 pub async fn insert_new_reply(
     msg: &Message,
     role: &str,
@@ -95,13 +117,18 @@ pub async fn insert_new_reply(
     let (mut reply_to_id, reply_msg_data) = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
             telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
-                MessageKind::Text { data, .. } => (Some(m.id), data.to_string()),
+                MessageKind::Text { data, .. } => (Some(m.id), ReplyData::Text(data.to_string())),
                 MessageKind::Photo { data, .. } => (Some(m.id), {
-                    if let Some(dl) = downloader {
-                        dl.download_file(data.last().unwrap()).await?;
-                    }
+                    let file_path = if let Some(dl) = downloader {
+                        Some(dl.download_file(data.last().unwrap()).await?)
+                    } else {
+                        None
+                    };
 
-                    String::new()
+                    match file_path {
+                        Some(fp) => ReplyData::Image(encode_image(&fp)?),
+                        None => ReplyData::Text(String::new()),
+                    }
                 }),
                 _ => return Err("not support kind".into()),
             },
@@ -109,7 +136,7 @@ pub async fn insert_new_reply(
                 return Err("ChannelPost isn't support yet".into())
             }
         },
-        None => (None, "".to_string()),
+        None => (None, ReplyData::Text(String::new())),
     };
 
     let (space_type, space_id) = get_space_info(msg);
@@ -127,16 +154,25 @@ pub async fn insert_new_reply(
         Some(rid) => {
             if !if_reply_chat_in_the_chain2(&space_type, &space_id, rid, db).await {
                 reply_to_id = None; // merge this two meg together
-                vec![r#"Original Post: \n""#, &reply_msg_data, r#""\n"#, &content].concat()
+                match reply_msg_data {
+                    ReplyData::Text(cont) => {
+                        let cc = vec![r#"Original Post: \n""#, &cont, r#""\n"#, &content].concat();
+                        json!([{"type":"text", "text": cc}]).to_string()
+                    }
+                    ReplyData::Image(cont) => {
+                        json!([{"type":"text", "text": content},
+                               {"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",cont)}}]).to_string()
+                    },
+                }
             } else {
-                content
+                json!([{"type":"text", "text": content}]).to_string()
             }
         }
-        None => content,
+        None => json!([{"type":"text", "text": content}]).to_string(),
     };
 
     // transfer to json obj directly
-    content = json!([{"type":"text", "text": content}]).to_string();
+    //content = json!([{"type":"text", "text": content}]).to_string();
 
     let new_chat_record = entity::chat_records::ActiveModel {
         space_type: sea_orm::ActiveValue::Set(space_type),
@@ -389,11 +425,6 @@ impl ChatGPT {
             (a, b, c) => return Err(format!("unmatched pattern: {:?}, {:?}, {:?}", a, b, c)),
         };
 
-        //:= if download file, download file here
-        // let file_loc = if let Some(f) = reply_msg_is_media(&msg) {
-        // 	self.download_file(f)?
-        // }
-
         // add to reply here
         insert_new_reply(
             &msg.this_message,
@@ -411,25 +442,21 @@ impl ChatGPT {
             .await
             .map_err(|e| e.to_string())?;
 
-        debug!("chat_message_to_openai_agent: {}", body.to_string());
+        info!("chat_message_to_openai_agent: {}", body.to_string());
 
         let result: Result<_, _> =
             match self.call_py_openai_client("/chat", &body.to_string()).await {
                 Ok(s) => {
                     let a_response = s;
 
-                    debug!("response from agent: {:?}", a_response);
+                    info!("response from agent: {:?}", a_response);
 
                     match (a_response.content, a_response.tool_calls) {
                         (Some(deliver_msg), None) => {
-                            // insert_new_reply(&msg.this_message, "user", Some(&msg.data), &self.db)
-                            //     .await
-                            //     .map_err(|e| e.to_string())?;
-
                             match self
                                 .deliver_sender
                                 .send(Msg2Deliver::new(
-                                    "reply_to".to_string(), //:= if funcall, shouln't reply_to
+                                    "reply_to".to_string(),
                                     msg.chat_id,
                                     deliver_msg,
                                     Some(msg.this_message.id),
@@ -447,7 +474,7 @@ impl ChatGPT {
                                 match self
                                     .deliver_sender
                                     .send(Msg2Deliver::new(
-                                        "reply_to".to_string(), //:= if funcall, shouln't reply_to
+                                        "reply_to".to_string(),
                                         msg.chat_id,
                                         dm,
                                         Some(msg.this_message.id),
@@ -462,9 +489,6 @@ impl ChatGPT {
                             }
                         }
                         (Some(deliver_msg), Some(tc)) => {
-                            // insert_new_reply(&msg.this_message, "user", Some(&msg.data), &self.db)
-                            //     .await
-                            //     .map_err(|e| e.to_string())?;
                             let deliver_msg = format!(
                                 "{} (with funcall response {})",
                                 deliver_msg,
@@ -473,7 +497,7 @@ impl ChatGPT {
                             match self
                                 .deliver_sender
                                 .send(Msg2Deliver::new(
-                                    "reply_to".to_string(), //:= if funcall, shouln't reply_to
+                                    "reply_to".to_string(),
                                     msg.chat_id,
                                     deliver_msg,
                                     Some(msg.this_message.id),
@@ -653,7 +677,8 @@ impl ChatGPTInput {
                     None => (),
                 }
             }
-            //super group
+
+            // super group
             (MessageChat::Supergroup(group), MessageKind::Text { data, entities }) => {
                 group_id = Some(group.id.to_string());
                 match entities.get(0) {
@@ -701,6 +726,7 @@ impl ChatGPTInput {
         // pass all check upper
         // check if this message reply some message in CHAT_CHAIN_TABLE
         if if_reply_chat_in_the_chain3(msg, DB.lock().await.as_ref().unwrap()).await {
+            //:= todo: could allow image now
             let data = msg.kind.text().unwrap_or("".into());
             Some(Self {
                 data,
@@ -717,8 +743,6 @@ impl ChatGPTInput {
     }
 }
 
-//:= NEXT: Need to handled response in major function...
-//:= , and function add_reminder is pub now
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 struct OpenAIAgentResponse {
     content: Option<String>,
@@ -921,5 +945,10 @@ mod tests {
         dbg!(json!({"a": "a"}).to_string());
         //let bb = "a".to_string();
         dbg!(json!({"a": bb}).to_string());
+
+        let content = "content";
+        let img = "img";
+        dbg!(json!([{"type":"text", "text": content},
+                    {"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",img)}}]).to_string());
     }
 }

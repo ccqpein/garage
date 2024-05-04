@@ -23,6 +23,7 @@ serde_json = "1"
 futures = "0.3"
 async-trait = "0.1"
 rustls-pemfile = "0.2"
+base64 = "0"
 # I dont know why I have to put this here too
 openssl = { version = "0.10.32", features = ["vendored"] }
 async-openai = "0.5.0"

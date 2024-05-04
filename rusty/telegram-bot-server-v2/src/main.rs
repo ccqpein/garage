@@ -100,9 +100,10 @@ async fn making_app_layer_2(
     deliver_sender: &Sender<Msg2Deliver>,
     opts: &Opts,
     db: &DatabaseConnection,
+    downloader: Option<FileDownloader>,
 ) {
     // make chat_gpt
-    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db, None)
+    let chat_gpt = app::ChatGPT::new(deliver_sender.clone(), opts.vault.clone(), db, downloader)
         .await
         .unwrap();
     al.register_app(&chat_gpt);
@@ -133,10 +134,11 @@ fn main() -> std::io::Result<()> {
     // make deliver
     let (deliver_sender1, deliver_receiver1) = mpsc::channel::<Msg2Deliver>(5);
     let mut delvr1 = Deliver::new(Api::new(token1), deliver_receiver1);
-    let downloader = FileDownloader::new(token1).unwrap();
+    let downloader1 = FileDownloader::new(token1).unwrap();
 
     let (deliver_sender2, deliver_receiver2) = mpsc::channel::<Msg2Deliver>(5);
     let mut delvr2 = Deliver::new(Api::new(token2), deliver_receiver2);
+    let downloader2 = FileDownloader::new(token2).unwrap();
 
     {
         rt.spawn(async move { delvr1.run().await });
@@ -159,10 +161,18 @@ fn main() -> std::io::Result<()> {
             &deliver_sender1,
             &opts,
             &db_conn,
-            downloader,
+            downloader1,
         )
         .await;
-        making_app_layer_2(&mut applayer2, &rt, &deliver_sender2, &opts, &db_conn).await;
+        making_app_layer_2(
+            &mut applayer2,
+            &rt,
+            &deliver_sender2,
+            &opts,
+            &db_conn,
+            Some(downloader2),
+        )
+        .await;
     });
 
     {

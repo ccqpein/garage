@@ -173,7 +173,6 @@ async fn if_repo_has_commit_since(
         .await
         .map_err(|e| e.to_string())?;
     for repo in repos {
-        //debug!("repo {} pushed_at: {:?}", repo.name, repo.updated_at);
         if repo.pushed_at.ok_or("no pushed_at value")? - since > Duration::seconds(0) {
             return Ok(true);
         }
@@ -195,8 +194,6 @@ async fn the_start_of_today_in_utc() -> Result<DateTime<Utc>, String> {
             0,
         )
         .unwrap();
-    //:= DEL: .ymd(now_eastern.year(), now_eastern.month(), now_eastern.day())
-    //:= DEL: .and_hms(0, 0, 0);
 
     Ok(dt.with_timezone(&Utc))
 }

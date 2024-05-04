@@ -16,7 +16,6 @@ pub struct FileDownloader {
     token: String,
     reqwest_client: reqwest::Client,
     folder: String,
-    files_exist: HashSet<String>,
 }
 
 impl FileDownloader {
@@ -33,24 +32,11 @@ impl FileDownloader {
 
         debug!("download path: {:?}", path.as_path().to_str());
 
-        // add the exist files
-        let mut files = HashSet::new();
-        for p in std::fs::read_dir(path.as_path())? {
-            match p {
-                Ok(pp) => files.insert(
-                    pp.file_name()
-                        .into_string()
-                        .map_err(|e| e.into_string().unwrap())?,
-                ),
-                Err(ee) => return Err(ee.to_string().into()),
-            };
-        }
-
         Ok(Self {
             api,
             token: token.to_string(),
             reqwest_client: reqwest::Client::new(),
-            files_exist: files,
+
             folder: path
                 .as_path()
                 .to_str()
@@ -59,8 +45,6 @@ impl FileDownloader {
         })
     }
 
-    //:= need to get the file type, like "mime_type: Some("audio/ogg")"
-    //:= audio/ogg need to transfer mp3? or not?
     pub async fn download_file(
         &self,
         file_ref: impl ToFileRef,
@@ -75,7 +59,7 @@ impl FileDownloader {
                 file_id, file_path, ..
             }) => {
                 let path = self.folder.clone() + "/" + &file_id;
-                if self.files_exist.contains(&path) {
+                if Path::new(&path).exists() {
                     return Ok(path);
                 }
 
@@ -86,12 +70,13 @@ impl FileDownloader {
                     + file_path
                         .ok_or::<String>("file path is nil".into())?
                         .as_str();
-                debug!("f_url is {f_url}"); //:= just want to know what is f_url
+
                 let r = self.reqwest_client.get(f_url).send().await?;
 
                 // write file
                 f.write_all(&r.bytes().await?)?;
 
+                debug!("downloaded file path is {}", path);
                 Ok(path)
             }
             Err(e) => Err(e.to_string().into()),
