@@ -101,8 +101,10 @@ fn encode_image(image_path: &str) -> Result<String, Box<dyn std::error::Error>> 
     Ok(encoded_image)
 }
 
-/// used for reading reply message type
-enum ReplyData {
+/// The wrapper of the message data
+/// used inside reply and chatgpt input
+#[derive(Debug)]
+pub enum DataWrapper {
     Text(String),
     Image(String),
 }
@@ -110,14 +112,14 @@ enum ReplyData {
 pub async fn insert_new_reply(
     msg: &Message,
     role: &str,
-    replace_content: Option<&str>,
+    replace_content: Option<&DataWrapper>,
     db: &DatabaseConnection,
     downloader: &Option<FileDownloader>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (mut reply_to_id, reply_msg_data) = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
             telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
-                MessageKind::Text { data, .. } => (Some(m.id), ReplyData::Text(data.to_string())),
+                MessageKind::Text { data, .. } => (Some(m.id), DataWrapper::Text(data.to_string())),
                 MessageKind::Photo { data, .. } => (Some(m.id), {
                     let file_path = if let Some(dl) = downloader {
                         Some(dl.download_file(data.last().unwrap()).await?)
@@ -126,8 +128,8 @@ pub async fn insert_new_reply(
                     };
 
                     match file_path {
-                        Some(fp) => ReplyData::Image(encode_image(&fp)?),
-                        None => ReplyData::Text(String::new()),
+                        Some(fp) => DataWrapper::Image(encode_image(&fp)?),
+                        None => DataWrapper::Text(String::new()),
                     }
                 }),
                 _ => return Err("not support kind".into()),
@@ -136,17 +138,19 @@ pub async fn insert_new_reply(
                 return Err("ChannelPost isn't support yet".into())
             }
         },
-        None => (None, ReplyData::Text(String::new())),
+        None => (None, DataWrapper::Text(String::new())),
     };
 
     let (space_type, space_id) = get_space_info(msg);
 
+    //:= this can be optimized
     let mut content = match replace_content {
-        Some(s) => s.to_string(),
+        Some(DataWrapper::Text(s)) => s.to_string(),
         None => match &msg.kind {
             MessageKind::Text { data, .. } => data.clone(),
             _ => return Err("only support the text".into()),
         },
+        _ => return Err("not support data wrapper".into()),
     };
 
     // reply some post but not inside chain
@@ -155,11 +159,11 @@ pub async fn insert_new_reply(
             if !if_reply_chat_in_the_chain2(&space_type, &space_id, rid, db).await {
                 reply_to_id = None; // merge this two meg together
                 match reply_msg_data {
-                    ReplyData::Text(cont) => {
+                    DataWrapper::Text(cont) => {
                         let cc = vec![r#"Original Post: \n""#, &cont, r#""\n"#, &content].concat();
                         json!([{"type":"text", "text": cc}]).to_string()
                     }
-                    ReplyData::Image(cont) => {
+                    DataWrapper::Image(cont) => {
                         json!([{"type":"text", "text": content},
                                {"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",cont)}}]).to_string()
                     },
@@ -170,9 +174,6 @@ pub async fn insert_new_reply(
         }
         None => json!([{"type":"text", "text": content}]).to_string(),
     };
-
-    // transfer to json obj directly
-    //content = json!([{"type":"text", "text": content}]).to_string();
 
     let new_chat_record = entity::chat_records::ActiveModel {
         space_type: sea_orm::ActiveValue::Set(space_type),
@@ -362,7 +363,7 @@ impl ChatGPT {
 
     async fn handle_chat(&mut self, msg: ChatGPTInput) -> Result<(), String> {
         // check if chat legal or not
-        let data = match (msg.group_id, msg.user_name.as_str(), msg.data.as_str()) {
+        let data = match (msg.group_id, msg.user_name.as_str(), &msg.data) {
             (None, name, data) => {
                 if name != self.my_name && !self.waken_usernames.contains(name) {
                     match self
@@ -383,7 +384,7 @@ impl ChatGPT {
                     data
                 }
             }
-            (Some(ref g_id), name, "wake_up") => {
+            (Some(ref g_id), name, DataWrapper::Text(cont)) if cont == "wake_up" => {
                 if name == self.my_name {
                     let reply = if self.waken_groups.contains(g_id) {
                         String::from("already")
@@ -587,7 +588,7 @@ impl App for ChatGPT {
 }
 
 pub struct ChatGPTInput {
-    data: String,
+    data: DataWrapper,
     user_name: String,
 
     first_name: String,
@@ -613,7 +614,7 @@ impl ChatGPTInput {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     return Some(Self {
-                                        data: words.into(),
+                                        data: DataWrapper::Text(words.into()),
                                         user_name: msg
                                             .from
                                             .username
@@ -644,7 +645,7 @@ impl ChatGPTInput {
                             if data.starts_with("/wake_up") {
                                 info!("receive command {}", data);
                                 return Some(Self {
-                                    data: String::from("wake_up"),
+                                    data: DataWrapper::Text("wake_up".into()),
                                     user_name: msg.from.username.clone().unwrap_or(String::new()),
                                     first_name: msg.from.first_name.clone(),
                                     last_name: msg.from.last_name.clone(),
@@ -656,7 +657,7 @@ impl ChatGPTInput {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     return Some(Self {
-                                        data: words.into(),
+                                        data: DataWrapper::Text(words.into()),
                                         user_name: msg
                                             .from
                                             .username
@@ -687,7 +688,7 @@ impl ChatGPTInput {
                             if data.starts_with("/wake_up") {
                                 info!("receive command {}", data);
                                 return Some(Self {
-                                    data: String::from("wake_up"),
+                                    data: DataWrapper::Text("wake_up".into()),
                                     user_name: msg.from.username.clone().unwrap_or(String::new()),
                                     first_name: msg.from.first_name.clone(),
                                     last_name: msg.from.last_name.clone(),
@@ -699,7 +700,7 @@ impl ChatGPTInput {
                                 info!("receive command {}", data);
                                 if let Some(words) = data.get(en.length as usize + 1..) {
                                     return Some(Self {
-                                        data: words.into(),
+                                        data: DataWrapper::Text(words.into()),
                                         user_name: msg
                                             .from
                                             .username
@@ -729,7 +730,7 @@ impl ChatGPTInput {
             //:= todo: could allow image now
             let data = msg.kind.text().unwrap_or("".into());
             Some(Self {
-                data,
+                data: DataWrapper::Text(data.into()),
                 user_name: msg.from.username.clone().unwrap_or(String::new()),
                 chat_id: msg.chat.id(),
                 group_id,
