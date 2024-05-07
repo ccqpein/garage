@@ -1,5 +1,4 @@
 use super::util::*;
-///:= need to handle some ? and result in gpt run
 use super::*;
 use base64::encode;
 use entity::prelude::*;
@@ -109,6 +108,27 @@ pub enum DataWrapper {
     Image(String),
 }
 
+impl DataWrapper {
+    async fn from_msg(
+        value: &Message,
+        downloader: &Option<FileDownloader>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        match &value.kind {
+            MessageKind::Text { data, .. } => Ok(DataWrapper::Text(data.to_string())),
+            MessageKind::Photo { data, .. } => {
+                if let Some(dl) = downloader {
+                    Ok(Self::Image(encode_image(
+                        &dl.download_file(data.last().unwrap()).await?,
+                    )?))
+                } else {
+                    Err("need downloader for image".into())
+                }
+            }
+            _ => Err("data wrapper cannot from this message yet".into()),
+        }
+    }
+}
+
 pub async fn insert_new_reply(
     msg: &Message,
     role: &str,
@@ -118,22 +138,9 @@ pub async fn insert_new_reply(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (mut reply_to_id, reply_msg_data) = match &msg.reply_to_message {
         Some(m) => match m.as_ref() {
-            telegram_bot::MessageOrChannelPost::Message(m) => match &m.kind {
-                MessageKind::Text { data, .. } => (Some(m.id), DataWrapper::Text(data.to_string())),
-                MessageKind::Photo { data, .. } => (Some(m.id), {
-                    let file_path = if let Some(dl) = downloader {
-                        Some(dl.download_file(data.last().unwrap()).await?)
-                    } else {
-                        None
-                    };
-
-                    match file_path {
-                        Some(fp) => DataWrapper::Image(encode_image(&fp)?),
-                        None => DataWrapper::Text(String::new()),
-                    }
-                }),
-                _ => return Err("not support kind".into()),
-            },
+            telegram_bot::MessageOrChannelPost::Message(m) => {
+                (Some(m.id), DataWrapper::from_msg(m, downloader).await?)
+            }
             telegram_bot::MessageOrChannelPost::ChannelPost(_) => {
                 return Err("ChannelPost isn't support yet".into())
             }
@@ -143,36 +150,42 @@ pub async fn insert_new_reply(
 
     let (space_type, space_id) = get_space_info(msg);
 
-    //:= this can be optimized
-    let mut content = match replace_content {
-        Some(DataWrapper::Text(s)) => s.to_string(),
-        None => match &msg.kind {
-            MessageKind::Text { data, .. } => data.clone(),
+    let content = match replace_content {
+        Some(a) => a,
+        None => &match &msg.kind {
+            MessageKind::Text { data, .. } => DataWrapper::Text(data.clone()),
             _ => return Err("only support the text".into()),
         },
-        _ => return Err("not support data wrapper".into()),
     };
 
     // reply some post but not inside chain
-    content = match reply_to_id {
+    let content = match reply_to_id {
         Some(rid) => {
             if !if_reply_chat_in_the_chain2(&space_type, &space_id, rid, db).await {
                 reply_to_id = None; // merge this two meg together
-                match reply_msg_data {
-                    DataWrapper::Text(cont) => {
-                        let cc = vec![r#"Original Post: \n""#, &cont, r#""\n"#, &content].concat();
+                match (reply_msg_data, content) {
+                    (DataWrapper::Text(rply), DataWrapper::Text(this)) => {
+                        let cc = vec![r#"Original Post: \n""#, &rply, r#""\n"#, &this].concat();
                         json!([{"type":"text", "text": cc}]).to_string()
                     }
-                    DataWrapper::Image(cont) => {
-                        json!([{"type":"text", "text": content},
-                               {"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",cont)}}]).to_string()
+
+                    (DataWrapper::Image(img), DataWrapper::Text(this)) => {
+                        json!([{"type":"text", "text": this},
+                               {"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",img)}}]).to_string()
                     },
+                    _ => {return Err("can only reply free message with text".into())}
                 }
             } else {
-                json!([{"type":"text", "text": content}]).to_string()
+                match content{
+                    DataWrapper::Text(this) => json!([{"type":"text", "text": this}]).to_string(),
+                    DataWrapper::Image(img) => json!([{"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",img)}}]).to_string(),
+                }
             }
         }
-        None => json!([{"type":"text", "text": content}]).to_string(),
+        None => match content {
+            DataWrapper::Text(this) => json!([{"type":"text", "text": this}]).to_string(),
+            DataWrapper::Image(_) => return Err("start talk with text".into()),
+        },
     };
 
     let new_chat_record = entity::chat_records::ActiveModel {
@@ -357,7 +370,7 @@ impl ChatGPT {
         }
     }
 
-    //:= TODO
+    //:= TODO: do I need to clean the table? Text isn't that large
     /// clean the message older than 3600 * 24 * 5
     async fn clean_table() {}
 
@@ -570,6 +583,7 @@ impl App for ChatGPT {
     fn consumer(&self) -> Self::Consumer {
         ChatGPTInputConsumer {
             sender: self.sender.clone(),
+            downloader: self.file_downloader.clone(),
         }
     }
 
@@ -601,7 +615,7 @@ pub struct ChatGPTInput {
 }
 
 impl ChatGPTInput {
-    async fn check_msg_comm(msg: &Message) -> Option<Self> {
+    async fn check_msg_comm(msg: &Message, downloader: &Option<FileDownloader>) -> Option<Self> {
         let mut group_id = None;
 
         // check the start with command
@@ -727,10 +741,15 @@ impl ChatGPTInput {
         // pass all check upper
         // check if this message reply some message in CHAT_CHAIN_TABLE
         if if_reply_chat_in_the_chain3(msg, DB.lock().await.as_ref().unwrap()).await {
-            //:= todo: could allow image now
-            let data = msg.kind.text().unwrap_or("".into());
+            let data = match DataWrapper::from_msg(msg, downloader).await {
+                Ok(d) => d,
+                Err(e) => {
+                    error!("error in chatgpt input: {}", e.to_string());
+                    return None;
+                }
+            };
             Some(Self {
-                data: DataWrapper::Text(data.into()),
+                data,
                 user_name: msg.from.username.clone().unwrap_or(String::new()),
                 chat_id: msg.chat.id(),
                 group_id,
@@ -801,12 +820,13 @@ impl ToolCalls {
 // ChatGPTInputConsumer type
 pub struct ChatGPTInputConsumer {
     sender: Sender<ChatGPTInput>,
+    downloader: Option<FileDownloader>,
 }
 
 #[async_trait]
 impl AppConsumer for ChatGPTInputConsumer {
     async fn consume_msg<'a>(&mut self, msg: &'a Message) -> Result<ConsumeStatus, String> {
-        match ChatGPTInput::check_msg_comm(msg).await {
+        match ChatGPTInput::check_msg_comm(msg, &self.downloader).await {
             Some(input) => match self.sender.send(input).await {
                 Ok(_) => return Ok(ConsumeStatus::Taken),
                 Err(e) => return Err(e.to_string()),

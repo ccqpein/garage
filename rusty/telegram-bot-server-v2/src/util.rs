@@ -11,6 +11,7 @@ use tracing::debug;
 //use std::fs::File;
 use std::io::Write;
 
+#[derive(Clone)]
 pub struct FileDownloader {
     api: Api,
     token: String,
