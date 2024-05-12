@@ -10,18 +10,17 @@
 (defparameter *leetcode-all-quiz-url* "https://leetcode.com/api/problems/all/")
 (defparameter *leetcode-api* "https://leetcode.com/graphql")
 
-(eval-when (::compile-toplevel) (defparameter *compiling-path* (sb-posix:getcwd)))
-
+(defparameter *vault-path* (sb-posix:getcwd))
 (defparameter *leetcode-token*
-  (car (uiop:read-file-lines (format nil "~a/vault/leetcode-token" *compiling-path*)))
+  (car (uiop:read-file-lines (format nil "~a/vault/leetcode-token" *vault-path*)))
   "cookies csrftoken")
 
 (defparameter *leetcode-session*
-  (car (uiop:read-file-lines (format nil "~a/vault/leetcode-session" *compiling-path*)))
+  (car (uiop:read-file-lines (format nil "~a/vault/leetcode-session" *vault-path*)))
   "cookies LEETCODE_SESSION")
 
 (defparameter *leetcode-all-quiz* nil)
-(defparameter *leetcode-all-quiz-cache-path* (format nil "~a/vault/leetcode-all-quiz-cache" *compiling-path*))
+(defparameter *leetcode-all-quiz-cache-path* (format nil "~a/vault/leetcode-all-quiz-cache" *vault-path*))
 
 (defun restore-all-quiz-from-file (file)
   (with-open-file (s (merge-pathnames file))
@@ -131,8 +130,8 @@
 
 (defun main (&optional id)
   (unless id (setf id (the fixnum (parse-integer (cadr sb-ext:*posix-argv*)))))
-  
-  ;; restart cache
+
+  ;; restore cache
   (restore-all-quiz-from-file *leetcode-all-quiz-cache-path*)
   
   (let (title-slug
