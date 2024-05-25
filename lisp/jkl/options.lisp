@@ -1,8 +1,11 @@
-(defpackage :options
+(defpackage :jkl-options
   (:use :cl)
-  )
+  (:export :option
+           :option1
+           :option2
+           ))
 
-(in-package :options)
+(in-package :jkl-options)
 
 (defclass option ()
   ((short-option
@@ -64,4 +67,25 @@
 
 "))
 
-;;:= need more tests
+(defmethod option-match-string ((opt option2) input &key &allow-other-keys)
+  (declare (string input))
+  (multiple-value-bind (short-name long-name arg des)
+      (option2-match-string input)
+    (setf (short-option opt) short-name
+          (long-option opt) long-name
+          (arg opt) arg
+          (description opt) des)))
+
+(defun option2-match-string (input)
+  "function for option1 match string. easy to test"
+  (declare (string input))
+  (str:match input
+    (("\\s+-" short-name ",\\s+--" long-name "=" arg "\\s+" des)
+     (values short-name long-name arg des))
+    (("\\s+-" short-name ",\\s+--" long-name "\\s+" des)
+     (values short-name long-name "" des))
+    (("\\s+" "--" long-name "=" arg "\\s+" des)
+     (values "" long-name arg des))
+    (("\\s+" "--" long-name "\\s+" des)
+     (values "" long-name "" des))
+    ))

@@ -1,10 +1,10 @@
 ;; for example
-
-(defpackage :jkl/curl
-  ;; import from core (command and options)
-  )
+(in-package :jkl-cmd)
 
 ;;; make instance of curl command
 
 ;;; run the curl command with args
-(defun run ())
+(defun curl ())
+
+;; for other 
+(export 'curl)
