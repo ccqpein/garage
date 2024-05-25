@@ -1,5 +1,6 @@
 (defpackage :options
-  (:use :cl))
+  (:use :cl)
+  )
 
 (in-package :options)
 
@@ -38,17 +39,22 @@
 
 (defmethod option-match-string ((opt option1) input &key &allow-other-keys)
   (declare (string input))
+  (multiple-value-bind (short-name long-name arg des)
+      (option1-match-string input)
+    (setf (short-option opt) short-name
+          (long-option opt) long-name
+          (arg opt) arg
+          (description opt) des)))
+
+(defun option1-match-string (input)
+  "function for option1 match string. easy to test"
+  (declare (string input))
   (str:match input
     (("-" short-name ", " "--" long-name " <" arg ">\\s+" des)
-     (setf (short-option opt) short-name
-           (long-option opt) long-name
-           (arg opt) arg
-           (description opt) des))
+     (values short-name long-name arg des))
     (("-" short-name ", " "--" long-name "\\s+" des)
-     (setf (short-option opt) short-name
-           (long-option opt) long-name
-           (description opt) des))
-    ))
+     (values short-name long-name "" des)))
+  )
 
 (defclass option2 (option)
   ()
