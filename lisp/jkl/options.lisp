@@ -3,6 +3,14 @@
   (:export :option
            :option1
            :option2
+
+           :short-option
+           :long-option
+           :arg
+           :description
+
+           :option-match-string
+           :restore-back-to-string
            ))
 
 (in-package :jkl-options)
@@ -53,11 +61,18 @@
   "function for option1 match string. easy to test"
   (declare (string input))
   (str:match input
-    (("-" short-name ", " "--" long-name " <" arg ">\\s+" des)
+    (("\\s*-" short-name ", " "--" long-name " <" arg ">\\s+" des)
      (values short-name long-name arg des))
-    (("-" short-name ", " "--" long-name "\\s+" des)
-     (values short-name long-name "" des)))
-  )
+    (("\\s*-" short-name ", " "--" long-name "\\s+" des)
+     (values short-name long-name "" des))))
+
+(defmethod restore-back-to-string ((opt option1) value)
+  (if (string/= "" (arg opt))
+      (list (format nil "--~a" (long-option opt))
+            (format nil "~a" value))
+      (if value
+          (list (format nil "--~a" (long-option opt)))
+          (error "flag option has to give some value"))))
 
 (defclass option2 (option)
   ()
@@ -80,12 +95,19 @@
   "function for option1 match string. easy to test"
   (declare (string input))
   (str:match input
-    (("\\s+-" short-name ",\\s+--" long-name "=" arg "\\s+" des)
+    (("\\s*-" short-name ",\\s+--" long-name "=" arg "\\s+" des)
      (values short-name long-name arg des))
-    (("\\s+-" short-name ",\\s+--" long-name "\\s+" des)
+    (("\\s*-" short-name ",\\s+--" long-name "\\s+" des)
      (values short-name long-name "" des))
-    (("\\s+" "--" long-name "=" arg "\\s+" des)
+    (("\\s*" "--" long-name "=" arg "\\s+" des)
      (values "" long-name arg des))
-    (("\\s+" "--" long-name "\\s+" des)
+    (("\\s*" "--" long-name "\\s+" des)
      (values "" long-name "" des))
     ))
+
+(defmethod restore-back-to-string ((opt option2) value)
+  (if (string/= "" (arg opt))
+      (list (format nil "--~a=~a" (long-option opt) value))
+      (if value
+          (list (format nil "--~a" (long-option opt)))
+          (error "flag option has to give some value"))))
