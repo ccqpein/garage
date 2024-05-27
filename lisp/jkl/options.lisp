@@ -41,6 +41,12 @@
           (arg opt)
           (description opt)))
 
+(defmethod equal-option ((opt1 option) (opt2 option))
+  (and (equal (short-option opt1) (short-option opt2))
+       (equal (long-option opt1) (long-option opt2))
+       (equal (arg opt1) (arg opt2))
+       (equal (description opt1) (description opt2))))
+
 (defclass option1 (option)
   ()
   (:documentation "curl option style:
@@ -61,10 +67,15 @@
   "function for option1 match string. easy to test"
   (declare (string input))
   (str:match input
-    (("\\s*-" short-name ", " "--" long-name " <" arg ">\\s+" des)
+    (("\\s*-" short-name ", " "--" long-name "\\s+<" arg ">\\s+" des)
      (values short-name long-name arg des))
     (("\\s*-" short-name ", " "--" long-name "\\s+" des)
-     (values short-name long-name "" des))))
+     (values short-name long-name "" des))
+    (("\\s*--" long-name "\\s+<" arg ">\\s+" des)
+     (values "" long-name arg des))
+    (("\\s*--" long-name "\\s+" des)
+     (values "" long-name "" des))
+    ))
 
 (defmethod restore-back-to-string ((opt option1) value)
   (if (string/= "" (arg opt))

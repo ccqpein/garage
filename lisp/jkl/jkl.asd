@@ -19,4 +19,6 @@
   :perform (test-op
             (op c)
             (uiop:symbol-call :fiveam :run!
-                              (uiop:find-symbol* :options :jkl-options-test))))
+                              (uiop:find-symbol* :options :jkl-options-test))
+            (uiop:symbol-call :fiveam :run!
+                              (uiop:find-symbol* :core :jkl-core-test))))

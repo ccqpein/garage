@@ -46,7 +46,6 @@
          (comm (make-instance 'command
                               :name "aa"
                               :options opts)))
-    (format t "opts: ~a" opts)
     (is (equal '("--config" "hello")
                (jkl-core::gen-options comm :k "hello")))
     (is (equal '("--config" "hello" "--append")

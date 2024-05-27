@@ -39,11 +39,13 @@
 
 (in-suite option1-match)
 
-(test case0
+(test option1-match-case0
   (is (equal (multiple-value-list (option1-match-string "-K, --config <file> Read config from a file"))
              '("K" "config" "file" "Read config from a file")))
   (is (equal (multiple-value-list (option1-match-string "-a, --append      Append to target file when uploading"))
-             '("a" "append" "" "Append to target file when uploading"))))
+             '("a" "append" "" "Append to target file when uploading")))
+  (is (equal (multiple-value-list (option1-match-string "--capath <dir> CA directory to verify peer against"))
+             '("" "capath" "dir" "CA directory to verify peer against"))))
 
 (def-suite option2-match
   :in options
@@ -51,7 +53,7 @@
 
 (in-suite option2-match)
 
-(test case0
+(test option2-match-case0
   (is (equal (multiple-value-list (option2-match-string "  -r,  --recursive                 specify recursive download"))
              '("r" "recursive" "" "specify recursive download")))
   
