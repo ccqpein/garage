@@ -76,3 +76,16 @@
                (jkl-core::gen-options comm :l 12)))
     (is (equal '("--convert-file-only" "--recursive" "--level=12")
                (jkl-core::gen-options comm :convert-file-only t :r t :L 12)))))
+
+(test subcmd-case0
+  (let ((cmd (jkl-core:make-new-command
+               "top"
+               (mapcar (lambda (line) (jkl-core:parse-option-from-help 'jkl-options:option1 line))
+                       '("--capath <dir> CA directory to verify peer against"
+                         "-E, --cert <certificate[:password]> Client certificate file and password"))
+               :subcommand `(("a" ,(mapcar (lambda (line) (jkl-core:parse-option-from-help 'jkl-options:option1 line))
+                                           '("--capath <dir> CA directory to verify peer against"
+                                             "-E, --cert <certificate[:password]> Client certificate file and password")))))))
+    (is (equal '("--cert" "cert" "a" "--cert" "cert")
+               (jkl-core::gen-options cmd :e "cert" "a" :e "cert")))
+    ))

@@ -15,6 +15,7 @@
 (defsystem jkl/tests
   :depends-on ("jkl" "fiveam")
   :components ((:file "options-test")
+               (:file "core-test")
                )
   :perform (test-op
             (op c)

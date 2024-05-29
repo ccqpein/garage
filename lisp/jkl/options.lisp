@@ -35,7 +35,7 @@
   (:documentation "option class"))
 
 (defmethod print-object ((opt option) stream)
-  (format t "short-option: ~a~%long-option: ~a~%argument: ~a~%description: ~a~%"
+  (format stream "short-option: ~a~%long-option: ~a~%argument: ~a~%description: ~a~%"
           (short-option opt)
           (long-option opt)
           (arg opt)

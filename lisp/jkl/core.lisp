@@ -21,31 +21,49 @@
    (subcommand
     :initarg :subcommand
     :accessor subcommand
+    :initform nil
     :documentation "the subcommand, hashtable")
    (options
     :initarg :options
     :accessor options
+    :initform nil
     :documentation "hashtable of options")))
 
-;;:= todo
 (defmethod print-object ((cmd command) stream)
-  (format t "name: ~a~%")
-  )
+  (format stream "name: ~a~%~%subcommand:~%~{~%~#{key:~a~%subcommand:~%~a~}~}~%options:~%~{~%~#{key:~a~%option:~%~a~}~}"
+          (name cmd)
+          (if (subcommand cmd)
+              (loop for sc being the hash-keys of (subcommand cmd)
+                      using (hash-value vv)
+                    collect (list sc vv))
+              nil)
+          (if (options cmd)
+              (loop for op being the hash-keys of (options cmd)
+                      using (hash-value vv)
+                    collect (list op vv))
+              nil)
+          ))
 
 ;;:= todo: need the subcommand thing
-(defmethod gen-options ((comm command) &rest args &key &allow-other-keys)
+(defmethod gen-options ((comm command) &rest args)
   "give command and the keyword/value pairs and more argvs to get command line options"
   (do ((this (car args) (car args))
        result)
       ((not this) result)
     (if (keywordp this)
+        ;; if keyword
         (let ((option (gethash (string this) (options comm)))
               )
           (if option
               (setf result (append result (restore-back-to-string option (second args)))))
           (setf args (cddr args)))
-        (progn (setf result (append result (list this)))
-               (setf args (cdr args))))))
+        ;; if not keyword
+        (let ((subcmd (gethash this (subcommand comm))))
+          (if subcmd
+              (progn (setf result (append result (cons this (apply #'gen-options subcmd (cdr args)))))
+                     (setf args nil))
+              (progn (setf result (append result (list this)))
+                     (setf args (cdr args))))))))
 
 #+sbcl
 (defun sbcl-run (name options &key (output *standard-output*) (error :output))
@@ -72,8 +90,7 @@
 (make-new-command "curl"
                   (mapcar (lambda (line) (parse-option-from-help 'option1 line))
                           help-lines)
-                  ;;:= todo
-                  ;; :subcommand `(,("subcommand name" '(options...) :subcommand ...))
+                  :subcommand `(("subcommand name" '(options...) :subcommand ...))
                   )
 |#
 
