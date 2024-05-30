@@ -2,7 +2,9 @@
   (:use :CL :jkl-options)
   (:export :command
            :make-new-command
-           :parse-option-from-help)
+           :parse-option-from-help
+           :read-line-content
+           :run)
   )
 
 (in-package :jkl-core)
@@ -14,10 +16,6 @@
   ((name
     :initarg :name
     :accessor name)
-   ;; (option-kind
-   ;;  :initarg :option-kind
-   ;;  :accessor option-kind
-   ;;  :documentation "the option kind of this command")
    (subcommand
     :initarg :subcommand
     :accessor subcommand
@@ -57,7 +55,9 @@
               (setf result (append result (restore-back-to-string option (second args)))))
           (setf args (cddr args)))
         ;; if not keyword
-        (let ((subcmd (gethash this (subcommand comm))))
+        (let ((subcmd (if (subcommand comm)
+                          (gethash this (subcommand comm) nil)
+                          nil)))
           (if subcmd
               ;; if subcommand
               (progn (setf result (append result (cons this (apply #'gen-options subcmd (cdr args)))))
@@ -75,11 +75,17 @@
   output)
 
 (defmethod run ((comm command)
+                var
                 &rest args
                 &key (jkl-output *standard-output*) (jkl-error *error-output*)
                 &allow-other-keys)
   #+sbcl
-  (sbcl-run (name comm) (apply #'gen-options comm args) :output jkl-output ::error jkl-error)
+  (sbcl-run
+   (name comm)
+   (apply #'gen-options comm (cons var args))
+   :output jkl-output
+   :error jkl-error)
+  
   #-(or sbcl)
   (error "no implemented")
   )
@@ -120,10 +126,17 @@
     opt
     ))
 
-(defun write-to-cmd-file (&key (cmd-folder *jkl-cmd-folder*))
-  "write")
+(defun read-line-content (content)
+  (loop with s = (make-string-input-stream content)
+        for l = (read-line s nil 'eof)
+        if (eql 'eof l)
+          return result
+        else 
+          collect l into result
+        ))
 
 ;;; define command package in core
+;;:= maybe more to some where else
 
 (defpackage :jkl-cmd
   (:use :CL :jkl-core :jkl-options))
