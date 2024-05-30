@@ -89,3 +89,18 @@
     (is (equal '("--cert" "cert" "a" "--cert" "cert")
                (jkl-core::gen-options cmd :e "cert" "a" :e "cert")))
     ))
+
+(test subcmd-case1
+  (let ((cmd (jkl-core:make-new-command
+              "top"
+              (mapcar (lambda (line) (jkl-core:parse-option-from-help 'jkl-options:option1 line))
+                      '("--capath <dir> CA directory to verify peer against"
+                        "-E, --cert <certificate[:password]> Client certificate file and password"))
+              :subcommand `(("a" ,(mapcar (lambda (line) (jkl-core:parse-option-from-help 'jkl-options:option1 line))
+                                          '("--capath <dir> CA directory to verify peer against"
+                                            "-E, --cert <certificate[:password]> Client certificate file and password"))
+                                 :subcommand (("b" ,(mapcar (lambda (line) (jkl-core:parse-option-from-help 'jkl-options:option2 line))
+                                                            '(" -r,  --recursive                 specify recursive download")))))))))
+    (is (equal '("--cert" "cert" "a" "--cert" "cert" "b" "--recursive")
+               (jkl-core::gen-options cmd :e "cert" "a" :e "cert" "b" :r t)))
+    ))

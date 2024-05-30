@@ -44,7 +44,6 @@
               nil)
           ))
 
-;;:= todo: need the subcommand thing
 (defmethod gen-options ((comm command) &rest args)
   "give command and the keyword/value pairs and more argvs to get command line options"
   (do ((this (car args) (car args))
@@ -60,6 +59,7 @@
         ;; if not keyword
         (let ((subcmd (gethash this (subcommand comm))))
           (if subcmd
+              ;; if subcommand
               (progn (setf result (append result (cons this (apply #'gen-options subcmd (cdr args)))))
                      (setf args nil))
               (progn (setf result (append result (list this)))
