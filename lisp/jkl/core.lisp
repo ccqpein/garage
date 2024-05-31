@@ -65,6 +65,19 @@
               (progn (setf result (append result (list this)))
                      (setf args (cdr args))))))))
 
+(defun check-output-and-error-kw (args)
+  (do ((this (car args) (car args))
+       (jkl-output *standard-output*)
+       (jkl-error *error-output*))
+      ((not args) (values jkl-output jkl-error))
+    (cond ((and (keywordp this) (eq this :jkl-output))
+           (setf jkl-output (second args)
+                 args (cddr args)))
+          ((and (keywordp this) (eq this :jkl-error))
+           (setf jkl-error (second args)
+                 args (cddr args)))
+          (t (setf args (cdr args))))))
+
 #+sbcl
 (defun sbcl-run (name options &key (output *standard-output*) (error :output))
   "run in sbcl and return the output stream"
@@ -74,24 +87,22 @@
                       :error error)
   output)
 
-(defmethod run ((comm command)
-                var
-                &rest args
-                &key (jkl-output *standard-output*) (jkl-error *error-output*)
-                &allow-other-keys)
-  #+sbcl
-  (sbcl-run
-   (name comm)
-   (apply #'gen-options comm (cons var args))
-   :output jkl-output
-   :error jkl-error)
+;;:= need to change vars. maybe var should be list
+(defmethod run ((comm command) &rest args)
+  (multiple-value-bind (jkl-output jkl-error)
+      (check-output-and-error-kw args)
+    #+sbcl
+    (sbcl-run
+     (name comm)
+     (apply #'gen-options comm args)
+     :output jkl-output
+     :error jkl-error)
   
-  #-(or sbcl)
-  (error "no implemented")
+    #-(or sbcl)
+    (error "no implemented"))
   )
 
 ;;;;;;;;;;;; tools for generate command
-
 #|
 (make-new-command "curl"
                   (mapcar (lambda (line) (parse-option-from-help 'option1 line))
@@ -134,9 +145,3 @@
         else 
           collect l into result
         ))
-
-;;; define command package in core
-;;:= maybe more to some where else
-
-(defpackage :jkl-cmd
-  (:use :CL :jkl-core :jkl-options))

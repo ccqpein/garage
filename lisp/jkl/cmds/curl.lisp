@@ -268,11 +268,10 @@
                             (read-line-content *curl-help*)
                             )))
 
+;;:= need some test
 ;;; run the curl command with args
 (defun curl (&rest args)
-  (format t "~a~%" args)
-  (apply #'run *curl* args)
-  )
+  (apply #'run *curl* args))
 
 ;; for other 
 (export 'curl)
