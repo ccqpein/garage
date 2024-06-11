@@ -100,6 +100,21 @@ func Scale[S ~[]E, E constraints.Integer](s S, c E) S {
 	return r
 }
 
+// Nullable
+type Nullable[T any] struct {
+	V     T
+	Valid bool
+}
+
+type NullableString Nullable[*string]
+
+func NewNullableString(s *string) NullableString {
+	if s == nil {
+		return NullableString{V: s, Valid: false}
+	}
+	return NullableString{V: s, Valid: true}
+}
+
 func main() {
 	fmt.Printf("SumIntsOrFloats: %v\n", SumIntsOrFloats(map[string]int64{"a": 1, "b": 2}))
 	fmt.Printf("SumIntsOrFloats: %v\n", SumIntsOrFloats(map[string]float64{"a": 1, "b": 2}))
