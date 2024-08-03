@@ -1,10 +1,17 @@
 use super::*;
 
 #[doc = r"alphabet low cases, from a-z"]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AlphaBetLowCase(u8);
 
 impl AlphaBetLowCase {
+    pub fn new<T>(x: T) -> Result<Self, T::Error>
+    where
+        T: TryInto<Self>,
+    {
+        x.try_into()
+    }
+
     pub fn byte(&self) -> &u8 {
         &self.0
     }
@@ -48,10 +55,17 @@ impl CarryableUnitMut for AlphaBetLowCase {
 }
 
 #[doc = r"alphabet upper cases, from A-Z"]
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct AlphaBetUpperCase(u8);
 
 impl AlphaBetUpperCase {
+    pub fn new<T>(x: T) -> Result<Self, T::Error>
+    where
+        T: TryInto<Self>,
+    {
+        x.try_into()
+    }
+
     pub fn byte(&self) -> &u8 {
         &self.0
     }
@@ -92,4 +106,23 @@ impl CarryableUnitMut for AlphaBetUpperCase {
             false
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_carryable_unit_for_alphabetlowcase() {
+        let a = TryInto::<AlphaBetLowCase>::try_into(b'b').unwrap();
+        assert_eq!(a.next(), (b'c'.try_into().unwrap(), false));
+
+        let a = <u8 as TryInto<AlphaBetLowCase>>::try_into(b'z').unwrap();
+        assert_eq!(a.next(), (b'a'.try_into().unwrap(), true));
+
+        let a = AlphaBetLowCase::new(b'y').unwrap();
+        assert_eq!(a.next(), (b'z'.try_into().unwrap(), false));
+    }
+
+    //:= todo: upper cases test
 }

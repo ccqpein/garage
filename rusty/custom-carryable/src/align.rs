@@ -99,3 +99,10 @@ impl<T: CarryableUnitMut> IntoAlign<T> for Vec<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    //:= todo: test of Align
+}
