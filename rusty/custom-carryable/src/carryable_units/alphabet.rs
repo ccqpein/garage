@@ -124,5 +124,17 @@ mod tests {
         assert_eq!(a.next(), (b'z'.try_into().unwrap(), false));
     }
 
-    //:= todo: upper cases test
+    #[test]
+    fn test_carryable_unit_for_alphabetuppercase() {
+        assert!(TryInto::<AlphaBetUpperCase>::try_into(b'b').is_err());
+
+        let a = TryInto::<AlphaBetUpperCase>::try_into(b'B').unwrap();
+        assert_eq!(a.next(), (b'C'.try_into().unwrap(), false));
+
+        let a = <u8 as TryInto<AlphaBetUpperCase>>::try_into(b'Z').unwrap();
+        assert_eq!(a.next(), (b'A'.try_into().unwrap(), true));
+
+        let a = AlphaBetUpperCase::new(b'Y').unwrap();
+        assert_eq!(a.next(), (b'Z'.try_into().unwrap(), false));
+    }
 }

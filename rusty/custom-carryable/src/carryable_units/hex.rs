@@ -1,9 +1,21 @@
 use std::fmt::Display;
 
+use cl_format::TildeAble;
+
 use super::*;
 
+#[doc = r"Hex from 0 to F"]
 #[derive(Debug)]
 pub struct Hex(u8);
+
+impl Hex {
+    pub fn new<T>(x: T) -> Result<Self, T::Error>
+    where
+        T: TryInto<Self>,
+    {
+        x.try_into()
+    }
+}
 
 const HEX_TABLE_VIEW: [char; 16] = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
@@ -52,5 +64,19 @@ impl CarryableUnitMut for Hex {
             self.0 += 1;
             false
         }
+    }
+}
+
+impl TildeAble for Hex {
+    fn len(&self) -> usize {
+        1
+    }
+
+    fn into_tildekind_char(&self) -> Option<&dyn cl_format::TildeKindChar> {
+        Some(&HEX_TABLE_VIEW[self.0 as usize])
+    }
+
+    fn into_tildekind_va(&self) -> Option<&dyn cl_format::TildeKindVa> {
+        Some(&HEX_TABLE_VIEW[self.0 as usize])
     }
 }

@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
-mod alphabet;
-mod hex;
+pub mod alphabet;
+pub mod hex;
 
 pub trait CarryableUnit {
     type Item: CarryResult;
