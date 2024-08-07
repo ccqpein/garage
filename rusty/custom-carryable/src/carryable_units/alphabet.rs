@@ -1,4 +1,10 @@
 use super::*;
+use cl_format::TildeAble;
+
+const ALPHABET_LOW_CASE_CHAR: [char; 26] = [
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
+    't', 'u', 'v', 'w', 'x', 'y', 'z',
+];
 
 #[doc = r"alphabet low cases, from a-z"]
 #[derive(Debug, PartialEq, Eq)]
@@ -14,6 +20,10 @@ impl AlphaBetLowCase {
 
     pub fn byte(&self) -> &u8 {
         &self.0
+    }
+
+    pub fn to_char(&self) -> &char {
+        &ALPHABET_LOW_CASE_CHAR[(self.0 - 97) as usize]
     }
 }
 
@@ -54,6 +64,25 @@ impl CarryableUnitMut for AlphaBetLowCase {
     }
 }
 
+impl TildeAble for AlphaBetLowCase {
+    fn len(&self) -> usize {
+        1
+    }
+
+    fn into_tildekind_va(&self) -> Option<&dyn cl_format::TildeKindVa> {
+        Some(self.to_char())
+    }
+
+    fn into_tildekind_char(&self) -> Option<&dyn cl_format::TildeKindChar> {
+        Some(self.to_char())
+    }
+}
+
+const ALPHABET_UPPER_CASE_CHAR: [char; 26] = [
+    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+    'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+];
+
 #[doc = r"alphabet upper cases, from A-Z"]
 #[derive(Debug, PartialEq, Eq)]
 pub struct AlphaBetUpperCase(u8);
@@ -68,6 +97,10 @@ impl AlphaBetUpperCase {
 
     pub fn byte(&self) -> &u8 {
         &self.0
+    }
+
+    pub fn to_char(&self) -> &char {
+        &ALPHABET_UPPER_CASE_CHAR[(self.0 - 65) as usize]
     }
 }
 
@@ -108,9 +141,24 @@ impl CarryableUnitMut for AlphaBetUpperCase {
     }
 }
 
+impl TildeAble for AlphaBetUpperCase {
+    fn len(&self) -> usize {
+        1
+    }
+
+    fn into_tildekind_va(&self) -> Option<&dyn cl_format::TildeKindVa> {
+        Some(self.to_char())
+    }
+
+    fn into_tildekind_char(&self) -> Option<&dyn cl_format::TildeKindChar> {
+        Some(self.to_char())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cl_format::*;
 
     #[test]
     fn test_carryable_unit_for_alphabetlowcase() {
@@ -136,5 +184,39 @@ mod tests {
 
         let a = AlphaBetUpperCase::new(b'Y').unwrap();
         assert_eq!(a.next(), (b'Z'.try_into().unwrap(), false));
+    }
+
+    #[test]
+    fn test_tildeable_alphabetuppercase() {
+        let mut a = AlphaBetUpperCase::try_from(65).unwrap();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "A".to_string());
+        a.next_mut();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "B".to_string());
+
+        let mut a = AlphaBetUpperCase::try_from(90).unwrap();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "Z".to_string());
+        a.next_mut();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "A".to_string());
+    }
+
+    #[test]
+    fn test_tildeable_alphabetlowercase() {
+        let mut a = AlphaBetLowCase::try_from(97).unwrap();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "a".to_string());
+        a.next_mut();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "b".to_string());
+
+        let mut a = AlphaBetLowCase::try_from(122).unwrap();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "z".to_string());
+        a.next_mut();
+
+        assert_eq!(cl_format!("~a", &a).unwrap(), "a".to_string());
     }
 }
