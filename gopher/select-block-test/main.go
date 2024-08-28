@@ -30,6 +30,7 @@ func AB() {
 			time.Sleep(time.Second)
 			return
 		case _, ok := <-cb:
+			// if cb isn't closed, it will wait; right after cb closed, it can get the value (default, false)
 			// close channal gonna in this block
 			println(ok)
 			if !ok {
