@@ -89,6 +89,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         return
 
 
+def run(
     server_class=HTTPServer,
     handler_class=SimpleHTTPRequestHandler,
     addr="127.0.0.1",
@@ -105,7 +106,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         logging.error(f"Error in running server: {e}")
         sys.stderr.write(f"Error: {e}\n")
         sys.stderr.flush()
-    return
+        return
 
 
 if __name__ == "__main__":
