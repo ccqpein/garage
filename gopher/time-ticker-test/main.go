@@ -57,7 +57,7 @@ func test2() {
 }
 
 // other timer test
-// deadlock, looks like the timer.C cannot only read once
+// deadlock, looks like the timer.C can only read once
 func test3() {
 	timer := time.NewTimer(time.Second)
 
@@ -67,14 +67,29 @@ func test3() {
 
 // other timer test
 func test4() {
+	count := 0
 	timer := time.NewTimer(time.Second)
+
+	var nilChan chan int
+
 	for {
+		if count == 10 {
+			return
+		}
+
 		select {
 		case t := <-timer.C:
+			// test3 shows timer give one data and stop, so test3 is deadlock
+			// but in select channel, it can be here, but there will never be some data
+			// can get from timer.C after first read
 			fmt.Println("first timer: ", t)
-			return
+
+		case <-nilChan:
+			// nil chan can also in select
+			fmt.Println("never here")
 		default:
 			fmt.Println("nope")
+			count += 1
 		}
 		time.Sleep(time.Millisecond * 450)
 	}
