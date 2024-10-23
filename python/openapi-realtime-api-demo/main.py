@@ -22,14 +22,15 @@ async def cleanup(ws):
 
 async def send_custom_message(ws):
     """Function to continuously send new messages."""
+    count = 0
     while True:
-        await asyncio.sleep(2)  # Add delay between messages, for example
-
+        await asyncio.sleep(5)  # Add delay between messages, for example
+        count += 1
         new_message = {
             "type": "response.create",
             "response": {
                 "modalities": ["text"],
-                "instructions": "Send new data without waiting for previous response.",
+                "instructions": "tell me a joke",
             },
         }
 
@@ -37,7 +38,7 @@ async def send_custom_message(ws):
         print("New message sent.")
 
         # Breaking based on some external condition
-        if shutdown_flag:
+        if shutdown_flag or count > 10:
             break
 
 
@@ -59,14 +60,15 @@ async def connect():
         }
         await ws.send(json.dumps(initial_message))
 
-        message_task = asyncio.create_task(
-            send_custom_message(ws)
-        )  # Task for sending new data
+        message_task = asyncio.create_task(send_custom_message(ws))
 
         # Handling incoming messages (asynchronous receiving)
         try:
             async for message in ws:
+                # print(f"Received message: {message}")
                 print(f"Received message: {json.loads(message)}")
+                delta = json.loads(message)["delta"]
+                print(f"Received message: {delta}")
 
                 if shutdown_flag:
                     break
