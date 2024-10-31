@@ -1,0 +1,32 @@
+* Flux on macos
+
+
+** install uv
+
+#+begin_src shell
+  pip install uv
+#+end_src
+
+
+** install mflux
+
+#+begin_src shell
+  uv tool install --upgrade mflux
+#+end_src
+
+** env var change
+
+need these three var, if no ~UV_TOOL_DIR~, it will install in ~~/.local/share~.
+
+#+begin_quote
+export UV_TOOL_BIN_DIR=~/.uv/bin
+export PATH="$UV_TOOL_BIN_DIR:$PATH"
+export UV_TOOL_DIR=~/.uv
+#+end_quote
+
+**  commands examples
+
+mflux-generate --model schnell --prompt "Luxury food photograph" --steps 2 --seed 2 -q 8
+
+mflux-generate --model schnell --prompt "photorealistic, lotr, A tiny red dragon curled up asleep inside a nest, (Soft Focus) , (f_stop 2.8) , (focal_length 50mm) macro lens f/2. 8, medieval wizard table, (pastel) colors, (cozy) morning light filtering through a nearby window, (whimsical) steam shapes, captured with a (Canon EOS R5) , highlighting (serene) comfort, medieval, dnd, rpg, 3d, 16K, 8K" --steps 2 --seed 2 -q 8
+
