@@ -30,3 +30,6 @@ mflux-generate --model schnell --prompt "Luxury food photograph" --steps 2 --see
 
 mflux-generate --model schnell --prompt "photorealistic, lotr, A tiny red dragon curled up asleep inside a nest, (Soft Focus) , (f_stop 2.8) , (focal_length 50mm) macro lens f/2. 8, medieval wizard table, (pastel) colors, (cozy) morning light filtering through a nearby window, (whimsical) steam shapes, captured with a (Canon EOS R5) , highlighting (serene) comfort, medieval, dnd, rpg, 3d, 16K, 8K" --steps 2 --seed 2 -q 8
 
+** caches
+
+all the models store inside ~/.cache/huggingface/hub . they are huge.
