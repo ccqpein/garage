@@ -8,6 +8,7 @@ from openai import OpenAI
 from chat import chat_completions
 from dallE import image_generate_dalle3
 from funcall import reminder_example
+from whisper import transcribe_audio
 
 # logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
@@ -32,6 +33,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.chat_handle()
         elif self.path == "/image_DALLE3":
             self.DALLE3_handle()
+        elif self.path == "/audio_transcribe":
+            self.audio_transcribe_handle()
         return
 
     # handlers below
@@ -59,6 +62,36 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(f"{e}".encode())
         return
+
+    def audio_transcribe_handle(self):
+        data = {}
+        try:
+            content_length = int(self.headers["Content-Length"])
+            # Read the data
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data)
+
+            # Extract audio file path from the request body
+            audio_file_path = data.get("file_path")
+            if not audio_file_path:
+                self.send_error(400, "Missing 'file_path' in request")
+                return
+
+            # Perform transcription (assuming your function `transcribe_audio` exists)
+            transcript = transcribe_audio(CLIENT, audio_file_path)
+
+            # Send back the transcribed text
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(transcript.encode())
+        except (json.JSONDecodeError, ValueError):
+            self.send_error(400, "Invalid data or missing 'file_path'")
+        except Exception as e:
+            self.send_response(500)  # InternalServer Error
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(f"{e}".encode())
 
     def DALLE3_handle(self):
         data = {}

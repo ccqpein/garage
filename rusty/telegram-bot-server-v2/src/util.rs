@@ -49,6 +49,7 @@ impl FileDownloader {
     pub async fn download_file(
         &self,
         file_ref: impl ToFileRef,
+        suffix: Option<&'static str>,
     ) -> Result<String, Box<dyn std::error::Error>> {
         match self
             .api
@@ -59,7 +60,7 @@ impl FileDownloader {
             Ok(File {
                 file_id, file_path, ..
             }) => {
-                let path = self.folder.clone() + "/" + &file_id;
+                let path = self.folder.clone() + "/" + &file_id + suffix.unwrap_or("");
                 if Path::new(&path).exists() {
                     return Ok(path);
                 }

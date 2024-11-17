@@ -100,12 +100,39 @@ fn encode_image(image_path: &str) -> Result<String, Box<dyn std::error::Error>> 
     Ok(encoded_image)
 }
 
+async fn audio_to_text_call(
+    client: reqwest::Client,
+    audio_file_path: &str,
+) -> Result<String, String> {
+    //:= copy from call_py_openai_client
+    let response = match client
+        .post(format!("http://127.0.0.1:8080{}", "/audio_transcribe"))
+        .header("Content-Type", "application/json")
+        .body(json!({"file_path": audio_file_path}).to_string())
+        .send()
+        .await
+    {
+        Ok(v) => {
+            //debug!("recieve response {:?} from openai agent",v);
+            v
+                .json::<OpenAIAgentResponse>()
+                .await
+                .map_err(|e| e.to_string())                
+        }
+        
+        Err(e) => Err(e.to_string()),
+    }?;
+
+    response.content.ok_or("no response".to_string())
+}
+
 /// The wrapper of the message data
 /// used inside reply and chatgpt input
 #[derive(Debug)]
 pub enum DataWrapper {
     Text(String),
     Image(String),
+    AudioText(String),
 }
 
 impl DataWrapper {
@@ -118,11 +145,30 @@ impl DataWrapper {
             MessageKind::Photo { data, .. } => {
                 if let Some(dl) = downloader {
                     Ok(Self::Image(encode_image(
-                        &dl.download_file(data.last().unwrap()).await?,
+                        &dl.download_file(data.last().unwrap(), None).await?,
                     )?))
                 } else {
                     Err("need downloader for image".into())
                 }
+            }
+            MessageKind::Voice { data, .. } => {
+                let file_path = if let Some(dl) = downloader {
+                    dl.download_file(data,Some(".ogg")).await?
+                } else {
+                    return Err("need downloader for image".into());
+                };
+
+                //:= maybe need the global request rather than make here...
+                //:= or in chatgpt struct. Need to make sure client pool will reconnect
+                let client = reqwest::Client::builder()
+                    .connect_timeout(Duration::from_secs(60))
+                    .build()
+                    .map_err(|e| e.to_string())?;
+
+                let audio_text = audio_to_text_call(client, &file_path).await?;
+                info!("audio_text from openai: {}",audio_text);
+
+                Ok(Self::AudioText(audio_text))
             }
             _ => Err("data wrapper cannot from this message yet".into()),
         }
@@ -158,13 +204,14 @@ pub async fn insert_new_reply(
         },
     };
 
-    // reply some post but not inside chain
+    // reply some post
     let content = match reply_to_id {
         Some(rid) => {
+            // the message is replied is not inside chain
             if !if_reply_chat_in_the_chain2(&space_type, &space_id, rid, db).await {
                 reply_to_id = None; // merge this two meg together
                 match (reply_msg_data, content) {
-                    (DataWrapper::Text(rply), DataWrapper::Text(this)) => {
+                    (DataWrapper::Text(rply), DataWrapper::Text(this)) | (DataWrapper::AudioText(rply), DataWrapper::Text(this))=> {
                         let cc = vec![r#"Original Post: \n""#, &rply, r#""\n"#, &this].concat();
                         json!([{"type":"text", "text": cc}]).to_string()
                     }
@@ -173,17 +220,18 @@ pub async fn insert_new_reply(
                         json!([{"type":"text", "text": this},
                                {"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",img)}}]).to_string()
                     },
+                    
                     _ => {return Err("can only reply free message with text".into())}
                 }
             } else {
                 match content{
-                    DataWrapper::Text(this) => json!([{"type":"text", "text": this}]).to_string(),
+                    DataWrapper::Text(this) | DataWrapper::AudioText(this) => json!([{"type":"text", "text": this}]).to_string(),
                     DataWrapper::Image(img) => json!([{"type": "image_url","image_url":{"url":format!("data:image/jpeg;base64,{}",img)}}]).to_string(),
                 }
             }
         }
         None => match content {
-            DataWrapper::Text(this) => json!([{"type":"text", "text": this}]).to_string(),
+            DataWrapper::Text(this)|DataWrapper::AudioText(this) => json!([{"type":"text", "text": this}]).to_string(),
             DataWrapper::Image(_) => return Err("start talk with text".into()),
         },
     };
@@ -210,7 +258,6 @@ pub struct ChatGPT {
     my_name: String,
     db: DatabaseConnection,
 
-    openai_token: String,
     reqwest_client: reqwest::Client,
     file_downloader: Option<FileDownloader>,
 
@@ -238,15 +285,6 @@ impl ChatGPT {
             .lines()
             .next()
             .ok_or("Read 'myname' failed".to_string())?
-            .map_err(|e| e.to_string())?;
-
-        let f = BufReader::new(
-            File::open(vault_path.clone() + "/gpt_token").map_err(|e| e.to_string())?,
-        );
-        let gpt_token = f
-            .lines()
-            .next()
-            .ok_or("Read 'gpt_token' failed".to_string())?
             .map_err(|e| e.to_string())?;
 
         // cached groups ids
@@ -288,7 +326,6 @@ impl ChatGPT {
                 .connect_timeout(Duration::from_secs(60))
                 .build()
                 .map_err(|e| e.to_string())?,
-            openai_token: gpt_token,
         })
     }
 
@@ -376,7 +413,7 @@ impl ChatGPT {
 
     async fn handle_chat(&mut self, msg: ChatGPTInput) -> Result<(), String> {
         // check if chat legal or not
-        let data = match (msg.group_id, msg.user_name.as_str(), &msg.data) {
+        match (msg.group_id, msg.user_name.as_str(), &msg.data) {
             (None, name, data) => {
                 if name != self.my_name && !self.waken_usernames.contains(name) {
                     match self
@@ -926,6 +963,17 @@ mod tests {
                 }),
             }
         );
+
+        let testcase = r#"{"content": "Can you tell me a joke?"}"#;
+        let result: OpenAIAgentResponse = serde_json::from_str(testcase).unwrap();
+        assert_eq!(
+            result,
+            OpenAIAgentResponse {
+                content: Some(r#"Can you tell me a joke?"#.to_string()),
+                tool_calls: None,
+            }
+        );
+        
 
         // dbg!(result
         //     .tool_calls
