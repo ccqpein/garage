@@ -1,0 +1,9 @@
+* Quick start
+
+make python demo ~1.py~
+
+copy ~tensorzero.toml~ to ~./config/tensorzero1.toml~
+  
+copy ~docker-compose.yml~ to ~docker-compose1.yml~
+
+run ~docker compose -f ./config/tensorzero1.toml up~
