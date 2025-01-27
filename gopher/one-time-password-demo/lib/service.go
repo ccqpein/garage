@@ -25,7 +25,7 @@ func (s *TOTPService) GenerateSecret(username string) (*otp.Key, error) {
 		Period:      30,
 		// You can generate secret manually and set it here.
 		// If secret is not provided, library will generate a random secret
-		//Secret: []byte(`123456`),
+		Secret: []byte(`123456789`),
 	})
 	if err != nil {
 		return nil, err
