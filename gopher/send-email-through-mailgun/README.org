@@ -1,0 +1,16 @@
+* README
+
+this is the demo go project for testing send the email in code.
+
+#+begin_src shell
+  go run .
+#+end_src
+
+** Prepare
+
++ my domain, need to update several the dns
++ after verify the domain, need to get the api key for this domain
++ sender has to be the email address of my domain
++ recipient (receive email address) can be address.
++ domain is ~mail.my-domain.com~ (I guess it can change by changing ~mail~ dns record to others?)
+
