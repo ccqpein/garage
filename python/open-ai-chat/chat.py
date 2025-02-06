@@ -43,5 +43,4 @@ def chat_completions(
             ),
         }
     # Choice: https://github.com/openai/openai-python/blob/e661da69b4a11d48edfe21d2b12f53c201593596/src/openai/types/chat/chat_completion.py
-    #:= need to change the return type in main.py/ also the rust side
     return json.dumps(result)
