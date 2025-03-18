@@ -38,8 +38,8 @@ func main() {
 	//mg.SetAPIBase("https://api.eu.mailgun.net/v3")
 
 	sender := config.Sender
-	subject := "Fancy subject!"
-	body := "Hello from Mailgun Go!"
+	subject := "hello"
+	body := "hello"
 	recipient := config.Recipient
 
 	// The message object allows you to add attachments and Bcc recipients

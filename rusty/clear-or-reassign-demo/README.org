@@ -1,0 +1,24 @@
+#+begin_src
+  cargo build --release  
+#+end_src
+
+#+begin_src shell
+  hyperfine target/release/assign
+#+end_src
+
+#+RESULTS:
+| Benchmark | 1:    | target/release/assign |       |       |    |   |       |    |        |       |     |         |       |     |
+| Time      | (mean | ±                     | σ):   | 881.7 | ms | ± |   6.8 | ms | [User: | 740.5 | ms, | System: | 139.8 | ms] |
+| Range     | (min  | …                     | max): | 874.6 | ms | … | 894.6 | ms |     10 |  runs |     |         |       |     |
+|           |       |                       |       |       |    |   |       |    |        |       |     |         |       |     |
+
+#+begin_src shell
+  hyperfine target/release/clear
+#+end_src
+
+#+RESULTS:
+| Benchmark | 1:    | target/release/clear |       |       |    |   |       |    |        |       |     |         |       |     |
+| Time      | (mean | ±                    | σ):   | 861.0 | ms | ± |   5.4 | ms | [User: | 719.2 | ms, | System: | 140.3 | ms] |
+| Range     | (min  | …                    | max): | 853.6 | ms | … | 871.6 | ms |     10 |  runs |     |         |       |     |
+|           |       |                      |       |       |    |   |       |    |        |       |     |         |       |     |
+
