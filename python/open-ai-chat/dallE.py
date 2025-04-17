@@ -1,4 +1,8 @@
-from typing import Dict
+from io import BytesIO
+
+# from typing import Dict
+
+# from PIL import Image
 
 default_dalle3_prompt = {
     "model": "dall-e-3",
@@ -30,7 +34,8 @@ def image_edit_dalle2(client, image: str, mask: str, prompt):
         mask=open(mask, "rb"),
         prompt="change the head to alligator and the location to florida",
         n=1,
-        size="1024x1024")
+        size="1024x1024",
+    )
 
     image_url = response.data[0].url
     return image_url
