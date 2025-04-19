@@ -1,8 +1,8 @@
 /// copy and parse the test of implenment of debug
 use reflect::*;
 
-/// below expand to:
-/*! 
+#[doc = r##"below expand to:
+
 use reflect::*;
 #[allow(non_snake_case)]
 mod RUNTIME {
@@ -291,7 +291,8 @@ mod RUNTIME {
         }
     }
 }
-*/
+"##]
+
 reflect::library! {
     extern crate std {
         mod fmt {

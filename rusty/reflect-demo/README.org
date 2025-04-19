@@ -3,3 +3,11 @@
 This is the demo practise for one fun project I found [[https://github.com/dtolnay/reflect][reflect]]
 
 
+
+generated code in lib and some questions so far:
+
++ what is the ~automatically_derive~?
+  https://stackoverflow.com/questions/51481551/what-does-automatically-derived-mean
+
++ where is the ~derive~ function use?
+  
