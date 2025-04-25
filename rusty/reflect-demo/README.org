@@ -8,6 +8,38 @@ generated code in lib and some questions so far:
 
 + what is the ~automatically_derive~?
   https://stackoverflow.com/questions/51481551/what-does-automatically-derived-mean
-
-+ where is the ~derive~ function use?
   
+
+~cargo expand --bin usage-demo~
+
+#+begin_quote
+#![feature(prelude_import)]
+#[prelude_import]
+use std::prelude::rust_2024::*;
+#[macro_use]
+extern crate std;
+use macro_demo::MyDebug;
+struct Point {
+    x: i32,
+    y: i32,
+}
+impl ::std::fmt::Debug for Point {
+    fn fmt(&self, __arg0: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        let __v0 = self;
+        let __v1 = __arg0;
+        let __v3 = &__v0.x;
+        let __v4 = &__v0.y;
+        let mut __v5 = ::std::fmt::Formatter::debug_struct(__v1, "Point");
+        let __v6 = &mut __v5;
+        let _ = ::std::fmt::DebugStruct::field(__v6, "x", __v3);
+        let _ = ::std::fmt::DebugStruct::field(__v6, "y", __v4);
+        let __v11 = ::std::fmt::DebugStruct::finish(__v6);
+        __v11
+    }
+}
+fn main() {
+    {
+        ::std::io::_print(format_args!("{0:?}\n", Point { x: 1, y: 1 }));
+    }
+}
+#+end_quote

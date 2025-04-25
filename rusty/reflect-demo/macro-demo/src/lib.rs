@@ -1,5 +1,5 @@
 /// copy and parse the test of implenment of debug
-use proc_macro2::TokenStream;
+use proc_macro::TokenStream;
 use reflect::*;
 
 /// de sugar the macro
@@ -285,7 +285,11 @@ reflect::library! {
             type Result;
             type DebugStruct;
 
-            trait MyDebug {
+            // trait MyDebug {
+            //     fn fmt(&self, &mut Formatter) -> Result;
+            // }
+
+            trait Debug {
                 fn fmt(&self, &mut Formatter) -> Result;
             }
 
@@ -294,18 +298,18 @@ reflect::library! {
             }
 
             impl DebugStruct {
-                fn field(&mut self, &str, &MyDebug) -> &mut DebugStruct;
+                fn field(&mut self, &str, &Debug) -> &mut DebugStruct;
                 fn finish(&mut self) -> Result;
             }
         }
     }
 }
 
-pub fn derive(ex: Execution) {
-    ex.make_trait_impl(RUNTIME::std::fmt::MyDebug, ex.target_type(), |block| {
-        block.make_function(RUNTIME::std::fmt::MyDebug::fmt, debug_fmt);
-    });
-}
+// pub fn derive(ex: Execution) {
+//     ex.make_trait_impl(RUNTIME::std::fmt::MyDebug, ex.target_type(), |block| {
+//         block.make_function(RUNTIME::std::fmt::MyDebug::fmt, debug_fmt);
+//     });
+// }
 
 fn debug_fmt(f: MakeFunction) -> Value {
     let receiver = f.arg(0);
@@ -343,23 +347,23 @@ fn debug_fmt(f: MakeFunction) -> Value {
 
 ///////////////
 
-// // Macro that is called when someone writes derive(MyDebug) on a data structure.
-// // It returns a fragment of Rust source code (TokenStream) containing an
-// // implementation of Debug for the input data structure. The macro uses
-// // compile-time reflection internally, but the generated Debug impl is exactly
-// // as if this macro were handwritten without reflection.
-// #[proc_macro_derive(MyDebug)]
-// pub fn derive(input: TokenStream) -> TokenStream {
-//     // Feed the tokens describing the data structure into the reflection library
-//     // for parsing and analysis. We provide a callback that describes what trait
-//     // impl(s) the reflection library will need to generate code for.
-//     reflect::derive(input, |ex| {
-//         // Instruct the library to generate an impl of Debug for the derive
-//         // macro's target type / Self type.
-//         ex.make_trait_impl(RUNTIME::std::fmt::MyDebug, ex.target_type(), |block| {
-//             // Instruct the library to compile debug_fmt (a function shown
-//             // below) into the source code for the impl's Debug::fmt method.
-//             block.make_function(RUNTIME::std::fmt::MyDebug::fmt, debug_fmt);
-//         });
-//     })
-// }
+// Macro that is called when someone writes derive(MyDebug) on a data structure.
+// It returns a fragment of Rust source code (TokenStream) containing an
+// implementation of Debug for the input data structure. The macro uses
+// compile-time reflection internally, but the generated Debug impl is exactly
+// as if this macro were handwritten without reflection.
+#[proc_macro_derive(MyDebug)]
+pub fn derive(input: TokenStream) -> TokenStream {
+    // Feed the tokens describing the data structure into the reflection library
+    // for parsing and analysis. We provide a callback that describes what trait
+    // impl(s) the reflection library will need to generate code for.
+    reflect::derive(input, |ex| {
+        // Instruct the library to generate an impl of Debug for the derive
+        // macro's target type / Self type.
+        ex.make_trait_impl(RUNTIME::std::fmt::Debug, ex.target_type(), |block| {
+            // Instruct the library to compile debug_fmt (a function shown
+            // below) into the source code for the impl's Debug::fmt method.
+            block.make_function(RUNTIME::std::fmt::Debug::fmt, debug_fmt);
+        });
+    })
+}
