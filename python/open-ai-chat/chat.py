@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-MODEL = "chatgpt-4o-latest"
+MODEL = "gpt-4.1-2025-04-14"
 
 
 def chat_completions(
