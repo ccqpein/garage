@@ -43,3 +43,5 @@ fn main() {
     }
 }
 #+end_quote
+
+[[https://ccqpein.me/Play-around-Rust-reflect-lib/][blog]]
