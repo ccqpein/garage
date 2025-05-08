@@ -1,0 +1,45 @@
+* README
+
+this is the hand on demo and learning of this [[https://shnatsel.medium.com/how-to-avoid-bounds-checks-in-rust-without-unsafe-f65e618b4c1e][article]]
+
+** prepare
+
+#+begin_src shell
+  cargo install cargo-show-asm hyperfine
+#+end_src
+
+clone the source code of the article
+
+#+begin_src shell
+  git clone https://github.com/Shnatsel/bounds-check-cookbook
+#+end_src
+
+#+RESULTS:
+
+** step by step
+
+*** first
+
+first file is ~fibvec_naive_indexing~
+
+#+begin_src shell
+  cargo asm --rust --bin fibvec_naive_indexing fibonacci_vec
+#+end_src
+
+in the article, the assembly code is
+
+#+begin_quote
+// /home/shnatsel/Code/bounds-check-cookbook/src/bin/fibvec_naive_indexing.rs : 15
+    fib[i] = fib[i-1] + fib[i-2]; // indexing in a loop! Oh no!
+add rsi, qword ptr [rbp + 8*rax - 24]
+mov qword ptr [rbp + 8*rdi], rsi
+#+end_quote
+
+but in rust ~rustc 1.88.0-nightly (3350c1eb3 2025-05-01)~, it is:
+
+#+begin_quote
+     fib[i] = fib[i-1] + fib[i-2]; // indexing in a loop! Oh no!
+ldur x12, [x11, #-16]
+add x10, x12, x10
+str x10, [x11], #8
+#+end_quote
