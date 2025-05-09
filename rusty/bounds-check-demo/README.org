@@ -43,3 +43,7 @@ ldur x12, [x11, #-16]
 add x10, x12, x10
 str x10, [x11], #8
 #+end_quote
+
+because my mac is arm platform
+
+Need to study the assembly by myself now. 
