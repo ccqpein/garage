@@ -1,0 +1,51 @@
+* README
+
+** tryCopyBuffer
+
+
+#+begin_src shell
+  go build -gcflags="-m" main.go
+#+end_src
+
+#+RESULTS:
+
+#+begin_quote
+# command-line-arguments
+./main.go:70:6: can inline main
+./main.go:29:21: inlining call to errors.New
+./main.go:38:21: inlining call to errors.New
+./main.go:54:26: inlining call to strings.NewReader
+./main.go:55:30: inlining call to io.LimitReader
+./main.go:10:17: leaking param: dst
+./main.go:10:32: leaking param: src
+./main.go:10:47: leaking param: buf
+./main.go:20:13: make([]byte, size) escapes to heap
+./main.go:29:21: &errors.errorString{...} escapes to heap
+./main.go:38:21: &errors.errorString{...} escapes to heap
+./main.go:54:26: &strings.Reader{...} escapes to heap
+./main.go:55:30: &io.LimitedReader{...} escapes to heap
+./main.go:56:9: &bytes.Buffer{} escapes to heap
+#+end_quote
+
+** tryCopyBufferIONative
+
+#+begin_src shell
+  go build -gcflags="-m" main.go
+#+end_src
+
+#+begin_quote
+# command-line-arguments
+./main.go:71:6: can inline main
+./main.go:29:21: inlining call to errors.New
+./main.go:38:21: inlining call to errors.New
+./main.go:64:26: inlining call to strings.NewReader
+./main.go:68:9: inlining call to io.Copy
+./main.go:10:17: leaking param: dst
+./main.go:10:32: leaking param: src
+./main.go:10:47: leaking param: buf
+./main.go:20:13: make([]byte, size) escapes to heap
+./main.go:29:21: &errors.errorString{...} escapes to heap
+./main.go:38:21: &errors.errorString{...} escapes to heap
+./main.go:64:26: &strings.Reader{...} escapes to heap
+./main.go:66:9: &bytes.Buffer{} escapes to heap
+#+end_quote
