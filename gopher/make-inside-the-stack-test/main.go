@@ -58,14 +58,24 @@ func copyBuffer(dst io.Writer, src io.Reader, buf []byte) (written int64, err er
 // 	copyBuffer(dst, limitedSrc, nil)
 // }
 
-func tryCopyBufferIONative() {
+func tryCopyBufferIONative() (int64, error) {
 	//limit := int64(10)
 	src := strings.NewReader("This is a test string longer than the limit.")
 	//limitedSrc := io.LimitReader(src, limit)
 	dst := &bytes.Buffer{}
 
-	io.Copy(dst, src)
+	return copyBuffer(dst, src, nil)
 }
+
+// func tryCopyBufferIONativeBuffer() (int64, error) {
+// 	//limit := int64(10)
+// 	src := strings.NewReader("This is a test string longer than the limit.")
+// 	//limitedSrc := io.LimitReader(src, limit)
+// 	dst := &bytes.Buffer{}
+// 	var buf = make([]byte, 1024)
+
+// 	return io.CopyBuffer(dst, src, buf)
+// }
 
 func main() {
 	//tryCopyBuffer()

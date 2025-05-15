@@ -49,3 +49,9 @@
 ./main.go:64:26: &strings.Reader{...} escapes to heap
 ./main.go:66:9: &bytes.Buffer{} escapes to heap
 #+end_quote
+
+** More compiler output
+
+#+begin_src shell
+  go build -gcflags="-m=5" main.go
+#+end_src
