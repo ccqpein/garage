@@ -1,0 +1,28 @@
+* README
+
+this one copy from online and trying to test if the ~io.Copy~ faster than ~io.CopyBuffer~
+
+** Run the command
+
+#+begin_src shell
+  go test -bench=. .
+#+end_src
+
+#+RESULTS:
+| goos:                              |                 darwin |                            |                |                         |      |
+| goarch:                            |                  arm64 |                            |                |                         |      |
+| pkg:                               | io-copy-benchmark-test |                            |                |                         |      |
+| cpu:                               |                  Apple |                         M2 | Max            |                         |      |
+| BenchmarkCopyFile_DefaultIoCopy-12 |                      2 |                  666609772 | ns/op          |                 3354.39 | MB/s |
+| BenchmarkCopyFile_Buffer4KB-12     |                      2 |                  721074812 | ns/op          |                 3101.03 | MB/s |
+| BenchmarkCopyFile_Buffer32KB-12    |                      2 |                  699722187 | ns/op          |                 3195.66 | MB/s |
+| BenchmarkCopyFile_Buffer64KB-12    |                      2 |                  689512708 | ns/op          |                 3242.97 | MB/s |
+| BenchmarkCopyFile_Buffer128KB-12   |                      2 |                  719506667 | ns/op          |                 3107.79 | MB/s |
+| BenchmarkCopyFile_Buffer256KB-12   |                      2 |                  700722604 | ns/op          |                 3191.09 | MB/s |
+| BenchmarkCopyFile_Buffer512KB-12   |                      2 |                  681593792 | ns/op          |                 3280.65 | MB/s |
+| BenchmarkCopyFile_Buffer1MB-12     |                      2 |                  699894521 | ns/op          |                 3194.87 | MB/s |
+| BenchmarkCopyFile_Buffer4MB-12     |                      2 |                  715432729 | ns/op          |                 3125.48 | MB/s |
+| BenchmarkCopyFile_Buffer8MB-12     |                      2 |                  706089271 | ns/op          |                 3166.84 | MB/s |
+| PASS                               |                        |                            |                |                         |      |
+| ok                                 | io-copy-benchmark-test |                    22.359s |                |                         |      |
+
