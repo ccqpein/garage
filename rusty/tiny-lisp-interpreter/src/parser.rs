@@ -13,8 +13,12 @@ pub enum ParserError {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Atom {
+    /// symbol, if it is the number, it can also be number, can parse when use it
     Sym(String),
     List(Vec<Atom>),
+
+    // more advance types
+    String(String),
 }
 
 fn tokenize(mut source_code: impl Read) -> VecDeque<String> {
@@ -85,6 +89,7 @@ fn read_router(
     match token {
         "(" => Ok(read_exp),
         "'" => Ok(read_quote),
+        "\"" => Ok(read_string),
         _ => Ok(read_sym),
     }
 }
@@ -127,6 +132,18 @@ fn read_exp(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
     }
 
     Ok(Atom::List(res))
+}
+
+/// start with "
+fn read_string(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
+    tokens.pop_front();
+
+    let token = tokens
+        .pop_front()
+        .ok_or(ParserError::InvalidToken("in read_string"))?;
+
+    tokens.pop_front();
+    Ok(Atom::String(token))
 }
 
 #[cfg(test)]
@@ -184,6 +201,13 @@ mod test {
     }
 
     #[test]
+    fn test_read_string() {
+        let mut t = tokenize(Cursor::new(r#""hello""#.as_bytes()));
+        assert_eq!(read_string(&mut t), Ok(Atom::String("hello".to_string())));
+        assert!(t.is_empty());
+    }
+
+    #[test]
     fn test_read_root() {
         let mut t = tokenize(Cursor::new("(a b c 123 c) (a '(1 2 3))".as_bytes()));
         //dbg!(read_root(&mut t));
@@ -212,6 +236,19 @@ mod test {
             ],)
         );
 
+        assert!(t.is_empty());
+
+        let mut t = tokenize(Cursor::new(r#"('a "hello")"#.as_bytes()));
+        assert_eq!(
+            read_root(&mut t),
+            Ok(vec![Atom::List(vec![
+                Atom::List(vec![
+                    Atom::Sym("quote".to_string()),
+                    Atom::Sym("a".to_string()),
+                ],),
+                Atom::String("hello".to_string()),
+            ])]),
+        );
         assert!(t.is_empty());
     }
 }
