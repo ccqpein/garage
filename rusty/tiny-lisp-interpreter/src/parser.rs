@@ -4,6 +4,42 @@ use std::{
     string::ParseError,
 };
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ValueType {
+    Number(i64),
+    String(String),
+    Symbol(String),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Sym {
+    pub name: String,
+    pub vt: ValueType,
+}
+
+impl Sym {
+    fn read_string(s: &str) -> Self {
+        Self {
+            name: s.to_string(),
+            vt: ValueType::String(s.to_string()),
+        }
+    }
+
+    fn read_sym(s: &str) -> Self {
+        Self {
+            name: s.to_string(),
+            vt: ValueType::Symbol(s.to_string()),
+        }
+    }
+
+    fn read_number(s: &str, n: i64) -> Self {
+        Self {
+            name: s.to_string(),
+            vt: ValueType::Number(n),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParserError {
     InvalidStart,
@@ -14,11 +50,8 @@ pub enum ParserError {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Atom {
     /// symbol, if it is the number, it can also be number, can parse when use it
-    Sym(String),
+    Sym(Sym),
     List(Vec<Atom>),
-
-    // more advance types
-    String(String),
 }
 
 fn tokenize(mut source_code: impl Read) -> VecDeque<String> {
@@ -98,11 +131,15 @@ fn read_sym(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
     let token = tokens
         .pop_front()
         .ok_or(ParserError::InvalidToken("in read_sym"))?;
-    Ok(Atom::Sym(token))
+
+    match token.parse::<i64>() {
+        Ok(n) => Ok(Atom::Sym(Sym::read_number(&token, n))),
+        Err(_) => Ok(Atom::Sym(Sym::read_sym(&token))),
+    }
 }
 
 fn read_quote(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
-    let mut res = vec![Atom::Sym("quote".to_string())];
+    let mut res = vec![Atom::Sym(Sym::read_sym("quote"))];
     tokens
         .pop_front()
         .ok_or(ParserError::InvalidToken("in read_quote"))?;
@@ -143,7 +180,7 @@ fn read_string(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
         .ok_or(ParserError::InvalidToken("in read_string"))?;
 
     tokens.pop_front();
-    Ok(Atom::String(token))
+    Ok(Atom::Sym(Sym::read_string(&token)))
 }
 
 #[cfg(test)]
@@ -187,11 +224,11 @@ mod test {
             read_exp(&mut t),
             Ok(Atom::List(
                 [
-                    Atom::Sym("a".to_string()),
-                    Atom::Sym("b".to_string()),
-                    Atom::Sym("c".to_string()),
-                    Atom::Sym("123".to_string()),
-                    Atom::Sym("c".to_string()),
+                    Atom::Sym(Sym::read_sym("a")),
+                    Atom::Sym(Sym::read_sym("b")),
+                    Atom::Sym(Sym::read_sym("c")),
+                    Atom::Sym(Sym::read_number("123", 123)),
+                    Atom::Sym(Sym::read_sym("c")),
                 ]
                 .to_vec()
             ),)
@@ -203,7 +240,10 @@ mod test {
     #[test]
     fn test_read_string() {
         let mut t = tokenize(Cursor::new(r#""hello""#.as_bytes()));
-        assert_eq!(read_string(&mut t), Ok(Atom::String("hello".to_string())));
+        assert_eq!(
+            read_string(&mut t),
+            Ok(Atom::Sym(Sym::read_string("hello")))
+        );
         assert!(t.is_empty());
     }
 
@@ -216,20 +256,20 @@ mod test {
             read_root(&mut t),
             Ok(vec![
                 Atom::List(vec![
-                    Atom::Sym("a".to_string()),
-                    Atom::Sym("b".to_string()),
-                    Atom::Sym("c".to_string()),
-                    Atom::Sym("123".to_string()),
-                    Atom::Sym("c".to_string()),
+                    Atom::Sym(Sym::read_sym("a")),
+                    Atom::Sym(Sym::read_sym("b")),
+                    Atom::Sym(Sym::read_sym("c")),
+                    Atom::Sym(Sym::read_number("123", 123)),
+                    Atom::Sym(Sym::read_sym("c")),
                 ],),
                 Atom::List(vec![
-                    Atom::Sym("a".to_string()),
+                    Atom::Sym(Sym::read_sym("a")),
                     Atom::List(vec![
-                        Atom::Sym("quote".to_string()),
+                        Atom::Sym(Sym::read_sym("quote")),
                         Atom::List(vec![
-                            Atom::Sym("1".to_string()),
-                            Atom::Sym("2".to_string()),
-                            Atom::Sym("3".to_string()),
+                            Atom::Sym(Sym::read_number("1", 1)),
+                            Atom::Sym(Sym::read_number("2", 2)),
+                            Atom::Sym(Sym::read_number("3", 3)),
                         ],),
                     ],),
                 ],),
@@ -243,10 +283,10 @@ mod test {
             read_root(&mut t),
             Ok(vec![Atom::List(vec![
                 Atom::List(vec![
-                    Atom::Sym("quote".to_string()),
-                    Atom::Sym("a".to_string()),
+                    Atom::Sym(Sym::read_sym("quote")),
+                    Atom::Sym(Sym::read_sym("a")),
                 ],),
-                Atom::String("hello".to_string()),
+                Atom::Sym(Sym::read_string("hello")),
             ])]),
         );
         assert!(t.is_empty());
