@@ -15,7 +15,7 @@ pub struct Value {
     pub ty: Types,
 }
 
-type Lmda = for<'a> fn(&'a mut Context, Value) -> Value;
+type Lmda = fn(&mut Context, Value) -> Value;
 
 /// Expr context when we running expression
 pub struct Context {
@@ -59,6 +59,15 @@ mod test {
         ctx.fnTable.insert("add".to_string(), functions::math::add);
 
         dbg!(ctx.fnTable.get("add").unwrap()(
+            &mut ctx,
+            Value {
+                ty: Types::Number(1),
+            },
+        ));
+
+        ctx.fnTable.insert("mul".to_string(), functions::math::mul);
+
+        dbg!(ctx.fnTable.get("mul").unwrap()(
             &mut ctx,
             Value {
                 ty: Types::Number(1),
