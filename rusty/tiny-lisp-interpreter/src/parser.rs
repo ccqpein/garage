@@ -243,6 +243,23 @@ mod test {
         );
         //dbg!(&t);
         assert!(t.is_empty());
+
+        let mut t = tokenize(Cursor::new("((a) b c 123 c)".as_bytes()));
+        assert_eq!(
+            read_exp(&mut t),
+            Ok(Atom::List(
+                [
+                    Atom::List([Atom::Sym(Sym::read("a"))].to_vec()),
+                    Atom::Sym(Sym::read("b")),
+                    Atom::Sym(Sym::read("c")),
+                    Atom::Sym(Sym::read("123")),
+                    Atom::Sym(Sym::read("c")),
+                ]
+                .to_vec()
+            ),)
+        );
+        //dbg!(&t);
+        assert!(t.is_empty());
     }
 
     #[test]

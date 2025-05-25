@@ -99,6 +99,8 @@ impl<'a> Expr<'a> {
         match self.a {
             Atom::Sym(sym) => self.eval_sym(sym),
             Atom::List(atoms) => {
+                //:= should change it, if the first is the expression return function
+                //:= so defun need to be the next step
                 let Value::Func(f) = self.eval_func(
                     atoms
                         .first()
@@ -109,15 +111,6 @@ impl<'a> Expr<'a> {
                 else {
                     panic!()
                 };
-
-                // let Value::Func(f) = Self::from_atom(
-                //     atoms.first().ok_or(ExpressionError::Inevalable)?,
-                //     self.c.clone(),
-                // )
-                // .eval_func()?
-                // else {
-                //     panic!()
-                // };
 
                 let mut args = Vec::with_capacity(atoms.len() - 1);
                 for a in &atoms[1..] {
@@ -205,5 +198,19 @@ mod test {
         let exp = Expr::from_atom(atom, Rc::new(RefCell::new(ctx)));
 
         assert_eq!(exp.eval(), Ok(Value::Number(6)));
+
+        //
+
+        let mut t = tokenize(Cursor::new(r#"(add 1 2 (add 3 1))"#.as_bytes()));
+        let atom = &read_root(&mut t).unwrap()[0];
+
+        let mut ctx = Context {
+            ..Default::default()
+        };
+
+        ctx.fnTable.insert("add".to_string(), functions::math::add);
+        let exp = Expr::from_atom(atom, Rc::new(RefCell::new(ctx)));
+
+        assert_eq!(exp.eval(), Ok(Value::Number(7)));
     }
 }
