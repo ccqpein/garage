@@ -1,0 +1,53 @@
+* Hyper MCP demo play
+
+some demo play of [[https://github.com/tuananh/hyper-mcp?tab=readme-ov-file][hyper mcp]]
+
+** start up
+
+clone to my local
+
+then install (delete the toolchain, I want use my nightly toolchain)
+
+#+begin_src shell
+  cargo install --path=.
+#+end_src
+
+copy config from repo readme
+
+#+begin_src json
+{
+  "plugins": [
+    {
+      "name": "time",
+      "path": "oci://ghcr.io/tuananh/time-plugin:latest"
+    },
+    {
+      "name": "qr-code",
+      "path": "oci://ghcr.io/tuananh/qrcode-plugin:latest"
+    },
+    {
+      "name": "hash",
+      "path": "oci://ghcr.io/tuananh/hash-plugin:latest"
+    },
+    {
+      "name": "myip",
+      "path": "oci://ghcr.io/tuananh/myip-plugin:latest",
+      "runtime_config": {
+        "allowed_hosts": ["1.1.1.1"]
+      }
+    },
+    {
+      "name": "fetch",
+      "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
+      "runtime_config": {
+        "allowed_hosts": ["*"],
+        "memory_limit": "100 MB"
+      }
+    }
+  ]
+}
+#+end_src
+
+Then
+
+~hyper-mcp -c config.json~
