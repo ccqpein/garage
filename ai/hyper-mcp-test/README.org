@@ -51,3 +51,10 @@ copy config from repo readme
 Then
 
 ~hyper-mcp -c config.json~
+
+need make a new ghcr.io token
+
+** client side
+
+I am thinking use the emacs as client. I found this one [[https://github.com/lizqwerscott/mcp.el][mcp.el]]
+
