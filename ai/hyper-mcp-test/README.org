@@ -58,3 +58,11 @@ need make a new ghcr.io token
 
 I am thinking use the emacs as client. I found this one [[https://github.com/lizqwerscott/mcp.el][mcp.el]]
 
+** write some plugin
+
+~./echo~ 
+
+** make some agent
+
+try to make agent connet with llm
+
