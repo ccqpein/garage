@@ -60,7 +60,33 @@ I am thinking use the emacs as client. I found this one [[https://github.com/liz
 
 ** write some plugin
 
-~./echo~ 
+~./echo~
+
+*** how is the extism
+
+#+begin_quote
+The framework for building with WebAssembly (wasm). Easily & securely load wasm modules, move data, call functions, and build extensible apps.
+#+end_quote
+
+look like need to learn something called XTP, then binding with extism.
+
+*** build xtp-rust-bindgen
+
+[[https://github.com/tuananh/hyper-mcp/issues/46][xtp-bindgen source]]
+
+#+begin_src shell
+  git clone git@github.com:dylibso/xtp-rust-bindgen.git
+#+end_src
+
+#+begin_src shell
+  cd xtp-rust-bindgen/ ; and ./bundle.sh
+#+end_src
+
+need to install /extism-js/, I don't want to install in my local and npm docker image doesn't have ~sudo~ to run the install the script.
+
+I think I just copy the `pdk.rs`
+
+*** 
 
 ** make some agent
 

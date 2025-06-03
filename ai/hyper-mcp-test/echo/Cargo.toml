@@ -3,4 +3,13 @@ name = "echo"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "echo"
+crate-type = ["cdylib"]
+
 [dependencies]
+extism-pdk = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64-serde = "0.7"
+base64 = "0.21"
