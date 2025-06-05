@@ -86,7 +86,36 @@ need to install /extism-js/, I don't want to install in my local and npm docker 
 
 I think I just copy the `pdk.rs`
 
-*** 
+*** build to WASM
+
+copy this [[https://github.com/tuananh/hyper-mcp/blob/a02f0ec9bd09008dbc75503f595638b61184d44e/examples/plugins/time/src/pdk.rs][file]] to ~./src~
+
+#+begin_src shell
+  cargo build --target wasm32-unknown-unknown
+#+end_src
+
+also write the ~Dockerfile~.
+
+#+begin_src shell
+  docker build . \
+         docker tag <hash> ghcr.io/ccqpein/echo:latest \
+         docker push ghcr.io/ccqpein/echo:latest
+#+end_src
+
+*** add to plugin
+
+add this to config
+
+#+begin_quote
+    {
+      "name": "echo",
+      "path": "oci://ghcr.io/ccqpein/echo:latest"
+    },
+#+end_quote
+
+*** re-run it
+
+*need to run with --insecure-skip-signature*
 
 ** make some agent
 

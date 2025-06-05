@@ -20,6 +20,10 @@
       }
     },
     {
+      "name": "echo",
+      "path": "oci://ghcr.io/ccqpein/echo:latest"
+    },
+    {
       "name": "fetch",
       "path": "oci://ghcr.io/tuananh/fetch-plugin:latest",
       "runtime_config": {
