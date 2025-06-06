@@ -58,6 +58,11 @@ need make a new ghcr.io token
 
 I am thinking use the emacs as client. I found this one [[https://github.com/lizqwerscott/mcp.el][mcp.el]]
 
+#+begin_src elisp
+  (let ((connection (gethash "hyper-mcp" mcp-server-connections)))
+    (mcp-call-tool connection "echo" '(:name "echo" :input "hello")))
+#+end_src
+
 ** write some plugin
 
 ~./echo~
@@ -121,3 +126,8 @@ add this to config
 
 try to make agent connet with llm
 
+*** run the llm
+
+I had ollama, but I am trying to run the mlx supported module.
+
+but ~uv pip install -U mlx-vlm~ and ~uv tool install mlx-vlm~ are all return error. 
