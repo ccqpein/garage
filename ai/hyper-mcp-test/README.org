@@ -131,3 +131,16 @@ try to make agent connet with llm
 I had ollama, but I am trying to run the mlx supported module.
 
 but ~uv pip install -U mlx-vlm~ and ~uv tool install mlx-vlm~ are all return error. 
+
+find the way, I need the 3.11 python rather than 3.13 I installed.
+
+#+begin_src shell
+  uv pip install sentencepiece
+  uv pip install -U mlx-vlm
+#+end_src
+
+but download the model below keep giving the error.
+
+#+begin_src shell
+  python -m mlx_vlm.generate --model mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit --max-tokens 1024 --temperature 0.0 --prompt "tell me a joke."
+#+end_src
