@@ -126,7 +126,7 @@ add this to config
 
 try to make agent connet with llm
 
-*** run the llm
+*** Run the llm
 
 I had ollama, but I am trying to run the mlx supported module.
 
@@ -144,3 +144,38 @@ but download the model below keep giving the error.
 #+begin_src shell
   python -m mlx_vlm.generate --model mlx-community/Llama-4-Scout-17B-16E-Instruct-4bit --max-tokens 1024 --temperature 0.0 --prompt "tell me a joke."
 #+end_src
+
+I am going to try something else
+
+#+begin_src
+  huggingface-cli download mlx-community/gemma-3-4b-it-4bit-DWQ  
+#+end_src
+
+*** Run mcp server and get the all description
+
+#+begin_src shell
+  RUST_LOG=info hyper-mcp -c config.json --insecure-skip-signature --transport sse
+#+end_src
+
+Test get the all tools description
+
+#+begin_src python
+  from fastmcp import Client
+
+
+  async def main():
+      # Connect via SSE
+      async with Client("http://127.0.0.1:3001/sse") as client:
+          tools = await client.list_tools()
+          print(f"Available tools: {tools}")
+
+  #await main()
+#+end_src
+
+*** Agent demo
+
+
+
+** furthre more
+
+look like this mcp server need plugin compile to wasm. What if I use golang write a plugin?
