@@ -18,27 +18,15 @@ TOOLS_DES = [json.loads(o.model_dump_json()) for o in TOOLS]
 # the header of function call
 FUNC_CALL_HEADER = r"""You have access to functions. If you decide to invoke any of the function(s),
  you MUST put it in the format of
-[func_name1(params_name1=params_value1, params_name2=params_value2...), func_name2(params)] 
+name => [func_name1(params_name1=params_value1, params_name2=params_value2...), func_name2(params)] 
 
 You SHOULD NOT include any other text in the response if you call a function
-[
-  {
-    "name": "get_product_name_by_PID",
-    "description": "Finds the name of a product by its Product ID",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "PID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "PID"
-      ]
-    }
-  }
-]
-"""
+""" + json.dumps(TOOLS_DES)
+
+
+async def call_mcp_server(tool_name):  #:= todo
+    async with Client("http://127.0.0.1:3001/sse") as client:
+        print(await client.call_tool("time", {"name": "get_time_utc"}))
 
 
 def call_gemma():
@@ -46,14 +34,17 @@ def call_gemma():
 
     model, tokenizer = load("mlx-community/gemma-3-4b-it-4bit-DWQ")
 
-    prompt = "hello"
+    prompt = "What's the time now?"
 
-    if tokenizer.chat_template is not None:
-        messages = [{"role": "user", "content": prompt}]
-        prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
+    # if tokenizer.chat_template is not None:
+    #     messages = [{"role": "user", "content": FUNC_CALL_HEADER + prompt}]
+    #     prompt = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
 
-        response = generate(model, tokenizer, prompt=prompt, verbose=True)
-        print("{}", response)
+    response = generate(
+        model, tokenizer, prompt=FUNC_CALL_HEADER + prompt, verbose=False
+    )
+
+    return response
 
 
 async def main():
