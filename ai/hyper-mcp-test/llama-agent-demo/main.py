@@ -44,6 +44,7 @@ def call_gemma():
         model, tokenizer, prompt=FUNC_CALL_HEADER + prompt, verbose=False
     )
 
+    # return the "time => get_time_utc()"
     return response
 
 

@@ -122,6 +122,9 @@ add this to config
 
 *need to run with --insecure-skip-signature*
 
+#+begin_src shell
+  RUST_LOG=info hyper-mcp -c ./config.json --insecure-skip-signature --transport sse
+#+end_src
 ** make some agent
 
 try to make agent connet with llm
@@ -157,7 +160,7 @@ I am going to try something else
   RUST_LOG=info hyper-mcp -c config.json --insecure-skip-signature --transport sse
 #+end_src
 
-Test get the all tools description
+Test get the all tools description (successed)
 
 #+begin_src python
   from fastmcp import Client
@@ -174,8 +177,10 @@ Test get the all tools description
 
 *** Agent demo
 
-
+~llama-agent-demo/main.py~
 
 ** furthre more
 
 look like this mcp server need plugin compile to wasm. What if I use golang write a plugin?
+
+A: actually it has it inside the example folder. Just compiling it to wasm [[https://github.com/tuananh/hyper-mcp/blob/919efb1a3a98d0fe95f8e65fa3ac8621ee9c4177/examples/plugins/github/Dockerfile][like this docker file]]
