@@ -101,6 +101,22 @@ func IsAsTest() {
 	} else {
 		fmt.Print("box is not ok\n")
 	}
+
+	// after 1.20, errors has the join
+	// doc says:
+	// A non-nil error returned by Join implements the Unwrap() []error method.
+	// so the is should has ability that check the []errors, and it is:
+	// https://cs.opensource.google/go/go/+/master:src/errors/wrap.go;l=67
+	errJoin1 := errors.New("err1")
+	errJoin2 := errors.New("err2")
+	err := errors.Join(errJoin1, errJoin2)
+	if errors.Is(err, errJoin1) {
+		fmt.Println("err is errJoin1")
+	}
+	if errors.Is(err, errJoin2) {
+		fmt.Println("err is errJoin2")
+	}
+
 }
 
 func main() {
