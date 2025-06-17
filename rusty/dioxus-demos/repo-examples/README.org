@@ -1,0 +1,19 @@
+* README
+
+just run some examples in the repo.
+
+
+** Clock
+
+#+begin_src shell
+  cargo run --example clock
+#+end_src
+
+run a clock app.
+
+except the css I don't know. the rust code:
+
+1. use_signal accept some closure and return a value.
+2. use_future move and async move the millis inside some runtime I guess.
+3. the loop inside set the millis with new value
+4. ~rsx!~ rendor the time value, which updating inside the loop
