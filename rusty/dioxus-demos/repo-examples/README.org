@@ -17,3 +17,13 @@ except the css I don't know. the rust code:
 2. use_future move and async move the millis inside some runtime I guess.
 3. the loop inside set the millis with new value
 4. ~rsx!~ rendor the time value, which updating inside the loop
+
+** Calcular
+
+#+begin_src shell
+  cargo run --example calculator
+#+end_src
+
+~handle_key_down_event~ handle the event's key. Also a closure function. using with ~onkeydown~.
+
+a lot ~onclick~, also closure with side effect with ~val~. Very interesting ownship magic.
