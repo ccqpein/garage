@@ -1,5 +1,9 @@
 use dioxus::prelude::*;
 
+////
+use hot_dog::guide_component::*;
+////
+
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
@@ -10,28 +14,44 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    let show_title = true;
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
-        Hero {}
+        DogApp { breed: "corgi" }
 
-    }
-}
+        br {}
 
-#[component]
-pub fn Hero() -> Element {
-    rsx! {
-        div {
-            id: "hero",
-            img { src: HEADER_SVG, id: "header" }
-            div { id: "links",
-                a { href: "https://dioxuslabs.com/learn/0.6/", "📚 Learn Dioxus" }
-                a { href: "https://dioxuslabs.com/awesome", "🚀 Awesome Dioxus" }
-                a { href: "https://github.com/dioxus-community/", "📡 Community Libraries" }
-                a { href: "https://github.com/DioxusLabs/sdk", "⚙️ Dioxus Development Kit" }
-                a { href: "https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus", "💫 VSCode Extension" }
-                a { href: "https://discord.gg/XgGxMSkvUM", "👋 Community Discord" }
-            }
+        {"Something"}
+
+        br {}
+
+        // Optionals
+        {show_title.then(|| rsx! { "title!" br{}} )}
+        for i in (0..5) {
+            "{i}" br{}
+        }
+        // And iterators
+        ul {
+            {(0..5).map(|i| rsx! { "{i}" })}
         }
     }
 }
+
+// #[component]
+// pub fn Hero() -> Element {
+//     rsx! {
+//         div {
+//             id: "hero",
+//             img { src: HEADER_SVG, id: "header" }
+//             div { id: "links",
+//                 a { href: "https://dioxuslabs.com/learn/0.6/", "📚 Learn Dioxus" }
+//                 a { href: "https://dioxuslabs.com/awesome", "🚀 Awesome Dioxus" }
+//                 a { href: "https://github.com/dioxus-community/", "📡 Community Libraries" }
+//                 a { href: "https://github.com/DioxusLabs/sdk", "⚙️ Dioxus Development Kit" }
+//                 a { href: "https://marketplace.visualstudio.com/items?itemName=DioxusLabs.dioxus", "💫 VSCode Extension" }
+//                 a { href: "https://discord.gg/XgGxMSkvUM", "👋 Community Discord" }
+//             }
+//         }
+//     }
+// }

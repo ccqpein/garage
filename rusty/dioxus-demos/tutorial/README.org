@@ -38,6 +38,7 @@ open the [[http://127.0.0.1:8080][link]] and there is the demo page
 I am curiouse about the macro expand:
 
 #+begin_quote
+
 #[allow(non_snake_case)]
 fn App() -> Element {
     {
@@ -559,3 +560,28 @@ mod Hero_completions {
 }
 
 #+end_quote
+
+** some component playaround
+
+#+begin_src rust
+  #[component]
+  pub fn DogApp(breed: String) -> Element {
+      rsx! {
+          "Breed: {breed}"
+      }
+  }
+
+  #[component]
+  fn App() -> Element {
+      rsx! {
+          DogApp { breed: "corgi" }
+      }
+  }
+  
+  fn main() {
+    dioxus::launch(App);
+  }
+
+#+end_src
+
+try some rsx component like boolen
