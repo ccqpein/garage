@@ -32,3 +32,16 @@ fn DogView() -> Element {
         }
     }
 }
+
+static SONG: GlobalSignal<String> = Signal::global(|| "Drift Away".to_string());
+
+#[component]
+fn Player() -> Element {
+    rsx! {
+        h3 { "Now playing {SONG}" }
+        button {
+            onclick: move |_| *SONG.write() = "Vienna".to_string(),
+            "Shuffle"
+        }
+    }
+}
