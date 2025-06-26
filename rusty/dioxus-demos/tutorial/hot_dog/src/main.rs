@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
 ////
-use hot_dog::guide_component::*;
+use hot_dog::{guide_component::*, guide_state};
 ////
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
@@ -35,6 +35,10 @@ fn App() -> Element {
         ul {
             {(0..5).map(|i| rsx! { "{i}" })}
         }
+
+        br{}
+
+        guide_state::DogView {  }
     }
 }
 

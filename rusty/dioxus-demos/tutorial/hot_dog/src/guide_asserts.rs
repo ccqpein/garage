@@ -1,4 +1,4 @@
-use dioxus::prelude::{asset, Asset};
+use dioxus::prelude::*;
 
 static CSS: Asset = asset!("/assets/main.css");
 
