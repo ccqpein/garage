@@ -585,3 +585,5 @@ mod Hero_completions {
 #+end_src
 
 try some rsx component like boolen
+
+more in code
