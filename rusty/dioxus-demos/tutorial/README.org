@@ -587,3 +587,20 @@ mod Hero_completions {
 try some rsx component like boolen
 
 more in code
+
+** several platform
+
+#+begin_src toml
+  [features]
+  default = []
+  web = ["dioxus/web"]
+  desktop = ["dioxus/desktop"]
+  mobile = ["dioxus/mobile"]
+  server = ["dioxus/server"]
+#+end_src
+
+then
+
+#+begin_src shell
+  dx serve --platform web
+#+end_src

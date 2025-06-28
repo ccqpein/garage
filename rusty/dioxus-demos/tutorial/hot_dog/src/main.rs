@@ -8,39 +8,51 @@ const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
+mod guide_router;
+
+use crate::guide_router::*;
+
 fn main() {
-    dioxus::launch(App);
+    dioxus::launch(app);
 }
 
-#[component]
-fn App() -> Element {
-    let show_title = true;
+fn app() -> Element {
     rsx! {
-        document::Link { rel: "icon", href: FAVICON }
-        document::Link { rel: "stylesheet", href: MAIN_CSS }
-        DogApp { breed: "corgi" }
-
-        br {}
-
-        {"Something"}
-
-        br {}
-
-        // Optionals
-        {show_title.then(|| rsx! { "title!" br{}} )}
-        for i in (0..5) {
-            "{i}" br{}
-        }
-        // And iterators
-        ul {
-            {(0..5).map(|i| rsx! { "{i}" })}
-        }
-
-        br{}
-
-        guide_state::DogView {  }
+        document::Stylesheet { href: asset!("/assets/main.css") }
+        "route here" br{}
+        Router::<Route> {}
     }
 }
+
+// #[component]
+// fn App() -> Element {
+//     let show_title = true;
+//     rsx! {
+//         document::Link { rel: "icon", href: FAVICON }
+//         document::Link { rel: "stylesheet", href: MAIN_CSS }
+//         DogApp { breed: "corgi" }
+
+//         br {}
+
+//         {"Something"}
+
+//         br {}
+
+//         // Optionals
+//         {show_title.then(|| rsx! { "title!" br{}} )}
+//         for i in (0..5) {
+//             "{i}" br{}
+//         }
+//         // And iterators
+//         ul {
+//             {(0..5).map(|i| rsx! { "{i}" })}
+//         }
+
+//         br{}
+
+//         guide_state::DogView {  }
+//     }
+// }
 
 // #[component]
 // pub fn Hero() -> Element {
