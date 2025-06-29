@@ -9,6 +9,7 @@ const MAIN_CSS: Asset = asset!("/assets/main.css");
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
 
 mod guide_router;
+mod reactivity;
 
 use crate::guide_router::*;
 
