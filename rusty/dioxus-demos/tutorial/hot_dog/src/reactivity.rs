@@ -66,3 +66,47 @@ fn Resource() -> Element {
         div { "Half count is {half_count():?}" }
     }
 }
+
+fn Component() -> Element {
+    let mut count = use_signal(|| 0);
+
+    rsx! {
+        button { onclick: move |_| count += 1, "Change Signal" }
+
+        Count { count: count() }
+    }
+}
+
+// The count reruns the component when it changes, but it is not a tracked value
+#[component]
+fn Count(count: i32) -> Element {
+    // When you read count inside the memo, it does not subscribe to the count signal
+    // because the value is not reactive
+
+    //let double_count = use_memo(move || count * 2);
+
+    // the below one is good
+    // so that's means we need some
+
+    // You can manually track a non-reactive value with the use_reactive hook
+    let double_count = use_memo(
+        // Use reactive takes a tuple of dependencies and returns a reactive closure
+        use_reactive!(|(count,)| count * 2),
+    );
+
+    rsx! {
+        div { "Double count: {double_count}" }
+    }
+}
+
+// Or the below one can do the same thing
+// use the `ReadOnlySignal` rather than the count: i32
+// #[component]
+// fn Count(count: ReadOnlySignal<i32>) -> Element {
+//     // Then when you read count inside the memo, it subscribes to the count signal
+//     let double_count = use_memo(move || count() * 2);
+
+//     rsx! {
+//         div { "Double count: {double_count}" }
+//     }
+// }
