@@ -604,3 +604,11 @@ then
 #+begin_src shell
   dx serve --platform web
 #+end_src
+
+** wanna learn some CSS
+
+#+begin_src shell
+  cargo install dioxus-cli
+#+end_src
+
+
