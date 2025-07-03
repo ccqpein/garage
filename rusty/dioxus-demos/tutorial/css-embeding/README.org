@@ -1,1 +1,9 @@
+* README
+
+use this command to output the css file.
+
+#+begin_src shell
 npx @tailwindcss/cli -i ./input.css -o ./assets/tailwind.css --watch
+#+end_src
+
+
