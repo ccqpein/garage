@@ -611,4 +611,18 @@ then
   cargo install dioxus-cli
 #+end_src
 
+Use dx new command to generate the css template is pretty good. I shouldn't use the stupid way the doc say.
+
+*** something wrong in the document
+
+~@import "tailwind.css";~ should be ~@import "tailwindcss";~
+
+In the auto generate READNE
+
+~npx tailwindcss -i ./tailwind.css -o ./assets/tailwind.css --watch~
+
+shoud be
+
+~npx @tailwindcss/cli -i ./tailwind.css -o ./assets/tailwind.css~
+
 
