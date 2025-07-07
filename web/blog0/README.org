@@ -1,0 +1,11 @@
+* README
+
+some blog website with dioxus
+
+** Prepare
+
+#+begin_src shell
+npx @tailwindcss/cli -i ./tailwind.css -o ./assets/tailwind.css
+#+end_src
+
+
