@@ -40,10 +40,33 @@ pub fn Home() -> Element {
     // });
 
     rsx! {
-        for p in all_posts() {
-            Blog{title: p.clone(), content: p, this_post:this_post} //:= should be the title and click open the whole posts
-            br{}
+        // for p in all_posts() {
+        //     Blog{title: p.clone(), content: p, this_post:this_post}
+        //     br{}
+        // }
+
+        BlogList{all_posts: all_posts(), this_post}
+    }
+}
+
+#[component]
+fn BlogList(all_posts: Vec<String>, this_post: Signal<Option<String>>) -> Element {
+    if this_post().is_none() {
+        return rsx! {
+            for p in all_posts {
+                Blog{title: p.clone(), content: p, this_post:this_post} //:= should be the title and click open the whole posts
+                br{}
+            }
+        };
+    } else {
+        for p in all_posts {
+            if p == this_post().clone().unwrap() {
+                return rsx! {
+                    Blog{title: p.clone(), content: p, this_post:this_post}
+                };
+            }
         }
+        rsx!()
     }
 }
 
@@ -64,6 +87,7 @@ fn Blog(title: String, content: String, this_post: Signal<Option<String>>) -> El
                 div {
                     class: "mt-4 pt-4 border-t border-gray-200 text-gray-600 text-sm text-center",
                     "{content}",
+                    br{}
                     "next",
                 }
             }
