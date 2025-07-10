@@ -1,4 +1,43 @@
+use chrono::Local;
 use dioxus::prelude::*;
+
+#[derive(Props, PartialEq, Debug, Clone)]
+struct BlogProps {
+    title: String,
+    content: String,
+    //createAt: String,
+    this_post: Signal<Option<String>>,
+}
+
+#[component]
+fn Blog(props: BlogProps) -> Element {
+    rsx! {
+        div {
+            class: "bg-white p-6 rounded-lg shadow-md cursor-pointer w-80",
+
+            onclick: move |_| props.this_post.set(Some(props.title.clone())),
+
+            h2 {
+                class: "text-xl font-bold mb-2 text-center text-gray-800",
+                "{props.title}",
+            }
+
+            if props.this_post().is_some() && props.this_post().clone().unwrap() == title {
+                div {
+                    class: "mt-4 pt-4 border-t border-gray-200 text-gray-600 text-sm text-center",
+                    "{content}",
+                    br{}
+                    "next",
+                }
+            }
+        }
+    }
+}
+
+// #[derive(Debug, Clone)]
+// struct BlogList {
+//     allBlogs: Vec<Blog>,
+// }
 
 #[component]
 pub fn Home() -> Element {
@@ -67,30 +106,5 @@ fn BlogList(all_posts: Vec<String>, this_post: Signal<Option<String>>) -> Elemen
             }
         }
         rsx!()
-    }
-}
-
-#[component]
-fn Blog(title: String, content: String, this_post: Signal<Option<String>>) -> Element {
-    rsx! {
-        div {
-            class: "bg-white p-6 rounded-lg shadow-md cursor-pointer w-80",
-
-            onclick: move |_| this_post.set(Some(title.clone())),
-
-            h2 {
-                class: "text-xl font-bold mb-2 text-center text-gray-800",
-                "{title}",
-            }
-
-            if this_post().is_some() && this_post().clone().unwrap() == title {
-                div {
-                    class: "mt-4 pt-4 border-t border-gray-200 text-gray-600 text-sm text-center",
-                    "{content}",
-                    br{}
-                    "next",
-                }
-            }
-        }
     }
 }
