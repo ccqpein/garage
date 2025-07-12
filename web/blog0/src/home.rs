@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use dioxus::prelude::*;
 
 #[derive(Props, PartialEq, Debug, Clone)]
-struct BlogProps {
+pub struct BlogProps {
     title: String,
     content: String,
     //createAt: String,
@@ -11,12 +11,16 @@ struct BlogProps {
 }
 
 #[component]
-fn Blog(props: BlogProps) -> Element {
+pub fn Blog(props: BlogProps) -> Element {
     rsx! {
         div {
             class: "bg-white p-6 rounded-lg shadow-md cursor-pointer w-80",
 
-            onclick: move |_| props.this_post.borrow_mut().set(Some(props.title.clone())),
+            onclick: move |_| {
+                let tt = &props.title;
+                tracing::debug!("click the {tt}") ;
+                props.this_post.borrow_mut().set(Some(props.title.clone()))
+            },
 
             h2 {
                 class: "text-xl font-bold mb-2 text-center text-gray-800",
