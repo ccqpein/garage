@@ -1,6 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
 
-use chrono::Local;
 use dioxus::prelude::*;
 
 #[derive(Props, PartialEq, Debug, Clone)]
@@ -36,6 +35,25 @@ fn Blog(props: BlogProps) -> Element {
     }
 }
 
+/// the botton of prev and next blog
+#[component]
+fn NextAndLastBlogButton(pre: Option<String>, next: Option<String>) -> Element {
+    match (pre, next) {
+        (Some(a), Some(b)) => {
+            rsx! {div{"{a}"},div{"{b}"}}
+        }
+        (Some(a), None) => {
+            rsx! {div{"{a}"},div{"nil"}}
+        }
+        (None, Some(b)) => {
+            rsx! {div{"nil"},div{"{b}"}}
+        }
+        (None, None) => {
+            rsx! {div{"nil"},div{"nil"}}
+        }
+    }
+}
+
 #[derive(Props, PartialEq, Debug, Clone)]
 struct BlogViewProps {
     all_posts: Vec<String>,
@@ -52,10 +70,18 @@ fn BlogView(props: BlogViewProps) -> Element {
             }
         };
     } else {
-        for p in props.all_posts {
-            if p == (props.this_post).borrow()().unwrap_or("".to_string()) {
+        for (ind, p) in props.all_posts.iter().enumerate() {
+            if *p == (props.this_post).borrow()().unwrap_or("".to_string()) {
                 return rsx! {
                     Blog{title: p.clone(), content: p, this_post: Rc::clone(&props.this_post)}
+                    NextAndLastBlogButton{
+                        pre: if ind == 0 {
+                            None
+                        }else {
+                            props.all_posts.get(ind-1).cloned()
+                        },
+                        next: props.all_posts.get(ind + 1).cloned(),
+                    }
                 };
             }
         }
