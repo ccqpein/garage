@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
+use async_std::task::sleep;
 use dioxus::prelude::*;
 
 use crate::{blog_content::all_blogs, router::Route};
@@ -30,12 +31,13 @@ pub fn Home() -> Element {
     // let mut all_posts = use_signal(|| vec!["aa".to_string(), "bb".to_string(), "cc".to_string()]);
 
     let mut last_fire_time = use_signal(|| String::from("Never"));
-    spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-        interval.tick().await;
+    //tokio::spawn(async move {
+    use_future(move || async move {
         loop {
+            sleep(std::time::Duration::from_secs(10)).await;
+            //interval.tick().await;
+            //loop {
             // Wait for the next interval tick
-            interval.tick().await;
 
             // --- Your code to run every 5 seconds goes here ---
             // Inside this loop, you can update state, make network requests, etc.
@@ -47,8 +49,9 @@ pub fn Home() -> Element {
             let now = chrono::Local::now(); // Requires `chrono` crate `features = ["std"]`
             last_fire_time.set(format!("{}", now.format("%H:%M:%S")));
 
-            println!("Timer fired! Ticks: {last_fire_time}");
+            //tracing::debug!("{last_fire_time}");
             // --- End of your periodic code ---
+            //}
         }
     });
 
@@ -93,30 +96,31 @@ pub fn Home() -> Element {
     // );
 
     let all_posts = use_resource(move || async move {
-        tracing::debug!("?");
+        //tracing::debug!("?");
         //tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         //interval.tick().await;
         last_fire_time();
-        tracing::debug!("{last_fire_time}");
+        //tracing::debug!("{last_fire_time}");
+        //sleep(std::time::Duration::from_secs(1)).await;
         all_blogs().await
     });
 
     //let all_posts = resource.value();
 
-    match all_posts.state().cloned() {
-        UseResourceState::Pending => rsx! {
-            "The resource is still pending"
-        },
-        UseResourceState::Paused => rsx! {
-            "The resource has been paused"
-        },
-        UseResourceState::Stopped => rsx! {
-            "The resource has been stopped"
-        },
-        UseResourceState::Ready => rsx! {
-            "The resource is ready!"
-        },
-    }
+    // match all_posts.state().cloned() {
+    //     UseResourceState::Pending => rsx! {
+    //         "The resource is still pending"
+    //     },
+    //     UseResourceState::Paused => rsx! {
+    //         "The resource has been paused"
+    //     },
+    //     UseResourceState::Stopped => rsx! {
+    //         "The resource has been stopped"
+    //     },
+    //     UseResourceState::Ready => rsx! {
+    //         "The resource is ready!"
+    //     },
+    // }
 
     // match &*all_posts.read_unchecked() {
     //     Some(Ok(value)) => rsx! { "{value:?}" },
@@ -124,22 +128,22 @@ pub fn Home() -> Element {
     //     None => rsx! { "Loading..." },
     // }
 
-    // rsx! {
-    //     // match all_posts() {
-    //     //     Some(ps) => {
+    rsx! {
+        // match all_posts() {
+        //     Some(ps) => {
 
-    //     //     },
-    //     //     None => {}
-    //     // }
+        //     },
+        //     None => {}
+        // }
 
-    //     for t in all_posts.read_unchecked().clone().unwrap_or(vec![]){
-    //         Link {
-    //             to: Route::Blog { title: t.clone() },
-    //             "{t}"
-    //         }
-    //         br{}
-    //     }
-    // }
+        for t in all_posts.read_unchecked().clone().unwrap_or(vec![]){
+            Link {
+                to: Route::Blog { title: t.clone() },
+                "{t}"
+            }
+            br{}
+        }
+    }
 }
 
 //// === old one below ===

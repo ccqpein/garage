@@ -11,6 +11,7 @@ dioxus = { version = "0.6.0", features = ["router"] }
 tracing = "0.1.41"
 chrono = { version = "0" }
 tokio = { version = "1", features = ["time"] }
+async-std = "1.13.1"
 
 [features]
 default = ["web"]
