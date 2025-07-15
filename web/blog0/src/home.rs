@@ -1,12 +1,15 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use async_std::task::sleep;
 use dioxus::prelude::*;
 
-use crate::{blog_content::all_blogs, router::Route};
+use crate::{
+    blog_content::{all_blogs, Blog},
+    router::Route,
+};
 
 #[component]
-pub fn Blog(title: String) -> Element {
+pub fn BlogView(title: String) -> Element {
     rsx! {
         div {
             h2 {
@@ -28,117 +31,47 @@ pub fn Blog(title: String) -> Element {
 
 #[component]
 pub fn Home() -> Element {
-    // let mut all_posts = use_signal(|| vec!["aa".to_string(), "bb".to_string(), "cc".to_string()]);
-
     let mut last_fire_time = use_signal(|| String::from("Never"));
-    //tokio::spawn(async move {
     use_future(move || async move {
         loop {
             sleep(std::time::Duration::from_secs(10)).await;
-            //interval.tick().await;
-            //loop {
-            // Wait for the next interval tick
 
-            // --- Your code to run every 5 seconds goes here ---
-            // Inside this loop, you can update state, make network requests, etc.
-
-            // Example: Increment the tick count
-            //ticks.set(*ticks.get() + 1);
-
-            // Example: Update the last fire time
-            let now = chrono::Local::now(); // Requires `chrono` crate `features = ["std"]`
+            let now = chrono::Local::now();
             last_fire_time.set(format!("{}", now.format("%H:%M:%S")));
-
-            //tracing::debug!("{last_fire_time}");
-            // --- End of your periodic code ---
-            //}
         }
     });
 
-    // use_effect(move || {
-    //     // Spawn an asynchronous task using Tokio.
-    //     // This task will run in the background without blocking the UI.
-    //     let timer_task = spawn(async move {
-    //         let mut interval = time::interval(Duration::from_secs(5));
+    let all_posts: Resource<Result<HashMap<String, Blog>, ServerFnError>> =
+        use_resource(move || async move {
+            last_fire_time();
+            all_blogs().await
+        });
 
-    //         // Skip the first tick, which fires immediately.
-    //         // We want the *first* actual action to happen *after* 5 seconds.
-    //         interval.tick().await;
-
-    //         loop {
-    //             // Wait for the next interval tick
-    //             interval.tick().await;
-
-    //             // --- Your code to run every 5 seconds goes here ---
-    //             // Inside this loop, you can update state, make network requests, etc.
-
-    //             // Example: Increment the tick count
-    //             ticks.set(*ticks.get() + 1);
-
-    //             // Example: Update the last fire time
-    //             let now = chrono::Local::now(); // Requires `chrono` crate `features = ["std"]`
-    //             last_fire_time.set(format!("{}", now.format("%H:%M:%S")));
-
-    //             println!("Timer fired! Ticks: {}", ticks());
-    //             // --- End of your periodic code ---
-    //         }
-    //     });
-    // });
-
-    // let mut interval =
-    // use_resource(
-    //     move || async move { let ii = tokio::time::interval(tokio::time::Duration::from_secs(2));
-    //                          loop {
-    //                              ii.tick().await;
-    //                              refresh
-    //                          }
-    //     },
-    // );
-
-    let all_posts = use_resource(move || async move {
-        //tracing::debug!("?");
-        //tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-        //interval.tick().await;
-        last_fire_time();
-        //tracing::debug!("{last_fire_time}");
-        //sleep(std::time::Duration::from_secs(1)).await;
-        all_blogs().await
+    let mut all_titles = use_signal(|| vec![]);
+    use_effect(move || {
+        let a = *all_posts.state().read();
+        match a {
+            UseResourceState::Ready => {
+                let aa = &*all_posts.read_unchecked();
+                match aa {
+                    Some(m) => match m {
+                        Ok(mm) => all_titles
+                            .set(mm.keys().map(|k| k.to_string()).collect::<Vec<String>>()),
+                        Err(e) => {
+                            tracing::error!("error: {e}")
+                        }
+                    },
+                    None => {}
+                }
+            }
+            _ => {}
+        }
     });
 
-    //let all_posts = resource.value();
-
-    // match all_posts.state().cloned() {
-    //     UseResourceState::Pending => rsx! {
-    //         "The resource is still pending"
-    //     },
-    //     UseResourceState::Paused => rsx! {
-    //         "The resource has been paused"
-    //     },
-    //     UseResourceState::Stopped => rsx! {
-    //         "The resource has been stopped"
-    //     },
-    //     UseResourceState::Ready => rsx! {
-    //         "The resource is ready!"
-    //     },
-    // }
-
-    // match &*all_posts.read_unchecked() {
-    //     Some(Ok(value)) => rsx! { "{value:?}" },
-    //     Some(Err(err)) => rsx! { "Error: {err}" },
-    //     None => rsx! { "Loading..." },
-    // }
-
     rsx! {
-        // match all_posts() {
-        //     Some(ps) => {
-
-        //     },
-        //     None => {}
-        // }
-
-        for t in all_posts.read_unchecked().clone().unwrap_or(vec![]){
+        for t in all_titles(){
             Link {
-                to: Route::Blog { title: t.clone() },
+                to: Route::BlogView { title: t.clone() },
                 "{t}"
             }
             br{}
