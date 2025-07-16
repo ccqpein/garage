@@ -4,7 +4,7 @@ use async_std::task::sleep;
 use dioxus::prelude::*;
 
 use crate::{
-    blog_content::{all_blogs, Blog},
+    blog_content::{all_blogs, Blog, Blogs},
     router::Route,
 };
 
@@ -34,18 +34,17 @@ pub fn Home() -> Element {
     let mut last_fire_time = use_signal(|| String::from("Never"));
     use_future(move || async move {
         loop {
-            sleep(std::time::Duration::from_secs(10)).await;
+            sleep(std::time::Duration::from_secs(30)).await;
 
             let now = chrono::Local::now();
             last_fire_time.set(format!("{}", now.format("%H:%M:%S")));
         }
     });
 
-    let all_posts: Resource<Result<HashMap<String, Blog>, ServerFnError>> =
-        use_resource(move || async move {
-            last_fire_time();
-            all_blogs().await
-        });
+    let all_posts: Resource<Result<Blogs, ServerFnError>> = use_resource(move || async move {
+        last_fire_time();
+        all_blogs().await
+    });
 
     let mut all_titles = use_signal(|| vec![]);
     use_effect(move || {
@@ -55,8 +54,7 @@ pub fn Home() -> Element {
                 let aa = &*all_posts.read_unchecked();
                 match aa {
                     Some(m) => match m {
-                        Ok(mm) => all_titles
-                            .set(mm.keys().map(|k| k.to_string()).collect::<Vec<String>>()),
+                        Ok(mm) => all_titles.set(mm.all_titles()),
                         Err(e) => {
                             tracing::error!("error: {e}")
                         }
