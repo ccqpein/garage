@@ -3,22 +3,71 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Blogs {
     map: HashMap<String, Blog>,
     ordered_blogs: Vec<String>,
 }
 
 impl Blogs {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+            ordered_blogs: vec![],
+        }
+    }
+
     pub fn all_titles(&self) -> Vec<String> {
         self.ordered_blogs.iter().map(|t| t.to_string()).collect()
     }
+
+    pub fn all_blogs(&self) -> &HashMap<String, Blog> {
+        &self.map
+    }
+
+    /// get the prev blog of this one
+    pub fn prev_blog(&self, this_blog: &str) -> Option<String> {
+        match self
+            .ordered_blogs
+            .iter()
+            .enumerate()
+            .find(|(_, title)| *title == this_blog)
+        {
+            Some((this_ind, _)) => {
+                if this_ind > 0 {
+                    Some(self.ordered_blogs.get(this_ind - 1).unwrap().to_string())
+                } else {
+                    None
+                }
+            }
+            None => None,
+        }
+    }
+
+    /// get the next blog of this one
+    pub fn next_blog(&self, this_blog: &str) -> Option<String> {
+        match self
+            .ordered_blogs
+            .iter()
+            .enumerate()
+            .find(|(_, title)| *title == this_blog)
+        {
+            Some((this_ind, _)) => {
+                if this_ind == self.ordered_blogs.len() - 1 {
+                    None
+                } else {
+                    Some(self.ordered_blogs.get(this_ind + 1).unwrap().to_string())
+                }
+            }
+            None => None,
+        }
+    }
 }
 
-#[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
 pub struct Blog {
-    title: String,
-    content: String,
+    pub title: String,
+    pub content: String,
 
     #[serde(skip)]
     pub date: NaiveDate,

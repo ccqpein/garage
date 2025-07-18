@@ -1,6 +1,5 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
 use async_std::task::sleep;
+use chrono::NaiveDate;
 use dioxus::prelude::*;
 
 use crate::{
@@ -8,53 +7,91 @@ use crate::{
     router::Route,
 };
 
+static ALL_BLOGS: GlobalSignal<Blogs> = Global::new(|| Blogs::new());
+static EMPTY_BLOG: GlobalSignal<Blog> = Global::new(|| Blog {
+    title: "nil".to_string(),
+    content: "nil".to_string(),
+    date: NaiveDate::MIN,
+});
+
 #[component]
 pub fn BlogView(title: String) -> Element {
-    rsx! {
-        div {
-            h2 {
-                //class: "text-xl font-bold mb-2 text-center text-gray-800",
-                "{title}",
-            }
+    let posts: Resource<Result<Blogs, ServerFnError>> =
+        use_resource(move || async move { all_blogs().await });
 
+    use_effect(move || {
+        let a = *posts.state().read();
+        match a {
+            UseResourceState::Ready => {
+                let aa = &*posts.read_unchecked();
+                match aa {
+                    Some(m) => match m {
+                        Ok(mm) => {
+                            *ALL_BLOGS.write() = mm.clone();
+                            //tracing::debug!("here inside? {:?}", ALL_BLOGS)
+                        }
+                        Err(e) => {
+                            tracing::error!("error: {e}")
+                        }
+                    },
+                    None => {}
+                }
+            }
+            _ => {}
+        }
+    });
+
+    let this_blog = ALL_BLOGS().all_blogs().get(&title).cloned();
+    let prev = ALL_BLOGS().prev_blog(&title);
+    let next = ALL_BLOGS().next_blog(&title);
+
+    rsx! {
+        div{
+            class: "min-h-screen bg-gray-100 py-10 flex flex-col items-center",
+
+            Link {
+                class: "text-blue-600 hover:text-blue-800 text-lg mb-8 transition duration-300 ease-in-out",
+                to: Route::Home {},
+                "home"
+            }
 
             div {
-                //class: "mt-4 pt-4 border-t border-gray-200 text-gray-600 text-sm text-center",
-                "{title} content",
-                br{}
-                "next",
-            }
+                class: "bg-white shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-3xl w-full",
+                h2 {
+                    class: "text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 text-center leading-tight",
+                    {this_blog.clone().unwrap_or_else(|| EMPTY_BLOG()).title.clone()},
+                }
 
+                div {
+                    class: "prose prose-lg max-w-none text-gray-700 leading-relaxed mb-8", // `prose` for markdown-like styling
+                    dangerous_inner_html: {this_blog.unwrap_or_else(|| EMPTY_BLOG()).content.clone()},
+                }
+                br{}
+
+                NextAndLastBlogButton{prev: prev, next: next}
+            }
         }
     }
 }
 
 #[component]
 pub fn Home() -> Element {
-    let mut last_fire_time = use_signal(|| String::from("Never"));
-    use_future(move || async move {
-        loop {
-            sleep(std::time::Duration::from_secs(30)).await;
-
-            let now = chrono::Local::now();
-            last_fire_time.set(format!("{}", now.format("%H:%M:%S")));
-        }
-    });
-
-    let all_posts: Resource<Result<Blogs, ServerFnError>> = use_resource(move || async move {
-        last_fire_time();
-        all_blogs().await
-    });
+    let posts: Resource<Result<Blogs, ServerFnError>> =
+        use_resource(move || async move { all_blogs().await });
 
     let mut all_titles = use_signal(|| vec![]);
+
     use_effect(move || {
-        let a = *all_posts.state().read();
+        let a = *posts.state().read();
         match a {
             UseResourceState::Ready => {
-                let aa = &*all_posts.read_unchecked();
+                let aa = &*posts.read_unchecked();
                 match aa {
                     Some(m) => match m {
-                        Ok(mm) => all_titles.set(mm.all_titles()),
+                        Ok(mm) => {
+                            all_titles.set(mm.all_titles());
+                            *ALL_BLOGS.write() = mm.clone();
+                        }
                         Err(e) => {
                             tracing::error!("error: {e}")
                         }
@@ -67,12 +104,83 @@ pub fn Home() -> Element {
     });
 
     rsx! {
-        for t in all_titles(){
-            Link {
-                to: Route::BlogView { title: t.clone() },
-                "{t}"
+        div {
+            class: "min-h-screen bg-gray-100 py-10 flex flex-col items-center",
+            h1 {
+                class: "text-4xl sm:text-5xl font-extrabold text-gray-900 mb-10 text-center leading-tight",
+                "All Blog Posts"
             }
-            br{}
+            div {
+                class: "bg-white shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-2xl w-full",
+                // Grid or flex layout for titles if you want multiple columns
+                class: "grid grid-cols-1 gap-4",
+                for t in all_titles(){
+                    Link {
+                        class: "block p-4 bg-blue-50 hover:bg-blue-100 rounded-md text-blue-800 \
+                                text-lg font-medium transition duration-300 ease-in-out \
+                                hover:shadow-md text-center",
+                        to: Route::BlogView { title: t.clone() },
+                        "{t}"
+                    }
+                    br{}
+                }
+            }
+        }
+    }
+}
+
+/// the botton of prev and next blog
+#[component]
+fn NextAndLastBlogButton(prev: Option<String>, next: Option<String>) -> Element {
+    rsx! {
+        div {
+            class: "flex justify-between items-center mt-8 pt-4 border-t border-gray-200",
+
+            // Previous Blog Link
+            {
+                if let Some(a) = prev {
+                    rsx! {
+                        Link {
+                            to: Route::BlogView { title: a.clone()},
+                            class: "px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg \
+                                    shadow-md hover:bg-blue-600 transition duration-300 ease-in-out \
+                                    text-base sm:text-lg",
+                            "← {a}"
+                        }
+                    }
+                } else {
+                    rsx! {
+                        div {
+                            class: "px-6 py-3 bg-gray-300 text-gray-600 font-semibold rounded-lg \
+                                    cursor-not-allowed text-base sm:text-lg",
+                            "← No Previous"
+                        }
+                    }
+                }
+            },
+
+            // Next Blog Link
+            {
+                if let Some(b) = next {
+                    rsx! {
+                        Link {
+                            to: Route::BlogView { title: b.clone() },
+                            class: "px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg \
+                                    shadow-md hover:bg-blue-600 transition duration-300 ease-in-out \
+                                    text-base sm:text-lg",
+                            "{b} →"
+                        }
+                    }
+                } else {
+                    rsx! {
+                        div {
+                            class: "px-6 py-3 bg-gray-300 text-gray-600 font-semibold rounded-lg \
+                                    cursor-not-allowed text-base sm:text-lg",
+                            "No Next →"
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -115,25 +223,6 @@ pub fn Home() -> Element {
 //         }
 //     }
 // }
-
-/// the botton of prev and next blog
-#[component]
-fn NextAndLastBlogButton(pre: Option<String>, next: Option<String>) -> Element {
-    match (pre, next) {
-        (Some(a), Some(b)) => {
-            rsx! {div{"{a}"},div{"{b}"}}
-        }
-        (Some(a), None) => {
-            rsx! {div{"{a}"},div{"nil"}}
-        }
-        (None, Some(b)) => {
-            rsx! {div{"nil"},div{"{b}"}}
-        }
-        (None, None) => {
-            rsx! {div{"nil"},div{"nil"}}
-        }
-    }
-}
 
 // #[derive(Props, PartialEq, Debug, Clone)]
 // struct BlogViewProps {
