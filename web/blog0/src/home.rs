@@ -1,6 +1,6 @@
-use async_std::task::sleep;
 use chrono::NaiveDate;
 use dioxus::prelude::*;
+use pulldown_cmark::{html, Options, Parser};
 
 use crate::{
     blog_content::{all_blogs, Blog, Blogs},
@@ -28,7 +28,6 @@ pub fn BlogView(title: String) -> Element {
                     Some(m) => match m {
                         Ok(mm) => {
                             *ALL_BLOGS.write() = mm.clone();
-                            //tracing::debug!("here inside? {:?}", ALL_BLOGS)
                         }
                         Err(e) => {
                             tracing::error!("error: {e}")
@@ -45,30 +44,50 @@ pub fn BlogView(title: String) -> Element {
     let prev = ALL_BLOGS().prev_blog(&title);
     let next = ALL_BLOGS().next_blog(&title);
 
+    // render the markdown
+    let rendered_content = if let Some(blog) = this_blog.as_ref() {
+        let markdown_input = &blog.content;
+        let mut options = Options::empty();
+        options.insert(Options::ENABLE_TABLES);
+        options.insert(Options::ENABLE_FOOTNOTES);
+        options.insert(Options::ENABLE_STRIKETHROUGH);
+        options.insert(Options::ENABLE_TASKLISTS);
+        options.insert(Options::ENABLE_SMART_PUNCTUATION);
+
+        let parser = Parser::new_ext(markdown_input, options);
+
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+        html_output
+    } else {
+        // Fallback for empty blog content or loading state
+        EMPTY_BLOG.read().content.clone()
+    };
+
     rsx! {
-        div{
+        div {
             class: "min-h-screen bg-gray-100 py-10 flex flex-col items-center",
 
             Link {
-                class: "text-blue-600 hover:text-blue-800 text-lg mb-8 transition duration-300 ease-in-out",
                 to: Route::Home {},
-                "home"
+                class: "text-blue-600 hover:text-blue-800 text-lg mb-8 transition duration-300 ease-in-out",
+                "← Back to Home"
             }
 
             div {
                 class: "bg-white shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-3xl w-full",
+
                 h2 {
                     class: "text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 text-center leading-tight",
-                    {this_blog.clone().unwrap_or_else(|| EMPTY_BLOG()).title.clone()},
+                    {this_blog.clone().unwrap_or_else(|| EMPTY_BLOG.read().clone()).title.clone()},
                 }
 
                 div {
-                    class: "prose prose-lg max-w-none text-gray-700 leading-relaxed mb-8", // `prose` for markdown-like styling
-                    dangerous_inner_html: {this_blog.unwrap_or_else(|| EMPTY_BLOG()).content.clone()},
+                    class: "prose prose-lg max-w-none text-gray-700 leading-relaxed mb-8",
+                    dangerous_inner_html: "{rendered_content}",
                 }
-                br{}
 
-                NextAndLastBlogButton{prev: prev, next: next}
+                NextAndLastBlogButton{ prev: prev, next: next }
             }
         }
     }
@@ -108,7 +127,7 @@ pub fn Home() -> Element {
             class: "min-h-screen bg-gray-100 py-10 flex flex-col items-center",
             h1 {
                 class: "text-4xl sm:text-5xl font-extrabold text-gray-900 mb-10 text-center leading-tight",
-                "All Blog Posts"
+                "All ccQ Blog Posts"
             }
             div {
                 class: "bg-white shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-2xl w-full",

@@ -1,7 +1,9 @@
 use chrono::NaiveDate;
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, fs, path::PathBuf};
+
+//:= DEL: pub static BASE_CONTENT_DIR: GlobalSignal<String> = Global::new(|| String::new());
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Blogs {
@@ -100,11 +102,28 @@ pub async fn all_blogs() -> Result<Blogs, ServerFnError> {
 }
 
 pub fn read_markdown_posts() -> Result<Vec<Blog>, std::io::Error> {
+    //let base_dir_str = BASE_CONTENT_DIR.read().clone();
+
+    // let base_dir_str = std::env::current_dir()
+    //     .expect("Failed to get current directory")
+    //     .to_string_lossy()
+    //     .into_owned();
+
+    let args: Vec<String> = std::env::args().collect();
+    let base_dir_str = if args.len() > 1 {
+        args[1].clone()
+    } else {
+        std::env::current_dir()
+            .expect("Failed to get current directory")
+            .to_string_lossy()
+            .into_owned()
+    };
+
+    let base_dir = PathBuf::from(base_dir_str);
+
     let mut posts = Vec::new();
 
-    // Get the current working directory, assumed to be the project root.
-    let current_dir = std::env::current_dir()?;
-    let posts_dir = current_dir.join("posts");
+    let posts_dir = base_dir.join("posts");
 
     // Check if the 'post' directory exists and is actually a directory.
     if !posts_dir.exists() || !posts_dir.is_dir() {
@@ -113,6 +132,8 @@ pub fn read_markdown_posts() -> Result<Vec<Blog>, std::io::Error> {
             format!("'post' directory not found at: {}", posts_dir.display()),
         ));
     }
+
+    tracing::debug!("what? {:?}", posts_dir);
 
     // Iterate over entries in the 'post' directory.
     for entry_result in fs::read_dir(&posts_dir)? {
