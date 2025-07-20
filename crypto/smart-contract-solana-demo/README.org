@@ -1,0 +1,14 @@
+* Playing around the smart contract on solana
+** install the cli
+
+#+begin_src shell
+  sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+#+end_src
+
+I use fish, so I delete the \~/.profile and add ~$HOME/.local/share/solana/install/active_release/bin:$PATH~ to fish env
+
+check install
+
+#+begin_src shell
+  solana --version
+#+end_src
