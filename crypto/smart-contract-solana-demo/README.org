@@ -1,5 +1,6 @@
 * Playing around the smart contract on solana
-** install the cli
+** Prepeare
+*** install the cli
 
 #+begin_src shell
   sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
@@ -11,4 +12,52 @@ check install
 
 #+begin_src shell
   solana --version
+#+end_src
+
+#+begin_src shell
+  cargo install --git https://github.com/coral-xyz/anchor avm --force
+#+end_src
+
+#+begin_src shell
+  avm --version
+#+end_src
+
+#+RESULTS:
+: avm 0.31.1
+
+#+begin_src shell
+  avm install latest
+#+end_src
+
+also, add to the path:
+
+~set -gx PATH "$HOME/.avm/bin:$HOME/.local/share/solana/install/active_release/bin:$PATH"~
+
+#+begin_src shell
+  anchor --version
+#+end_src
+
+#+RESULTS:
+: anchor-cli 0.31.1
+
+anchor is the framework, and I need to install it with avm. Weird toolchain design tho. 
+
+*** config
+
+#+begin_src shell
+  solana config get
+#+end_src
+
+#+RESULTS:
+| Config      | File:     | \/Users/test/.config/solana/cli/config.yml |            |
+| RPC         | URL:      | https://api.mainnet-beta.solana.com        |            |
+| WebSocket   | URL:      | wss://api.mainnet-beta.solana.com/         | (computed) |
+| Keypair     | Path:     | \/Users/test/.config/solana/id.json        |            |
+| Commitment: | confirmed |                                            |            |
+
+
+I want to set the localhost
+
+#+begin_src shell
+  solana config set --url localhost
 #+end_src
