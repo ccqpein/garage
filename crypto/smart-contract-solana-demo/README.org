@@ -61,3 +61,32 @@ I want to set the localhost
 #+begin_src shell
   solana config set --url localhost
 #+end_src
+
+create the wallet
+
+#+begin_src shell
+  solana-keygen new
+#+end_src
+
+get the address
+
+#+begin_src shell
+  solana address
+#+end_src
+
+the ~~/.config/solana/id.json~ has the both key, but the array with u8
+
+let me use this python to see whats inside. Failed, not pure utf8 or ascii
+
+** play around
+
+test get some fake coin
+
+#+begin_src shell
+  solana config set -ud
+  solana airdrop 2
+#+end_src
+
+#+begin_src shell
+  solana balance # yeah! I am rich now
+#+end_src
