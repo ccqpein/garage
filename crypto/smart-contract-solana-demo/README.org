@@ -90,3 +90,13 @@ test get some fake coin
 #+begin_src shell
   solana balance # yeah! I am rich now
 #+end_src
+
+** studying resource
+
+[[https://solana.com/developers][developers]]
+
+** Demos
+
+voting app?
+
+
