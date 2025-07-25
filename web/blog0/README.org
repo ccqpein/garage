@@ -15,11 +15,13 @@ npx @tailwindcss/cli -i ./tailwind.css -o ./assets/tailwind.css
   docker build .
 #+end_src
 
-get the hash:
+try crossing build:
 
-~d84500ae7c3e91417676e4e19f425045a13f5c39084a512db0ecb76fc33aa51f~
+#+begin_src shell
+  docker build --platform linux/amd64 .
+#+end_src
 
 run the container
 #+begin_src shell
-  docker run -it --rm -p 8080:8080 -v $PWD:/app d84500ae7c3e91417676e4e19f425045a13f5c39084a512db0ecb76fc33aa51f /usr/bin/bash
+  docker run -it --rm -p 8080:8080 -v $PWD:/app 66b8719d993db94d429c4a7b1bd2a757f8875077a8d330374e157020bb74a135 /usr/bin/bash
 #+end_src
