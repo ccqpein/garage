@@ -23,5 +23,17 @@ try crossing build:
 
 run the container
 #+begin_src shell
-  docker run -it --rm -p 8080:8080 -v $PWD:/app 66b8719d993db94d429c4a7b1bd2a757f8875077a8d330374e157020bb74a135 /usr/bin/bash
+  docker run -it --rm -p 8080:8080 -v $PWD:/app 2f211e1856dce6ba4306fa9076b8cbad37490116e66bef00a35eb859aef32775 /usr/bin/bash
 #+end_src
+
+looks like the AWS light sail isn't good enough to build the docker image.
+
+new dockerfile can use the entrypoint, but I still need to find how to give the image to light sail
+
+#+begin_src shell
+  docker run --rm  -p 8080:8080 -v $PWD/posts:/app/posts 23f1c63bb8a2e419c04d992de61f49f29ca68f6969fcc431523ef3573c2fa1c2
+#+end_src
+
+image work!
+
+now, need to find how to let weak light sail can use the image

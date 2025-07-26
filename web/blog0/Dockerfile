@@ -8,4 +8,20 @@ RUN cargo install dioxus-cli
 
 WORKDIR /app
 
-# CMD ["dx", "bundle", "--platform", "web"]
+COPY . .
+
+RUN dx bundle --platform web
+
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+ENV PORT=8080
+ENV IP=0.0.0.0
+
+COPY --from=builder /app/target/dx/blog0/release/web/public ./public
+COPY --from=builder /app/target/dx/blog0/release/web/server .
+
+EXPOSE 8080
+
+ENTRYPOINT ["./server"]
