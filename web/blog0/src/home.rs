@@ -66,24 +66,24 @@ pub fn BlogView(title: String) -> Element {
 
     rsx! {
         div {
-            class: "min-h-screen bg-gray-100 py-10 flex flex-col items-center",
+            class: "min-h-screen bg-gray-100 dark:bg-gray-900 py-10 flex flex-col items-center",
 
             Link {
                 to: Route::Home {},
-                class: "text-blue-600 hover:text-blue-800 text-lg mb-8 transition duration-300 ease-in-out",
+                class: "text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 text-lg mb-8 transition duration-300 ease-in-out",
                 "← Back to Home"
             }
 
             div {
-                class: "bg-white shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-3xl w-full",
+                class: "bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-3xl w-full",
 
                 h2 {
-                    class: "text-3xl sm:text-4xl font-extrabold text-gray-900 mb-6 text-center leading-tight",
+                    class: "text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white mb-6 text-center leading-tight",
                     {this_blog.clone().unwrap_or_else(|| EMPTY_BLOG.read().clone()).title.clone()},
                 }
 
                 div {
-                    class: "prose prose-lg max-w-none text-gray-700 leading-relaxed mb-8",
+                    class: "prose prose-lg max-w-none text-gray-700 leading-relaxed mb-8 dark:prose-invert",
                     dangerous_inner_html: "{rendered_content}",
                 }
 
@@ -124,18 +124,20 @@ pub fn Home() -> Element {
 
     rsx! {
         div {
-            class: "min-h-screen bg-gray-100 py-10 flex flex-col items-center",
+            class: "min-h-screen bg-gray-100 dark:bg-gray-900 py-10 flex flex-col items-center",
             h1 {
-                class: "text-4xl sm:text-5xl font-extrabold text-gray-900 mb-10 text-center leading-tight",
+                class: "bg-green-500 text-blue-500 my-test-class",
+                class: "text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-10 text-center leading-tight",
                 "All ccQ Blog Posts"
             }
             div {
-                class: "bg-white shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-2xl w-full",
-                // Grid or flex layout for titles if you want multiple columns
+                class: "bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 mx-4 sm:mx-auto max-w-2xl w-full",
                 class: "grid grid-cols-1 gap-4",
+
                 for t in all_titles(){
                     Link {
-                        class: "block p-4 bg-blue-50 hover:bg-blue-100 rounded-md text-blue-800 \
+                        class: "block p-4 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800 \
+                                rounded-md text-blue-800 dark:text-blue-300 \
                                 text-lg font-medium transition duration-300 ease-in-out \
                                 hover:shadow-md text-center",
                         to: Route::BlogView { title: t.clone() },
@@ -153,7 +155,7 @@ pub fn Home() -> Element {
 fn NextAndLastBlogButton(prev: Option<String>, next: Option<String>) -> Element {
     rsx! {
         div {
-            class: "flex justify-between items-center mt-8 pt-4 border-t border-gray-200",
+            class: "flex justify-between items-center mt-8 pt-4 border-t border-gray-200 dark:border-gray-700",
 
             // Previous Blog Link
             {
@@ -163,7 +165,8 @@ fn NextAndLastBlogButton(prev: Option<String>, next: Option<String>) -> Element 
                             to: Route::BlogView { title: a.clone()},
                             class: "px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg \
                                     shadow-md hover:bg-blue-600 transition duration-300 ease-in-out \
-                                    text-base sm:text-lg",
+                                    text-base sm:text-lg \
+                                    dark:bg-blue-700 dark:hover:bg-blue-600",
                             "← {a}"
                         }
                     }
@@ -171,7 +174,8 @@ fn NextAndLastBlogButton(prev: Option<String>, next: Option<String>) -> Element 
                     rsx! {
                         div {
                             class: "px-6 py-3 bg-gray-300 text-gray-600 font-semibold rounded-lg \
-                                    cursor-not-allowed text-base sm:text-lg",
+                                    cursor-not-allowed text-base sm:text-lg \
+                                    dark:bg-gray-700 dark:text-gray-400",
                             "← No Previous"
                         }
                     }
@@ -186,7 +190,8 @@ fn NextAndLastBlogButton(prev: Option<String>, next: Option<String>) -> Element 
                             to: Route::BlogView { title: b.clone() },
                             class: "px-6 py-3 bg-blue-500 text-white font-semibold rounded-lg \
                                     shadow-md hover:bg-blue-600 transition duration-300 ease-in-out \
-                                    text-base sm:text-lg",
+                                    text-base sm:text-lg \
+                                    dark:bg-blue-700 dark:hover:bg-blue-600",
                             "{b} →"
                         }
                     }
@@ -194,7 +199,8 @@ fn NextAndLastBlogButton(prev: Option<String>, next: Option<String>) -> Element 
                     rsx! {
                         div {
                             class: "px-6 py-3 bg-gray-300 text-gray-600 font-semibold rounded-lg \
-                                    cursor-not-allowed text-base sm:text-lg",
+                                    cursor-not-allowed text-base sm:text-lg \
+                                    dark:bg-gray-700 dark:text-gray-400",
                             "No Next →"
                         }
                     }

@@ -31,9 +31,25 @@ looks like the AWS light sail isn't good enough to build the docker image.
 new dockerfile can use the entrypoint, but I still need to find how to give the image to light sail
 
 #+begin_src shell
-  docker run --rm  -p 8080:8080 -v $PWD/posts:/app/posts 23f1c63bb8a2e419c04d992de61f49f29ca68f6969fcc431523ef3573c2fa1c2
+  docker run --rm -p 8080:8080 -v $PWD/posts:/app/posts 23f1c63bb8a2e419c04d992de61f49f29ca68f6969fcc431523ef3573c2fa1c2
 #+end_src
 
 image work!
 
 now, need to find how to let weak light sail can use the image
+
+** deploy to ghcr
+build and deploy directly
+
+#+begin_src shell
+  docker buildx create --use
+  docker buildx build --platform linux/arm64,linux/amd64 -t ghcr.io/ccqpein/garage/blog0 --push .
+#+end_src
+
+in light sail:
+
+#+begin_src shell
+  sudo docker run -d --platform=linux/amd64 -p ports:8080 -v $PWD/posts:/app/posts ghcr.io/ccqpein/garage/blog0
+#+end_src
+
+finally

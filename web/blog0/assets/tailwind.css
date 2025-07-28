@@ -9,6 +9,9 @@
 .static {
   position: static;
 }
+.container {
+  width: 100%;
+}
 .block {
   display: block;
 }
