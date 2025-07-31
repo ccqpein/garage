@@ -126,7 +126,7 @@ pub fn Home() -> Element {
         div {
             class: "min-h-screen bg-gray-100 dark:bg-gray-900 py-10 flex flex-col items-center",
             h1 {
-                class: "bg-green-500 text-blue-500 my-test-class",
+                class: "bg-green-500 text-blue-500",
                 class: "text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white mb-10 text-center leading-tight",
                 "All ccQ Blog Posts"
             }
