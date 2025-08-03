@@ -1,0 +1,25 @@
+* README
+
+the very very demo app that doing nothing.
+
+** setup
+
+#+begin_src shell
+  solana config set --url localhost
+  solana config set --keypair ~/.config/solana/id.json
+#+end_src
+
+
+** build
+
+#+begin_src shell
+  cargo build-sbf # what is sbf?
+#+end_src
+
+** depoy
+
+#+begin_src shell
+  solana program deploy target/deploy/solana_program_0.so
+#+end_src
+
+get the program id and the signature, saved it in the vault
