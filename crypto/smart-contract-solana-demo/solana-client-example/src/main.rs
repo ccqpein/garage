@@ -7,7 +7,8 @@ use solana_sdk::{
     system_program,
     transaction::Transaction,
 };
-use std::{fs, str::FromStr};
+use std::{fs, str::FromStr, time::Duration};
+use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,40 +18,57 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let program_id = Pubkey::from_str(&include_str!("../programID"))?;
     println!("program_id is: {program_id}");
 
-    // Generate a new keypair for the client to send the transaction
     let payer = Keypair::new();
     println!("Client Payer Public Key: {}", payer.pubkey());
 
-    // --- 2. Fund the Payer Account (for local development) ---
-    // On devnet/testnet, you'd use a faucet. On localnet, you can airdrop.
     println!("Airdropping SOL to client payer...");
+    let airdrop_signature = client.request_airdrop(&payer.pubkey(), 1_000_000_000)?; // 1 SOL
 
-    let signature = client.request_airdrop(&payer.pubkey(), 1_000_000_000)?; // 1 SOL (in lamports)
-    client.confirm_transaction(&signature)?; // Wait for the airdrop to confirm
-    println!(
-        "Airdrop confirmed. Balance: {} SOL",
-        client.get_balance(&payer.pubkey())? / 1_000_000_000
-    );
+    // Explicitly wait for the airdrop transaction to be confirmed
+    client.confirm_transaction(&airdrop_signature)?;
+    println!("Airdrop request sent and confirmed by network.");
 
-    // --- 3. Prepare the Instruction ---
-    // Our 'my-solana-program' simply logs "Hello, Solana!" and the account key.
-    // It requires one account: the account to say hello to (which we can make the payer itself).
-    // The instruction_data is empty for this simple program, as it doesn't parse any.
+    // --- ENHANCED: Wait for balance to update and be sufficient ---
+    let target_balance_lamports = 1_000_000_000; // 1 SOL
+    let mut current_balance_lamports = 0;
+    let mut attempts = 0;
+    let max_attempts = 30; // Wait up to 30 seconds (30 * 1 sec)
 
-    let instruction_data = vec![]; // Empty instruction data for our simple program
+    while current_balance_lamports < target_balance_lamports && attempts < max_attempts {
+        current_balance_lamports = client.get_balance(&payer.pubkey())?;
+        if current_balance_lamports >= target_balance_lamports {
+            println!(
+                "Balance sufficient: {} SOL",
+                current_balance_lamports as f64 / 1_000_000_000.0
+            );
+            break;
+        }
+        attempts += 1;
+        eprintln!(
+            "Attempt {}/{}: Waiting for sufficient balance (Current: {} SOL). Retrying in 1 second...",
+            attempts,
+            max_attempts,
+            current_balance_lamports as f64 / 1_000_000_000.0
+        );
+        sleep(Duration::from_secs(1)).await;
+    }
 
+    if current_balance_lamports < target_balance_lamports {
+        return Err(format!(
+            "Failed to get sufficient SOL balance after airdrop. Current: {} SOL. Airdrop might have failed or validator is very slow.",
+            current_balance_lamports as f64 / 1_000_000_000.0
+        ).into());
+    }
+    // --- END ENHANCED SECTION ---
+
+    // --- Prepare and Send Transaction (rest of your code) ---
+    let instruction_data = vec![];
     let instruction = Instruction {
-        program_id, // The ID of our deployed program
-        accounts: vec![
-            AccountMeta::new(payer.pubkey(), true), // The payer account, marked as writable and signer
-                                                    // Add any other accounts your program expects.
-                                                    // Our "Hello, Solana!" program only uses one account from `accounts: &[AccountInfo]`.
-                                                    // We pass the payer's account here so the program can log its public key.
-        ],
+        program_id,
+        accounts: vec![AccountMeta::new(payer.pubkey(), true)],
         data: instruction_data,
     };
 
-    // --- 4. Create and Send the Transaction ---
     let recent_blockhash = client.get_latest_blockhash()?;
     println!("Recent Blockhash: {}", recent_blockhash);
 
@@ -61,9 +79,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let signature = client.send_and_confirm_transaction(&transaction)?;
     println!("Transaction sent! Signature: {}", signature);
 
-    // --- 5. Verify Logs (Optional, but good for debugging) ---
-    // You can fetch transaction details to see the logs programmatically.
-    // However, for this simple case, the `solana-test-validator` terminal is easier.
     println!(
         "\nCheck the terminal running `solana-test-validator` for the 'Hello, Solana!' log messages."
     );

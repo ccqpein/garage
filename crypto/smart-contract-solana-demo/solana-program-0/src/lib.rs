@@ -20,10 +20,10 @@ pub fn process_instruction(
 
     let account = next_account_info(accounts_iter)?;
 
-    if account.owner != program_id {
-        msg!("Greeted account does not have the correct program id");
-        return Err(solana_program::program_error::ProgramError::IncorrectProgramId);
-    }
+    // if account.owner != program_id {
+    //     msg!("Greeted account does not have the correct program id");
+    //     return Err(solana_program::program_error::ProgramError::IncorrectProgramId);
+    // }
 
     msg!("Received instruction data: {:?}", instruction_data);
     msg!("Hello from {:?}", account.key);

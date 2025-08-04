@@ -12,7 +12,7 @@ the very very demo app that doing nothing.
 
 ** build
 
-#+begin_src shell
+#+begin_src shell :results silent
   cargo build-sbf # what is sbf?
 #+end_src
 
@@ -21,6 +21,8 @@ the very very demo app that doing nothing.
 #+begin_src shell
   solana program deploy target/deploy/solana_program_0.so
 #+end_src
+
+#+RESULTS:
 
 get the program id and the signature, saved it in the vault
 
