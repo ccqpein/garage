@@ -1,0 +1,10 @@
+* README
+
+the client run the [[file:~/Code/garage/crypto/smart-contract-solana-demo/solana-program-0/README.org::*README][demo program]] 
+
+
+** run
+
+#+begin_src shell
+  cargo run
+#+end_src

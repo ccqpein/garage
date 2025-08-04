@@ -23,3 +23,7 @@ the very very demo app that doing nothing.
 #+end_src
 
 get the program id and the signature, saved it in the vault
+
+** run client
+
+[[file:~/Code/garage/crypto/smart-contract-solana-demo/solana-client-example/README.org::*README][run the client]]
