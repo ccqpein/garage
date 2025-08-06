@@ -13,3 +13,5 @@ try:
     ascii_string = bytes_object.decode("ascii")
 except UnicodeDecodeError:
     print("Could not decode with ASCII. Some bytes are outside the ASCII range.")
+
+# bytes(privtekey).hex()

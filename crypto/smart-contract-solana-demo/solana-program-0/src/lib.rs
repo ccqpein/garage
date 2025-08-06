@@ -1,5 +1,5 @@
 use solana_program::{
-    account_info::{next_account_info, AccountInfo},
+    account_info::{AccountInfo, next_account_info},
     entrypoint,
     entrypoint::ProgramResult,
     msg,
@@ -10,20 +10,18 @@ entrypoint!(process_instruction);
 
 /// Processes a Solanana instruction
 pub fn process_instruction(
+    // Public key of the account this program was loaded into
     program_id: &Pubkey,
+    // Accounts required for the instruction to run
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
     msg!("Hello, Solana!");
+    //msg!("which public key? {:?}", program_id);
 
     let accounts_iter = &mut accounts.iter();
 
     let account = next_account_info(accounts_iter)?;
-
-    // if account.owner != program_id {
-    //     msg!("Greeted account does not have the correct program id");
-    //     return Err(solana_program::program_error::ProgramError::IncorrectProgramId);
-    // }
 
     msg!("Received instruction data: {:?}", instruction_data);
     msg!("Hello from {:?}", account.key);

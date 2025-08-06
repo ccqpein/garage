@@ -8,3 +8,26 @@ the client run the [[file:~/Code/garage/crypto/smart-contract-solana-demo/solana
 #+begin_src shell
   cargo run
 #+end_src
+
+** log
+
+#+begin_quote
+Streaming transaction logs. Confirmed commitment
+Transaction executed in slot 2360:
+  Signature: blablabla0
+  Status: Ok
+  Log Messages:
+    Program 11111111111111111111111111111111 invoke [1]
+    Program 11111111111111111111111111111111 success
+Transaction executed in slot 2392:
+  Signature: blablabla1
+  Status: Ok
+  Log Messages:
+    Program {program id}
+    Program log: Hello, Solana!
+    Program log: Received instruction data: []
+    Program log: Hello from {Client Payer Public Key}
+    Program {program id} consumed 2594 of 200000 compute units
+    Program {program id} success
+Disconnected: receiving on an empty and disconnected channel
+#+end_quote
