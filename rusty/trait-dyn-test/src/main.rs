@@ -1,4 +1,3 @@
-#![feature(box_syntax)]
 use async_trait::async_trait;
 use tokio::runtime;
 
@@ -107,7 +106,7 @@ pub trait Bpp {
 impl Bpp for B {
     async fn run(&self, input: &(dyn AppInput + Sync)) -> Box<dyn AppOutput + Sync> {
         println!("yoyoyo");
-        box Ok(())
+        Box::new(Ok(()))
     }
 }
 

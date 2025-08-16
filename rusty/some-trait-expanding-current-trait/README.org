@@ -1,0 +1,4 @@
+* README
+
+
+Trying to do something like the itertools lib. Define some traits and expanding the features for other trait in std
