@@ -2,3 +2,15 @@
 
 
 Trying to do something like the itertools lib. Define some traits and expanding the features for other trait in std
+
+** some thing fun
+
+#+begin_quote
+concrete type (`<Self as Add>::Output`) as a trait bound, which is not allowed in Rust
+#+end_quote
+
+#+begin_quote
+dont forgot the blank impl
+
+impl WeirdAdd for i32 {}
+#+end_quote
