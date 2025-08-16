@@ -1,0 +1,36 @@
+* Some finance tool
+
+Trying to make some finance tools I can use in my daily/monthly life.
+
+** Analyze the monthly statement
+
+Because we have LLM now. This job should be much easier with LLM.
+
+We need the data source \-> filter/clean \-> ask llm some questions like "how much spending in amazon"
+
+*** roughly design
+
++ data source. I can download them manually.
+  advance: download automaticly, let's say Amex credit card statements
++ filter/clean. llm can filter the data to the data struct/format I want
++ need some client to call the llm for further questions
+
+this feature sounds like some thing we can make it to MCP.
+
+*** MVP
+
+1. download manually the CSV file to folder
+2. define the data format/struct.
+3. ask the llm to filter data.
+4. can wait the future question
+5. return the answer 
+  
+*** further improvements
+
++ can download statements by itself
++ can handle several file types
++ can save the chats and conversation in vector database (need to test how it is going now, it is bad before)
+ 
+*** code
+
+[[file:monthly-statement/][project folder]] (first time use ~uv init~ to create the project tho)

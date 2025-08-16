@@ -1,0 +1,3 @@
+* README
+
+monthly statement analyze app
