@@ -20,7 +20,7 @@ this feature sounds like some thing we can make it to MCP.
 *** MVP
 
 1. download manually the CSV file to folder
-2. define the data format/struct.
+2. define the data format/struct. (can let llm just do the data)
 3. ask the llm to filter data.
 4. can wait the future question
 5. return the answer 
