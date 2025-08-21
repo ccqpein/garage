@@ -1,3 +1,7 @@
 * README
 
 monthly statement analyze app
+
+#+begin_src shell
+  uv run ./main.py
+#+end_src

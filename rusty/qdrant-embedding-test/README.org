@@ -1,0 +1,32 @@
+* qdrant test
+
+** run the qdrant
+
+#+begin_src shell
+  docker-compose up -d
+#+end_src
+
+#+RESULTS:
+
+look like I need to
+
+1. create a collection
+2. load data in collection
+3. query
+
+can check the quickstart on [[http://localhost:6333/dashboard#/tutorial/quickstart][http://localhost:6333/dashboard#/tutorial/quickstart]]
+
+** rust code
+
+this project is use rust to communited with ~qdrant~
+
+
+** embedding test
+
+*** call embedding api
+
+call some llm embedding api and connect it with the local qdrant db
+
+*** query from qdrant
+
+Q: do I have to embedding first then query it? if so, can I run a python script for it?
