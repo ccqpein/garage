@@ -1,0 +1,8 @@
+* README
+
+accidently find some code that `default fn` in trait.
+
+[[https://docs.rs/eros/0.1.0/src/eros/generic_error.rs.html#184-197][source code]]
+
+wanna test what's that.
+
