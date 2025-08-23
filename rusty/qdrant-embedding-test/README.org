@@ -20,12 +20,16 @@ can check the quickstart on [[http://localhost:6333/dashboard#/tutorial/quicksta
 
 this project is use rust to communited with ~qdrant~
 
+just the demo code, in start_up mod
+
 
 ** embedding test
 
 *** call embedding api
 
 call some llm embedding api and connect it with the local qdrant db
+
+
 
 *** query from qdrant
 
