@@ -1,0 +1,10 @@
+* SQLisp
+
+just want to write sql in lisp. maybe it is a bit more readable, I don't know.
+
+** Keywords
+
+*** CREATE
+
+
+

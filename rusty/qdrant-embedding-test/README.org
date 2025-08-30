@@ -27,10 +27,10 @@ just the demo code, in start_up mod
 
 *** call embedding api
 
-call some llm embedding api and connect it with the local qdrant db
-
-
+- [X] call some llm embedding api and connect it with the local qdrant db
 
 *** query from qdrant
 
 Q: do I have to embedding first then query it? if so, can I run a python script for it?
+
+get rust code done.
