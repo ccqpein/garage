@@ -6,5 +6,34 @@ just want to write sql in lisp. maybe it is a bit more readable, I don't know.
 
 *** CREATE
 
+#+begin_quote
+CREATE DATABASE database_name;
+#+end_quote
 
+#+begin_quote
+(create (:database customer))
+#+end_quote
+
+#+begin_quote
+CREATE TABLE Customer (
+    CustomerID INT PRIMARY KEY,
+    CustomerName VARCHAR(50),
+    LastName VARCHAR(50),
+    Country VARCHAR(50),
+    Age INT CHECK (Age >= 0 AND Age <= 99),
+    Phone INT(10)
+);
+#+end_quote
+
+#+begin_src shell
+(create '(:table customer
+          :columns
+          ((CustomerID uuid :primary-key)
+           (CustomerName (varchar 50))
+           (LastName (varchar 50))
+           (Age int)
+           (Phone (int 10))
+           ;;(Age int :check (Age >= 0 AND Age <= 99)) ;; not now
+           )))
+#+end_src
 
