@@ -13,6 +13,8 @@
 
 (defparameter *symbols-tables* ())
 
+;;; create
+
 (defun create (noum &rest args)
   (declare (ignore args))
   (trivia:match noum
@@ -32,11 +34,13 @@
 
 (create '(:table "NewTable"
           :as
-          (select ("column1" "column2") :from "ExistingTable" :where ())))
+          (select ("column1" "column2") :from "ExistingTable" :where ())
+          ))
 
 (defun table (name &key columns as)
   (cond (columns (format nil "TABLE ~a (~{~#[~:;~@{~a~^, ~}~]~});" name (table-columns columns)))
-        (as (format nil "TABLE ~a AS ~{~#[~:;~@{~a~^, ~}~]~};" name '()))
+        (as (format nil "TABLE ~a AS ~a" name (ccase (first as)
+                                                 (select (apply #'select (cdr as))))))
         (t (error "not enough data for table"))))
 
 (defun table-columns (table-columns)
@@ -65,3 +69,13 @@
   (ccase (first ct)
     (varchar (format nil "varchar(~a)" (second ct)))
     (int (format nil "INT(~a)" (second ct)))))
+
+;;; select 
+
+(defun select (columns &key from where)
+  (format nil "SELECT ~{~a~^, ~} FROM ~a~@[ WHERE ~a~];"
+          columns from
+          (if where (where-condition where) nil)))
+
+;;:= todo
+(defun where-condition (condition) condition)

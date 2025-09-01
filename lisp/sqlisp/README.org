@@ -49,3 +49,16 @@ WHERE condition;
           :as
           (select ("column1" "column2") :from "ExistingTable" :where ())))
 #+end_src
+
+*** Where conditions
+
+#+begin_quote
+SELECT *
+FROM Products
+WHERE Category = 'Electronics';
+#+end_quote
+
+#+begin_quote
+WHERE Department <> 'Sales';
+#+end_quote
+
