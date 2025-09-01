@@ -26,14 +26,26 @@ CREATE TABLE Customer (
 #+end_quote
 
 #+begin_src shell
-(create '(:table customer
+(create '(:table "customer"
           :columns
-          ((CustomerID uuid :primary-key)
-           (CustomerName (varchar 50))
-           (LastName (varchar 50))
-           (Age int)
-           (Phone (int 10))
+          (("CustomerID" uuid :primary-key)
+           ("CustomerName" (varchar 50))
+           ("LastName" (varchar 50))
+           ("Age" int)
+           ("Phone" (int 10))
            ;;(Age int :check (Age >= 0 AND Age <= 99)) ;; not now
            )))
 #+end_src
 
+#+begin_quote
+CREATE TABLE NewTable AS
+SELECT column1, column2
+FROM ExistingTable
+WHERE condition;
+#+end_quote
+
+#+begin_src lisp
+(create '(:table "NewTable"
+          :as
+          (select ("column1" "column2") :from "ExistingTable" :where ())))
+#+end_src

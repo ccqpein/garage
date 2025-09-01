@@ -1,15 +1,15 @@
 ;;; some tiny file that write the sql in lisp
 ;;; just the translate, all s-exp just return the sql statement
 
-(ql:quickload '("trivia" "str"))
+(ql:quickload '("trivia" "str" "alexandria"))
 
 (defpackage :sqlisp
-  (:use :cl)
+  (:use :CL)
   )
 
 (in-package #:sqlisp)
 
-(setf (readtable-case *readtable*) :invert)
+;;(setf (readtable-case *readtable*) :invert)
 
 (defparameter *symbols-tables* ())
 
@@ -22,13 +22,22 @@
 
     ;; table 
     ((trivia:property! :table table-name)
-     (format nil "CREATE ~a" (table table-name (getf noum :columns))))
+     (format nil "CREATE ~a" (table table-name
+                                    :columns (getf noum :columns)
+                                    :as (getf noum :as)
+                                    )))
     ))
 
 (defun database (name) (format nil "DATABASE ~a" name))
 
-(defun table (name columns)
-  (format nil "TABLE ~a (~{~#[~:;~@{~a~^,~}~]~});" name (table-columns columns)))
+(create '(:table "NewTable"
+          :as
+          (select ("column1" "column2") :from "ExistingTable" :where ())))
+
+(defun table (name &key columns as)
+  (cond (columns (format nil "TABLE ~a (~{~#[~:;~@{~a~^, ~}~]~});" name (table-columns columns)))
+        (as (format nil "TABLE ~a AS ~{~#[~:;~@{~a~^, ~}~]~};" name '()))
+        (t (error "not enough data for table"))))
 
 (defun table-columns (table-columns)
   (let ((pk nil))
@@ -45,7 +54,8 @@
   (let (pk)
     (values (loop for a in column
                   collect (typecase a
-                            (symbol (symbol-name a))
+                            (symbol (string a))
+                            (string a)
                             (list (column-spec-type a)))
                   if (eq :primary-key a)
                     do (setf pk t))
