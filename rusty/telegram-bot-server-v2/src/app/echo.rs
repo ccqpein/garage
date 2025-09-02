@@ -11,7 +11,7 @@ pub struct EchoInput {
 impl EchoInput {
     fn check_msg(msg: &Message) -> Option<Self> {
         match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(Self {
+            (MessageChat::Private(_), MessageKind::Text { data, .. }) => Some(Self {
                 content: data.to_string(),
                 chatid: msg.chat.id(),
             }),

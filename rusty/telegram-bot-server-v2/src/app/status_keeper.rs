@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use lazy_static::*;
 use std::{collections::HashMap, sync::Arc};
 use telegram_bot::{ChatId, MessageChat, MessageKind};
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{Mutex, oneshot};
 
 lazy_static! {
     static ref CHAT_STATUS_TABLE: Mutex<HashMap<ChatId, ChatStatus>> = {
@@ -52,7 +52,7 @@ impl StatusCheckerCatcher {
     /// return Some(_) means it truly has, None is not
     async fn check_from_msg(&self, msg: &Message) -> Option<()> {
         let data = match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
+            (MessageChat::Private(_), MessageKind::Text { data, .. }) => Some(data),
             _ => None,
         };
         debug!("check status for {}", msg.chat.id());

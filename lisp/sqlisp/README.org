@@ -25,7 +25,7 @@ CREATE TABLE Customer (
 );
 #+end_quote
 
-#+begin_src shell
+#+begin_src lisp
 (create '(:table "customer"
           :columns
           (("CustomerID" uuid :primary-key)
@@ -47,7 +47,13 @@ WHERE condition;
 #+begin_src lisp
 (create '(:table "NewTable"
           :as
-          (select ("column1" "column2") :from "ExistingTable" :where ())))
+          (select ("column1" "column2") :from "ExistingTable" :where (< "column1" 10))))
+#+end_src
+
+#+begin_src lisp
+  (create '(:index "index_name"
+            :on "table_name"
+            :columns ("column1" "column2" "column3")))
 #+end_src
 
 *** Where conditions
@@ -57,6 +63,12 @@ SELECT *
 FROM Products
 WHERE Category = 'Electronics';
 #+end_quote
+
+#+begin_src lisp
+(create '(:table "NewTable"
+          :as
+          (select ("column1" "column2") :from "ExistingTable" :where (< "column1" 10))))
+#+end_src
 
 #+begin_quote
 WHERE Department <> 'Sales';

@@ -28,6 +28,12 @@
                                     :columns (getf noum :columns)
                                     :as (getf noum :as)
                                     )))
+    ;; index
+    ((trivia:property! :index index-name)
+     (format nil "CREATE ~a" (index index-name
+                                    :on (getf noum :on)
+                                    :columns (getf noum :columns)
+                                    )))
     ))
 
 (defun database (name) (format nil "DATABASE ~a" name))
@@ -70,6 +76,10 @@
     (varchar (format nil "varchar(~a)" (second ct)))
     (int (format nil "INT(~a)" (second ct)))))
 
+(defun index (name &key on columns)
+  (format nil "CREATE INDEX ~a ON ~a (~{~a~^, ~})"
+          name on columns))
+
 ;;; select 
 
 (defun select (columns &key from where)
@@ -77,5 +87,37 @@
           columns from
           (if where (where-condition where) nil)))
 
-;;:= todo
-(defun where-condition (condition) condition)
+;;; where
+
+(defun where-condition (condition)
+  "condition => '(< \"aa\" 10)
+=> '(and (<> \"ss\" 10) (> \"cdc\" 40))
+=> '(between \"ss\" \"2023-01-01\" \"2023-01-31\")
+=> '(like \"ss\" \"A%\")
+=> '(in \"ss\" (\"A\" \"b\"))
+=> '(null \"ss\")
+=> '(not-null \"ss\")"
+  (ccase (first condition)
+    ((< > = != <> <= >=)
+     (format nil "~a ~a ~a" (second condition) (first condition) (third condition)))
+    ((and or)
+     (format nil "~a ~a ~a"
+             (where-condition (second condition))
+             (first condition)
+             (where-condition (third condition))))
+    ((not)
+     (format nil "NOT ~a"
+             (where-condition (second condition))))
+    ((like)
+     (format nil "~a LIKE ~a" (second condition) (third condition)))
+    ((in)
+     (format nil "~a IN (~{~a~^, ~})" (second condition) (third condition)))
+    (null
+     (format nil "~a IS NULL" (second condition)))
+    (not-null
+     (format nil "~a IS NOT NULL" (second condition)))
+    (between
+     (format nil "~a BETWEEN '~a' AND '~a'"
+             (second condition)
+             (third condition)
+             (fourth condition)))))

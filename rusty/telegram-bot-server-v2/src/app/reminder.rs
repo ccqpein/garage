@@ -10,11 +10,11 @@ use std::{
 use telegram_bot::{ChatId, Message, MessageChat, MessageKind};
 use tokio::{
     sync::{
-        mpsc::{self, error::SendError, Receiver, Sender},
-        oneshot::{self, error::TryRecvError},
         Mutex,
+        mpsc::{self, Receiver, Sender, error::SendError},
+        oneshot::{self, error::TryRecvError},
     },
-    time::{sleep, Duration},
+    time::{Duration, sleep},
 };
 use tracing::debug;
 
@@ -377,7 +377,7 @@ impl ReminderInput {
     /// for command
     fn from_msg_v2(msg: &Message) -> Option<Self> {
         match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
+            (MessageChat::Private(_), MessageKind::Text { data, entities }) => {
                 match entities.get(0) {
                     Some(en) => match en.kind {
                         telegram_bot::MessageEntityKind::BotCommand => {
@@ -418,7 +418,7 @@ impl ReminderInput {
 
     fn from_msg(msg: &Message) -> Option<Self> {
         let data = match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => data.to_string(),
+            (MessageChat::Private(_), MessageKind::Text { data, .. }) => data.to_string(),
             _ => String::new(),
         };
 

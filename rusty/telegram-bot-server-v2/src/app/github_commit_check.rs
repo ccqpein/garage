@@ -2,10 +2,10 @@ use super::*;
 use async_trait::async_trait;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use chrono_tz::America::New_York;
-use octocrab::{initialise, instance, Octocrab, OctocrabBuilder, Result};
+use octocrab::{Octocrab, OctocrabBuilder, Result, initialise, instance};
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::prelude::*;
 use std::path::Path;
 use telegram_bot::ChatId;
 use telegram_bot::Message;
@@ -22,7 +22,7 @@ pub struct GithubCommitInput {
 impl GithubCommitInput {
     fn check_msg(msg: &Message) -> Option<Self> {
         let data = match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, .. }) => Some(data),
+            (MessageChat::Private(_), MessageKind::Text { data, .. }) => Some(data),
             _ => None,
         };
 
@@ -37,7 +37,7 @@ impl GithubCommitInput {
 
     fn check_msg_comm(msg: &Message) -> Option<Self> {
         match (&msg.chat, &msg.kind) {
-            (MessageChat::Private(_), MessageKind::Text { ref data, entities }) => {
+            (MessageChat::Private(_), MessageKind::Text { data, entities }) => {
                 match entities.get(0) {
                     Some(en) => match en.kind {
                         telegram_bot::MessageEntityKind::BotCommand => {
