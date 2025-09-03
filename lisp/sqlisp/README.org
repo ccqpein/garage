@@ -56,6 +56,12 @@ WHERE condition;
             :columns ("column1" "column2" "column3")))
 #+end_src
 
+#+begin_src lisp
+(create '(:view "view_name"
+          :as
+          (select ("column1" "column2") :from "ExistingTable" :where (< "column1" 10))))
+#+end_src
+
 *** Where conditions
 
 #+begin_quote

@@ -31,17 +31,24 @@
     ;; index
     ((trivia:property! :index index-name)
      (format nil "CREATE ~a" (index index-name
+                                    :unique (getf noum :unique)
                                     :on (getf noum :on)
                                     :columns (getf noum :columns)
                                     )))
+
+    ;; view
+    ((trivia:property! :view view-name)
+     (format nil "CREATE ~a" (view view-name
+                                   :as (getf noum :as)
+                                   )))
     ))
 
 (defun database (name) (format nil "DATABASE ~a" name))
 
-(create '(:table "NewTable"
-          :as
-          (select ("column1" "column2") :from "ExistingTable" :where ())
-          ))
+;; (create '(:table "NewTable"
+;;           :as
+;;           (select ("column1" "column2") :from "ExistingTable" :where ())
+;;           ))
 
 (defun table (name &key columns as)
   (cond (columns (format nil "TABLE ~a (~{~#[~:;~@{~a~^, ~}~]~});" name (table-columns columns)))
@@ -76,9 +83,18 @@
     (varchar (format nil "varchar(~a)" (second ct)))
     (int (format nil "INT(~a)" (second ct)))))
 
-(defun index (name &key on columns)
-  (format nil "CREATE INDEX ~a ON ~a (~{~a~^, ~})"
-          name on columns))
+(defun index (name &key on columns unique)
+  (assert (and columns on))
+  (if unique
+      (format nil "UNIQUE INDEX ~a ON ~a (~{~a~^, ~})"
+              name on columns)
+      (format nil "INDEX ~a ON ~a (~{~a~^, ~})"
+              name on columns)))
+
+(defun view (name &key as)
+  (assert as)
+  (format nil "VIEW ~a AS ~a"
+          name (apply #'select (cdr as))))
 
 ;;; select 
 
