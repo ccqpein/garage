@@ -1,0 +1,26 @@
+* Run the google-embeddinggemma-server
+in the venv
+
+#+begin_src shell
+  uv pip install transformers torch fastapi uvicorn
+#+end_src
+
+#+RESULTS:
+
+** run the server
+
+#+begin_src shell
+  uv run ./main.py
+#+end_src
+
+#+begin_src shell :results output :max-output-size 10
+  curl -X POST "http://localhost:9527/embed" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "texts": [
+             "This is a test sentence.",
+             "What about another one?",
+             "Hello, world!"
+           ]
+         }'
+#+end_src

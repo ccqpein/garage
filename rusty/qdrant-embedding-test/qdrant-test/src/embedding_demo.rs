@@ -138,9 +138,12 @@ pub async fn call(msg: Option<&'static str>) -> Result<Vec<f32>, Box<dyn std::er
     Ok(embedding_response.embedding.values)
 }
 
+// trying to use some local embedding model
+// wanna try the EmbeddingGemma
+
 //////////////
 // save to Qdrant below
-////////
+/////////////
 
 pub async fn save_and_load_from_qbrant() -> Result<(), Box<dyn std::error::Error>> {
     let qdclient = Qdrant::from_url("http://localhost:6334").build()?;

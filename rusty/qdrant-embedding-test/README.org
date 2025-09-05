@@ -34,3 +34,11 @@ just the demo code, in start_up mod
 Q: do I have to embedding first then query it? if so, can I run a python script for it?
 
 get rust code done.
+
+* try some local open source embedding model
+
+qdrant test kind of done. let me try the EmbeddingGemma
+
+#+begin_quote
+cd ./google-embeddinggemma-server; uv run ./main.py
+#+end_quote
