@@ -80,3 +80,51 @@ WHERE Category = 'Electronics';
 WHERE Department <> 'Sales';
 #+end_quote
 
+*** SELECT
+
+#+begin_quote
+SELECT *
+FROM Employees;
+#+end_quote
+
+#+begin_src lisp
+  (select '* :from "Employees")
+  (select "*" :from "Employees")
+#+end_src
+
+#+begin_quote
+SELECT FirstName, LastName, Email
+FROM Customers;
+#+end_quote
+
+#+begin_src lisp
+  (select '("FirstName" "LastName" "Email") :from "Customers")
+#+end_src
+
+#+begin_quote
+SELECT
+    ProductName AS ItemName,
+    Price AS UnitPrice
+FROM Products;
+#+end_quote
+
+#+begin_src lisp
+  (select '(("ProductName" :as "ItemName") ("Price" :as "UnitPrice")) :from "Products")
+#+end_src
+
+#+begin_quote
+SELECT
+    o.OrderID,
+    c.CustomerName
+FROM Orders AS o
+JOIN Customers AS c ON o.CustomerID = c.CustomerID;
+#+end_quote
+
+#+begin_src lisp
+  (select '(("OrderID" :from "o") ("CustomerName" :from "c"))
+          :from (join '(("Orders" :as "o")
+                        ("Customers" :as "c"
+                                     :on (=
+                                          ("c" . "CustomerID")
+                                          ("o" . "CustomerID"))))))
+#+end_src

@@ -99,11 +99,37 @@
 ;;; select 
 
 (defun select (columns &key from where)
-  (format nil "SELECT ~{~a~^, ~} FROM ~a~@[ WHERE ~a~];"
-          columns from
+  (format nil "SELECT ~a FROM ~a~@[ WHERE ~a~];"
+          (column-select columns) from
           (if where (where-condition where) nil)))
 
-;;; where
+(defun column-select (columns)
+  ;; because the case cannot match the string
+  (if (and (stringp columns) (string= "*" columns)) (return-from column-select-spec "*"))
+  (if (and (typep columns 'symbol) (eq columns '*)) (return-from column-select-spec "*"))
+
+  ;; has to be list after
+  (assert (typep columns 'list))
+  (format nil "~{~a~^, ~}"
+          (loop for c in columns
+                collect (column-select-spec c))))
+
+(defun column-select-spec (column)
+  (ctypecase column
+    (string column)
+    (list (destructuring-bind (column-name &key as &allow-other-keys)
+              column
+            (cond (:as (format nil "~a AS ~a" column-name as))
+                  (t (format nil "~a" column-name)))))))
+;;:= todo
+;; (select '(("OrderID" :from "o") ("CustomerName" :from "c"))
+;;         :from (join '(("Orders" :as "o")
+;;                       ("Customers" :as "c"
+;;                                    :on (=
+;;                                         ("c" . "CustomerID")
+;;                                         ("o" . "CustomerID"))))))
+
+;;; where condition
 
 (defun where-condition (condition)
   "condition => '(< \"aa\" 10)
