@@ -140,6 +140,9 @@ pub async fn call(msg: Option<&'static str>) -> Result<Vec<f32>, Box<dyn std::er
 
 // trying to use some local embedding model
 // wanna try the EmbeddingGemma
+pub async fn call_gemma(msg: &[&'static str]) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+    todo!()
+}
 
 //////////////
 // save to Qdrant below

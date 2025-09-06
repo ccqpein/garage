@@ -100,13 +100,14 @@
 
 (defun select (columns &key from where)
   (format nil "SELECT ~a FROM ~a~@[ WHERE ~a~];"
-          (column-select columns) from
+          (column-select columns)
+          (from-select from)
           (if where (where-condition where) nil)))
 
 (defun column-select (columns)
   ;; because the case cannot match the string
-  (if (and (stringp columns) (string= "*" columns)) (return-from column-select-spec "*"))
-  (if (and (typep columns 'symbol) (eq columns '*)) (return-from column-select-spec "*"))
+  (if (and (stringp columns) (string= "*" columns)) (return-from column-select "*"))
+  (if (and (typep columns 'symbol) (eq columns '*)) (return-from column-select "*"))
 
   ;; has to be list after
   (assert (typep columns 'list))
@@ -117,10 +118,18 @@
 (defun column-select-spec (column)
   (ctypecase column
     (string column)
-    (list (destructuring-bind (column-name &key as &allow-other-keys)
+    (list (destructuring-bind (column-name &key as from &allow-other-keys)
               column
-            (cond (:as (format nil "~a AS ~a" column-name as))
+            (cond (as (format nil "~a AS ~a" column-name as))
+                  (from (format nil "~a.~a" from column-name))
                   (t (format nil "~a" column-name)))))))
+
+(defun from-select (from)
+  (if (stringp from) (return-from from-select from))
+  (assert (typep from 'list))
+  () ;;:= here
+  )
+
 ;;:= todo
 ;; (select '(("OrderID" :from "o") ("CustomerName" :from "c"))
 ;;         :from (join '(("Orders" :as "o")
