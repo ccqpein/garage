@@ -42,3 +42,11 @@ qdrant test kind of done. let me try the EmbeddingGemma
 #+begin_quote
 cd ./google-embeddinggemma-server; uv run ./main.py
 #+end_quote
+
+run qdrant-test
+
+#+begin_quote
+cargo run
+#+end_quote
+
+there are two function that ~save_and_load_from_qbrant~ use gemini api, ~save_and_load_from_qbrant_gemma~ use gemma

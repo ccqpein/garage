@@ -60,7 +60,7 @@ impl<Req: Serialize, Resp: for<'a> Deserialize<'a>> APIClient<Req, Resp> {
             .json(&req)
             .send()
             .await?;
-        dbg!(serde_json::json!(req));
+        //dbg!(serde_json::json!(req));
         if resp.status().is_success() {
             Ok(resp.json::<Resp>().await?)
         } else {
@@ -140,8 +140,117 @@ pub async fn call(msg: Option<&'static str>) -> Result<Vec<f32>, Box<dyn std::er
 
 // trying to use some local embedding model
 // wanna try the EmbeddingGemma
-pub async fn call_gemma(msg: &[&'static str]) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-    todo!()
+
+#[derive(Serialize, Debug)]
+struct GemmaRequest {
+    texts: Vec<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct GemmaResponse {
+    embeddings: Vec<Vec<f32>>,
+}
+
+pub async fn call_gemma(
+    msgs: &[&'static str],
+) -> Result<GemmaResponse, Box<dyn std::error::Error>> {
+    let req = GemmaRequest {
+        texts: msgs.iter().map(|s| s.to_string()).collect(),
+    };
+
+    // call api
+    let client = reqwest::Client::new();
+    let resp = client
+        .post("http://localhost:9527/embed")
+        .header("Content-Type", "application/json")
+        .json(&req)
+        .send()
+        .await?;
+    //dbg!(resp.json::<GemmaResponse>().await?);
+
+    resp.json::<GemmaResponse>().await.map_err(|e| e.into())
+}
+
+pub async fn save_and_load_from_qbrant_gemma() -> Result<(), Box<dyn std::error::Error>> {
+    let qdclient = Qdrant::from_url("http://localhost:6334").build()?;
+
+    // assume I already has collections "demo"
+    // in start_up.rs
+    let collection_name = "demo";
+
+    // clean up
+    qdclient.delete_collection(collection_name).await?;
+    qdclient
+        .create_collection(
+            CreateCollectionBuilder::new(collection_name)
+                // the size is matter: 768, 1536, or 3072
+                // https://ai.google.dev/gemini-api/docs/embeddings#control-embedding-size
+                .vectors_config(VectorParamsBuilder::new(768, Distance::Cosine))
+                .quantization_config(ScalarQuantizationBuilder::default()),
+        )
+        .await?;
+
+    // some demo payload
+    let payload: Payload = serde_json::json!(
+        {
+            "foo": "Bar",
+            "bar": 12,
+            "baz": {
+                "qux": "quux"
+            }
+        }
+    )
+    .try_into()
+    .unwrap();
+
+    let vectors = call_gemma(&vec![
+        "Hello, world! This is a test for the Gemma Embedding API.",
+    ])
+    .await?;
+
+    let id = Uuid::new_v4().to_string();
+    let points = vec![PointStruct::new(
+        id.clone(),
+        vectors.embeddings[0].clone(),
+        payload,
+    )];
+
+    println!("this point id is {}", id);
+
+    qdclient
+        .upsert_points(UpsertPointsBuilder::new(collection_name, points))
+        .await?;
+
+    // start to query
+    let query_vec = call_gemma(&vec!["Hello, world! This is a test for something"]).await?;
+    let dim = query_vec.embeddings[0].len() as u64;
+    let search_result = qdclient
+        .search_points(
+            SearchPointsBuilder::new(collection_name, query_vec.embeddings[0].clone(), dim)
+                .filter(Filter::all([Condition::matches("bar", 12)]))
+                .with_payload(true)
+                .params(SearchParamsBuilder::default().exact(true)),
+        )
+        .await?;
+
+    dbg!(&search_result);
+
+    // try the other one
+    let query_vec =
+        call_gemma(&vec!["Hello, world! This is from the Gemma Embedding API."]).await?;
+    let dim = query_vec.embeddings[0].len() as u64;
+    let search_result = qdclient
+        .search_points(
+            SearchPointsBuilder::new(collection_name, query_vec.embeddings[0].clone(), dim)
+                .filter(Filter::all([Condition::matches("foo", "Bar".to_string())]))
+                .with_payload(true)
+                .params(SearchParamsBuilder::default().exact(true)),
+        )
+        .await?;
+
+    dbg!(&search_result);
+
+    Ok(())
 }
 
 //////////////
