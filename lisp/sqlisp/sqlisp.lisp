@@ -118,25 +118,43 @@
 (defun column-select-spec (column)
   (ctypecase column
     (string column)
-    (list (destructuring-bind (column-name &key as from &allow-other-keys)
+    (list (destructuring-bind (column-name &key as from distinct &allow-other-keys)
               column
             (cond (as (format nil "~a AS ~a" column-name as))
                   (from (format nil "~a.~a" from column-name))
+                  (distinct (format nil "DISTINCT ~a" column-name))
                   (t (format nil "~a" column-name)))))))
 
 (defun from-select (from)
   (if (stringp from) (return-from from-select from))
   (assert (typep from 'list))
-  () ;;:= here
-  )
+  (apply #'join (cdr from)))
 
-;;:= todo
+(defun join (exp)
+  (str:join " JOIN "
+            (loop for e in exp
+                  collect (destructuring-bind (tablename &key as on &allow-other-keys)
+                              e
+                            (let* ((ss (make-string-output-stream)))
+                              (format ss "~a AS ~a" tablename as)
+                              (if on
+                                  (format ss " ON ~a.~a ~a ~a.~a"
+                                          (car (second on)) (cdr (second on))
+                                          (first on)
+                                          (car (third on)) (cdr (third on))))
+                              (get-output-stream-string ss))
+                            ))))
+
 ;; (select '(("OrderID" :from "o") ("CustomerName" :from "c"))
 ;;         :from (join '(("Orders" :as "o")
 ;;                       ("Customers" :as "c"
 ;;                                    :on (=
 ;;                                         ("c" . "CustomerID")
 ;;                                         ("o" . "CustomerID"))))))
+
+(select '("ProductName" "Price") :from "Products" :where '(and
+                                                           (= "Category" "Electronics")
+                                                           (> "Price" 500)))
 
 ;;; where condition
 

@@ -128,3 +128,26 @@ JOIN Customers AS c ON o.CustomerID = c.CustomerID;
                                           ("c" . "CustomerID")
                                           ("o" . "CustomerID"))))))
 #+end_src
+
+#+begin_quote
+SELECT DISTINCT Country
+FROM Customers;
+#+end_quote
+
+#+begin_src lisp
+  (select '(("Country" :DISTINCT t)) :from "Customers")
+#+end_src
+
+#+begin_quote
+SELECT ProductName, Price
+FROM Products
+WHERE Category = 'Electronics' AND Price > 500;
+#+end_quote
+
+#+begin_src lisp
+  (select '("ProductName" "Price") 
+          :from "Products" 
+          :where '(and
+                   (= "Category" "Electronics")
+                   (> "Price" 500)))
+#+end_src
