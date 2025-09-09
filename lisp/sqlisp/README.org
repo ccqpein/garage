@@ -151,3 +151,40 @@ WHERE Category = 'Electronics' AND Price > 500;
                    (= "Category" "Electronics")
                    (> "Price" 500)))
 #+end_src
+
+#+begin_quote
+SELECT *
+FROM Orders
+ORDER BY OrderDate DESC
+LIMIT 10;
+#+end_quote
+
+#+begin_src lisp
+  (select "*" :from "orders" :ORDER-BY '(("OrderDate" :DESC t)) :LIMIT 10)
+#+end_src
+
+#+begin_quote
+SELECT COUNT(*) AS TotalEmployees
+FROM Employees;
+#+end_quote
+
+#+begin_src lisp
+  (select '(("*" :as "TotalEmployees" :count t)) :from "Employees")
+#+end_src
+
+#+begin_quote
+SELECT
+    SUM(OrderAmount) AS TotalSales,
+    AVG(Price) AS AverageProductPrice,
+    MIN(Salary) AS MinimumSalary,
+    MAX(Quantity) AS MaximumQuantityOrdered
+FROM Orders;
+#+end_quote
+
+#+begin_src lisp
+  (select '(("OrderAmount" :as "TotalSales" :sum t)
+          ("Price" :as "AverageProductPrice" :avg t)
+          ("Salary" :as "MinimumSalary" :min t)
+          ("Quantity" :as "MaximumQuantityOrdered" :max t))
+        :from "Orders")
+#+end_src

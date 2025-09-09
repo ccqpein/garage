@@ -98,11 +98,13 @@
 
 ;;; select 
 
-(defun select (columns &key from where)
-  (format nil "SELECT ~a FROM ~a~@[ WHERE ~a~];"
+(defun select (columns &key from where limit order-by)
+  (format nil "SELECT ~a FROM ~a~@[ WHERE ~a~]~@[ ORDER BY ~a~]~@[ LIMIT ~a~];"
           (column-select columns)
           (from-select from)
-          (if where (where-condition where) nil)))
+          (if where (where-condition where) nil)
+          (if order-by (order-by-condition order-by) nil)
+          (if limit (limit-condition limit) nil)))
 
 (defun column-select (columns)
   ;; because the case cannot match the string
@@ -118,8 +120,17 @@
 (defun column-select-spec (column)
   (ctypecase column
     (string column)
-    (list (destructuring-bind (column-name &key as from distinct &allow-other-keys)
+    (list (destructuring-bind (column-name
+                               &key
+                                 as from distinct
+                                 count sum avg min max
+                               &allow-other-keys)
               column
+            (cond (count (setf column-name (format nil "COUNT(~a)" column-name)))
+                  (sum (setf column-name (format nil "SUM(~a)" column-name)))
+                  (avg (setf column-name (format nil "AVG(~a)" column-name)))
+                  (min (setf column-name (format nil "MIN(~a)" column-name)))
+                  (max (setf column-name (format nil "MAX(~a)" column-name))))
             (cond (as (format nil "~a AS ~a" column-name as))
                   (from (format nil "~a.~a" from column-name))
                   (distinct (format nil "DISTINCT ~a" column-name))
@@ -145,16 +156,33 @@
                               (get-output-stream-string ss))
                             ))))
 
-;; (select '(("OrderID" :from "o") ("CustomerName" :from "c"))
-;;         :from (join '(("Orders" :as "o")
-;;                       ("Customers" :as "c"
-;;                                    :on (=
-;;                                         ("c" . "CustomerID")
-;;                                         ("o" . "CustomerID"))))))
 
-(select '("ProductName" "Price") :from "Products" :where '(and
-                                                           (= "Category" "Electronics")
-                                                           (> "Price" 500)))
+;; (select '("ProductName" "Price")
+;;         :from "Products"
+;;         :where '(and
+;;                  (= "Category" "Electronics")
+;;                  (> "Price" 500))
+;;         :limit 10)
+
+;;(select "*" :from "orders" :ORDER-BY '(("OrderDate" :DESC t)) :LIMIT 10)
+(select '(("*" :as "TotalEmployees" :count t)) :from "Employees")
+(select '(("OrderAmount" :as "TotalSales" :sum t)
+          ("Price" :as "AverageProductPrice" :avg t)
+          ("Salary" :as "MinimumSalary" :min t)
+          ("Quantity" :as "MaximumQuantityOrdered" :max t))
+        :from "Orders")
+
+(defun order-by-condition (condition)
+  (str:join ", "
+            (loop for c in condition
+                  collect (destructuring-bind (column-name &key DESC ASC &allow-other-keys)
+                              c
+                            (cond (desc (format nil "~a DESC" column-name))
+                                  (ASC (format nil "~a ASC" column-name))
+                                  (t (format nil column-name)))))))
+
+(defun limit-condition (count)
+  (format nil "~a" count))
 
 ;;; where condition
 
