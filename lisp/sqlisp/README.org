@@ -188,3 +188,34 @@ FROM Orders;
           ("Quantity" :as "MaximumQuantityOrdered" :max t))
         :from "Orders")
 #+end_src
+
+
+#+begin_quote
+SELECT
+    Category,
+    COUNT(*) AS NumberOfProducts,
+    AVG(Price) AS AveragePrice
+FROM Products
+GROUP BY Category;
+#+end_quote
+
+#+begin_src lisp
+  (select '("Category"
+          ("*" :count t :as "NumberOfProducts")
+          ("Price" :avg t :as "AveragePrice"))
+        :from "Products"
+        :group-by "Category")
+#+end_src
+
+#+begin_quote
+SELECT FirstName, LastName, HireDate
+FROM Employees
+ORDER BY HireDate DESC, LastName ASC;
+#+end_quote
+
+#+begin_src lisp
+  (select '("FirstName" "LastName" "HireDate")
+        :from "Employees"
+        :order-by '(("HireDate" :DESC t)
+                    ("LastName" :ASC t)))
+#+end_src

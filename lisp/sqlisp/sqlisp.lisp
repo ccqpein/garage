@@ -98,13 +98,14 @@
 
 ;;; select 
 
-(defun select (columns &key from where limit order-by)
-  (format nil "SELECT ~a FROM ~a~@[ WHERE ~a~]~@[ ORDER BY ~a~]~@[ LIMIT ~a~];"
+(defun select (columns &key from where limit order-by group-by)
+  (format nil "SELECT ~a FROM ~a~@[ WHERE ~a~]~@[ ORDER BY ~a~]~@[ LIMIT ~a~]~@[ GROUP BY ~a~];"
           (column-select columns)
           (from-select from)
           (if where (where-condition where) nil)
           (if order-by (order-by-condition order-by) nil)
-          (if limit (limit-condition limit) nil)))
+          (if limit (limit-condition limit) nil)
+          (if group-by group-by nil)))
 
 (defun column-select (columns)
   ;; because the case cannot match the string
@@ -171,6 +172,17 @@
           ("Salary" :as "MinimumSalary" :min t)
           ("Quantity" :as "MaximumQuantityOrdered" :max t))
         :from "Orders")
+
+(select '("Category"
+          ("*" :count t :as "NumberOfProducts")
+          ("Price" :avg t :as "AveragePrice"))
+        :from "Products"
+        :group-by "Category")
+
+(select '("FirstName" "LastName" "HireDate")
+        :from "Employees"
+        :order-by '(("HireDate" :DESC t)
+                    ("LastName" :ASC t)))
 
 (defun order-by-condition (condition)
   (str:join ", "
