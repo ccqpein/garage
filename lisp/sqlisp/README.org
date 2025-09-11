@@ -219,3 +219,14 @@ ORDER BY HireDate DESC, LastName ASC;
         :order-by '(("HireDate" :DESC t)
                     ("LastName" :ASC t)))
 #+end_src
+
+#+begin_quote
+SELECT CONCAT(FirstName, ' ', LastName) AS FullName
+FROM Customers;
+#+end_quote
+
+#+begin_src lisp
+  (select '(("FirstName" :concat (" " "LastName") :as "FullName")) :from "Customers")
+#+end_src
+
+

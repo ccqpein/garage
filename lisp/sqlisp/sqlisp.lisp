@@ -124,14 +124,25 @@
     (list (destructuring-bind (column-name
                                &key
                                  as from distinct
-                                 count sum avg min max
+                                 count sum avg min max concat
                                &allow-other-keys)
               column
+
             (cond (count (setf column-name (format nil "COUNT(~a)" column-name)))
                   (sum (setf column-name (format nil "SUM(~a)" column-name)))
                   (avg (setf column-name (format nil "AVG(~a)" column-name)))
                   (min (setf column-name (format nil "MIN(~a)" column-name)))
-                  (max (setf column-name (format nil "MAX(~a)" column-name))))
+                  (max (setf column-name (format nil "MAX(~a)" column-name)))
+
+                  (concat (setf column-name
+                                (format nil "CONCAT(~{~a~^, ~})"
+                                        (loop for s in (cons column-name concat)
+                                              if (string= s " ")
+                                                collect "' '" into res
+                                              else
+                                                collect s into res
+                                              finally (return res))))))
+            
             (cond (as (format nil "~a AS ~a" column-name as))
                   (from (format nil "~a.~a" from column-name))
                   (distinct (format nil "DISTINCT ~a" column-name))
@@ -183,6 +194,8 @@
         :from "Employees"
         :order-by '(("HireDate" :DESC t)
                     ("LastName" :ASC t)))
+
+(select '(("FirstName" :concat (" " "LastName") :as "FullName")) :from "Customers")
 
 (defun order-by-condition (condition)
   (str:join ", "
