@@ -1,0 +1,350 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Product Inventory API",
+    "description": "A simple RESTful API for managing product inventory.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health",
+      "description": "API health check operations"
+    },
+    {
+      "name": "Products",
+      "description": "Operations related to products"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "healthCheck",
+        "tags": [
+          "Health"
+        ],
+        "description": "Checks the status of the API server. Returns a simple 'OK' if the server is running.",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "text/plain": {
+                "example": "OK"
+              }
+            }
+          },
+          "405": {
+            "description": "Method Not Allowed"
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "summary": "Get All Products",
+        "operationId": "getAllProducts",
+        "tags": [
+          "Products"
+        ],
+        "description": "Retrieves a list of all products in the inventory.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved list of products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                },
+                "examples": {
+                  "productsList": {
+                    "value": [
+                      {
+                        "id": "1",
+                        "name": "Laptop",
+                        "price": 1200.00,
+                        "stock": 50
+                      },
+                      {
+                        "id": "2",
+                        "name": "Mouse",
+                        "price": 25.00,
+                        "stock": 200
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method Not Allowed"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create New Product",
+        "operationId": "createProduct",
+        "tags": [
+          "Products"
+        ],
+        "description": "Adds a new product to the inventory. Returns the created product with its assigned ID.",
+        "requestBody": {
+          "description": "Product object to be created",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewProduct"
+              },
+              "examples": {
+                "newProduct": {
+                  "value": {
+                    "name": "Keyboard",
+                    "price": 75.00,
+                    "stock": 150
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                },
+                "examples": {
+                  "createdProduct": {
+                    "value": {
+                      "id": "3",
+                      "name": "Keyboard",
+                      "price": 75.00,
+                      "stock": 150
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "405": {
+            "description": "Method Not Allowed"
+          }
+        }
+      }
+    },
+    "/products/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The unique identifier of the product.",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Get Product by ID",
+        "operationId": "getProductById",
+        "tags": [
+          "Products"
+        ],
+        "description": "Retrieves a single product by its unique identifier.",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                },
+                "examples": {
+                  "foundProduct": {
+                    "value": {
+                      "id": "1",
+                      "name": "Laptop",
+                      "price": 1200.00,
+                      "stock": 50
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Product ID is required"
+          },
+          "404": {
+            "description": "Product not found"
+          },
+          "405": {
+            "description": "Method Not Allowed"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update Product",
+        "operationId": "updateProduct",
+        "tags": [
+          "Products"
+        ],
+        "description": "Updates the details of an existing product.",
+        "requestBody": {
+          "description": "Product object with updated fields",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Product"
+              },
+              "examples": {
+                "updatedProductRequest": {
+                  "value": {
+                    "id": "1",
+                    "name": "Gaming Laptop Pro",
+                    "price": 1500.00,
+                    "stock": 45
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product successfully updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                },
+                "examples": {
+                  "updatedProductResponse": {
+                    "value": {
+                      "id": "1",
+                      "name": "Gaming Laptop Pro",
+                      "price": 1500.00,
+                      "stock": 45
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or product ID is required"
+          },
+          "404": {
+            "description": "Product not found"
+          },
+          "405": {
+            "description": "Method Not Allowed"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Product",
+        "operationId": "deleteProduct",
+        "tags": [
+          "Products"
+        ],
+        "description": "Deletes the product matching the provided ID.",
+        "responses": {
+          "204": {
+            "description": "Product successfully deleted (No Content)"
+          },
+          "400": {
+            "description": "Product ID is required"
+          },
+          "404": {
+            "description": "Product not found"
+          },
+          "405": {
+            "description": "Method Not Allowed"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the product.",
+            "readOnly": true,
+            "example": "1"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the product.",
+            "example": "Gaming Mouse"
+          },
+          "price": {
+            "type": "number",
+            "format": "float",
+            "description": "Price of the product.",
+            "example": 75.99
+          },
+          "stock": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Current stock level of the product.",
+            "example": 100
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "price",
+          "stock"
+        ]
+      },
+      "NewProduct": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the product.",
+            "example": "Gaming Keyboard"
+          },
+          "price": {
+            "type": "number",
+            "format": "float",
+            "description": "Price of the product.",
+            "example": 99.99
+          },
+          "stock": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Initial stock level of the product.",
+            "example": 200
+          }
+        },
+        "required": [
+          "name",
+          "price",
+          "stock"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+* Auto generate the API document from golang handler code
+
++ this demo is not generate the api spec doc, instead, it uses it.
++ this demo generate the some nautral language describe the api which I can put them in doc and readme
+
+  
+** Components
+
+*** get the functions call tree
+
+I want to use the golang lsp (gopls) to get the refs of function. Like generate the tree of function call inside. 3 levels deeper.
+
+this can be the general feature not only for the api generated, but also the for the some "what's this function do" stuff.
+
+*advance:*
+
+- [ ] control the tree deep level to control how many functions context to send to llm
+
+*** read the api spec
+
+need this to get more details of this api. let's say api spec is json for now. 
+
+*** read the handers 
+
+llm filters the api endpoints register. get the handler function, then can call the function tree getter to get the all functions behind. wrap them as functions context
+
+meanwhile, query the api spec for this endpoint.
+
+then send them to llm get the api doc
+
+** llm involve
+
+several parts llm will involve:
+
++ read handlers registers code, get the hander function and their related endpoint.
++ use api spec of the endpoint and the function call tree to generate the doc
+
+llm can be open source llm, no need to call the online payed api.
+
+** Executive entry
+
+go generate call the entry function.
+
+** Run it
+
+one docker compose should good for everything
