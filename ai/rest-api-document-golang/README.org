@@ -44,3 +44,11 @@ go generate call the entry function.
 ** Run it
 
 one docker compose should good for everything
+
+* Developing
+
+** gopls issue
+
+test gopls in shell and find it can find the defination of function but only give the locaiton (row number). So I maybe need some other easy way to get the whole function. Then need to pick the function call from the whole function body.
+
+So now, I actually get more features need to handle that get the whole function with the name and pick all other functions call inside. 
