@@ -216,6 +216,8 @@ func productsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // registerRoutes registers all API endpoints.
+//
+//go:generate ../doc-generater-demo/doc-generater-demo $GOFILE registerRoutes
 func registerRoutes() {
 	http.HandleFunc("/health", healthCheckHandler)
 	http.HandleFunc("/products", productsHandler) // Use a multiplexer for /products and /products/{id}
