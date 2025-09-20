@@ -1,4 +1,3 @@
-// mygenerator/main.go
 package main
 
 import (
@@ -16,18 +15,27 @@ import (
 
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
-	//openai "github.com/sashabaranov/go-openai"
 )
 
 const pickHandlersPrompt = `this is the golang rest handler register function. Try to pick the function name and the api endpoint. return the json data that the list of struct like:
 
-[{"endpoint": "aa/bb/cc", "funcName": "healthCheckHandler", lnum: 2, colNum: 12}...]
-
-lnum is the specific endpoint's line number in code snippet.
-colNume is the *funcName* colomn number (can give any value in the range)
+[{"endpoint": "aa/bb/cc", "funcName": "healthCheckHandler"}...]
 
 don't return anything else, the data is:
 
+
+`
+
+const pickFuncCallInside = `this is the golang function code. pick the functions those called inside this function. pick the functions names out those will be used for lsp to find the defination. ignore all the std lib or some popular open source lib's funcions. format them like this:
+
+["healthCheckHandler"...]
+
+don't return anything else, the data is:
+
+
+`
+
+const thisEndpointDoc = `this is the api handler function of endpoint %s and all functions it calls inside. Use these codes to generate the human readable doc that what this handle function doing:
 
 `
 
@@ -51,14 +59,14 @@ func callLLM(words string) (string, error) {
 	return chatCompletion.Choices[0].Message.Content, nil
 }
 
-func getFunctionDefination(filePath, funcName string, level int) (string, int, error) {
+// get the function declaration from the file
+func getFunctionDefination(filePath, funcName string) (string, int, error) {
 	sourceCode, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Fatalf("Error reading source file %s: %v", filePath, err)
 	}
 
 	regexPattern := fmt.Sprintf(`func\s+%s\s*\(.*?\)\s*\{\n(?s:.*?)\n\s*\}`, regexp.QuoteMeta(funcName))
-	//fmt.Println("regexPattern: ", regexPattern)
 
 	re := regexp.MustCompile(regexPattern)
 
@@ -73,6 +81,7 @@ func getFunctionDefination(filePath, funcName string, level int) (string, int, e
 	}
 }
 
+// get the symbols line number and col number with gopls
 func getGoplsDefinition(sourceFilePath string, queryLine int, queryCol int) (string, int, int, error) {
 	// Construct the argument for gopls
 	posArg := fmt.Sprintf("%s:%d:%d", sourceFilePath, queryLine, queryCol)
@@ -88,30 +97,109 @@ func getGoplsDefinition(sourceFilePath string, queryLine int, queryCol int) (str
 	}
 
 	outputStr := strings.TrimSpace(string(output))
+	fmt.Printf("outputStr: %v\n", outputStr)
 
-	re := regexp.MustCompile(`^(?P<path>.+):(?P<line>\d+):(?P<col>\d+)(?:-\d+)?(?:.*$)`)
+	re := regexp.MustCompile(`(?s)^(.+?):(\d+):(\d+)(?:-\d+)?.*$`)
 
 	match := re.FindStringSubmatch(outputStr)
-	if match == nil || len(match) < 4 { // Expect at least 4 groups: full match, path, line, col
-		return "", 0, 0, fmt.Errorf("failed to parse gopls output: %s", outputStr)
+
+	var filePath, lineStr, colStr string
+	var line, col int
+
+	if len(match) >= 3 {
+		filePath = match[1] // The first captured group (path)
+		lineStr = match[2]  // The second captured group (line number)
+		colStr = match[3]   // The third captured group (column number)
+
+		line, _ = strconv.Atoi(lineStr)
+		col, _ = strconv.Atoi(colStr)
+
+		fmt.Printf("File Path: %s\n", filePath)
+		fmt.Printf("Line: %d\n", line)
+		fmt.Printf("Column: %d\n", col)
+
+		// Desired output format:
+		fmt.Printf("Extracted: %s %d %d\n", filePath, line, col)
+
+	} else {
+		fmt.Printf("No match found or regex failed to capture all components. Matches: %+v.\n", match)
 	}
 
-	// Extract captured groups by name
-	resultPath := match[re.SubexpIndex("path")]
-	resultLineStr := match[re.SubexpIndex("line")]
-	resultColStr := match[re.SubexpIndex("col")]
-
-	resultLine, err := strconv.Atoi(resultLineStr)
+	resultLine, err := strconv.Atoi(lineStr)
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("failed to convert line number '%s' to int: %w", resultLineStr, err)
+		return "", 0, 0, fmt.Errorf("failed to convert line number '%s' to int: %w", lineStr, err)
 	}
 
-	resultCol, err := strconv.Atoi(resultColStr)
+	resultCol, err := strconv.Atoi(colStr)
 	if err != nil {
-		return "", 0, 0, fmt.Errorf("failed to convert column number '%s' to int: %w", resultColStr, err)
+		return "", 0, 0, fmt.Errorf("failed to convert column number '%s' to int: %w", colStr, err)
 	}
 
-	return resultPath, resultLine, resultCol, nil
+	return filePath, resultLine, resultCol, nil
+}
+
+func pickLineColNum(codeSnippet string, symbolName string) (int, int, error) {
+	lines := strings.Split(codeSnippet, "\n")
+
+	for i, line := range lines {
+		lineNumber := i // Line numbers are 1-based
+
+		colIndex := strings.Index(line, symbolName)
+
+		if colIndex != -1 {
+			columnNumber := colIndex + 1
+			return lineNumber, columnNumber, nil
+		}
+	}
+
+	// If the loop completes, the symbol was not found
+	return 0, 0, fmt.Errorf("symbol '%s' not found in the code snippet", symbolName)
+}
+
+func recQueryfuncs(filePath string, funcName string, level int) ([]string, error) {
+	if level == 0 {
+		return nil, nil
+	}
+
+	// 1. get the function def
+	code, linenum, err := getFunctionDefination(filePath, funcName)
+	if err != nil {
+		return nil, fmt.Errorf("getFunctionDefination error: %w", err)
+	}
+
+	functionChain := []string{code}
+
+	// 2. pick those functions call inside (symbols)
+	llmResp, err := callLLM(pickFuncCallInside + code)
+	fmt.Printf("llmResp: %v\n", llmResp)
+	funcSyms := []string{}
+	if err := json.Unmarshal([]byte(llmResp), &funcSyms); err != nil {
+		return nil, err
+	}
+
+	// 3. pick the symbols row, col
+	for _, s := range funcSyms {
+		r, c, err := pickLineColNum(code, s)
+		if err != nil {
+			return nil, err
+		}
+
+		// 4. ask gopls where are them
+		fp, _, _, err := getGoplsDefinition(filePath, r+linenum, c)
+		if err != nil {
+			fmt.Printf("error when getGoplsDefinition: %+v\n", err)
+		}
+
+		// 5. call the next level
+		nextChains, err := recQueryfuncs(fp, s, level-1)
+		if err != nil {
+			fmt.Printf("error when recQueryfuncs: %+v\n", err)
+		}
+
+		functionChain = append(functionChain, nextChains...)
+	}
+
+	return functionChain, nil
 }
 
 func main() {
@@ -124,26 +212,26 @@ func main() {
 	sourceFilePath := os.Args[1]
 	functionName := os.Args[2]
 
-	def, ln, err := getFunctionDefination(sourceFilePath, functionName, 0)
+	// get the function code
+	code, ln, err := getFunctionDefination(sourceFilePath, functionName)
 	if err != nil {
 		panic(err)
 	} else {
-		fmt.Printf("%+v, %+v\n", def, ln)
+		fmt.Printf("%+v, %+v\n", code, ln)
 	}
 
 	// call llm to pick the endpoint and the
-	llmResp, err := callLLM(pickHandlersPrompt + def)
+	llmResp, err := callLLM(pickHandlersPrompt + code)
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Printf("llmResp: %+v\n", llmResp)
 
+	// get all endpoints and functions
 	endpoints := []struct {
-		endpoint string
-		funcName string
-		lnum     int
-		colNum   int
+		Endpoint string
+		Funcname string
 	}{}
 
 	if err := json.Unmarshal([]byte(llmResp), &endpoints); err != nil {
@@ -152,11 +240,35 @@ func main() {
 
 	fmt.Printf("%+v\n", endpoints)
 
-	for _, ee := range endpoints {
-		ee.lnum += ln - 1
+	for _, ep := range endpoints {
+		fmt.Printf("start to doc the endpoint: %+v\n", ep)
+
+		rn, cn, err := pickLineColNum(code, ep.Funcname)
+		if err != nil {
+			fmt.Printf("main err on pick handler funcion row and col: %+v\n", err)
+			continue
+		}
+
+		fmt.Printf("func %v rn %v cn %v\n", ep.Endpoint, rn, cn)
+
+		fp, _, _, err := getGoplsDefinition(sourceFilePath, rn+ln, cn)
+		if err != nil {
+			fmt.Printf("main err on getGoplsDefinition: %+v\n", err)
+			continue
+		}
+
+		allCodes, err := recQueryfuncs(fp, ep.Funcname, 1)
+		if err != nil {
+			fmt.Printf("main err on recQueryfuncs: %+v\n", err)
+			continue
+		}
+
+		doc, err := callLLM(fmt.Sprintf(thisEndpointDoc, ep.Endpoint) + strings.Join(allCodes, "\n\n"))
+		if err != nil {
+			fmt.Printf("main err on recQueryfuncs: %+v\n", err)
+			continue
+		}
+
+		fmt.Printf("doc for endpoint %s:\n%s\n", ep.Endpoint, doc)
 	}
-
-	fmt.Printf("updated?: %+v\n", endpoints)
-
-	//for _,ee :=range endpoints {}
 }

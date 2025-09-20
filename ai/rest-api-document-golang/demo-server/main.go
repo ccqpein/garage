@@ -219,10 +219,14 @@ func productsHandler(w http.ResponseWriter, r *http.Request) {
 //
 //go:generate ../doc-generater-demo/doc-generater-demo $GOFILE registerRoutes
 func registerRoutes() {
-	http.HandleFunc("/health", healthCheckHandler)
 	http.HandleFunc("/products", productsHandler) // Use a multiplexer for /products and /products/{id}
-	http.HandleFunc("/products/", productsHandler)
 }
+
+// func registerRoutes() {
+// 	http.HandleFunc("/health", healthCheckHandler)
+// 	http.HandleFunc("/products", productsHandler) // Use a multiplexer for /products and /products/{id}
+// 	http.HandleFunc("/products/", productsHandler)
+// }
 
 func main() {
 	registerRoutes()
