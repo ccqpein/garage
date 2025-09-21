@@ -60,13 +60,14 @@ func callLLM(words string) (string, error) {
 }
 
 // get the function declaration from the file
+// return the code snippets and the line number
 func getFunctionDefination(filePath, funcName string) (string, int, error) {
 	sourceCode, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Fatalf("Error reading source file %s: %v", filePath, err)
 	}
 
-	regexPattern := fmt.Sprintf(`func\s+%s\s*\(.*?\)\s*\{\n(?s:.*?)\n\s*\}`, regexp.QuoteMeta(funcName))
+	regexPattern := fmt.Sprintf(`func(?:\s*\((?P<receiver>[^)]+)\))?\s+(%s\w*)\s*\([^)]*\)(?:\s*(?:[a-zA-Z_]\w*(?:\s*,\s*[a-zA-Z_]\w*)*|\([^)]*\)))?\s*\{(?P<body>[\s\S]*?)\n\}\s*(?:$|\n)`, regexp.QuoteMeta(funcName))
 
 	re := regexp.MustCompile(regexPattern)
 
@@ -138,6 +139,7 @@ func getGoplsDefinition(sourceFilePath string, queryLine int, queryCol int) (str
 	return filePath, resultLine, resultCol, nil
 }
 
+// give the code snippet and symbol name and return the row number and col number of this symbol
 func pickLineColNum(codeSnippet string, symbolName string) (int, int, error) {
 	lines := strings.Split(codeSnippet, "\n")
 

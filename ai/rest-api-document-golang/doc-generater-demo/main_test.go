@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -29,4 +30,32 @@ productsHandler acts as a simple router for /products and /products/{id}.`
 
 	match := re.FindStringSubmatch(case0)
 	t.Log(match)
+}
+
+func TestGetFunctionDefination(t *testing.T) {
+
+	case0 := `func a(x int, y int) {
+}`
+
+	//regexPattern := fmt.Sprintf(`(?s)^func(?:\s*\(([^)]+)\))?\s+(%s\w*)\s*\([^)]*\)(?:\s*(?:[a-zA-Z_]\w*(?:\s*,\s*[a-zA-Z_]\w*)*|\([^)]*\)))?\s*\{(?s:.*?)\}`, regexp.QuoteMeta("a"))
+	regexPattern := fmt.Sprintf(`func(?:\s*\((?P<receiver>[^)]+)\))?\s+(%s\w*)\s*\([^)]*\)(?:\s*(?:[a-zA-Z_]\w*(?:\s*,\s*[a-zA-Z_]\w*)*|\([^)]*\)))?\s*\{(?P<body>[\s\S]*?)\n\}\s*(?:$|\n)`, regexp.QuoteMeta("a"))
+	re := regexp.MustCompile(regexPattern)
+
+	matches := re.FindStringSubmatch(string(case0))
+
+	t.Log(matches[0])
+
+	case1 := `func registerRoutes2() {
+	http.HandleFunc("/health", healthCheckHandler)
+	http.HandleFunc("/products", productsHandler)
+	http.HandleFunc("/products/", productsHandler)
+}`
+
+	regexPattern = fmt.Sprintf(`func(?:\s*\((?P<receiver>[^)]+)\))?\s+(%s\w*)\s*\([^)]*\)(?:\s*(?:[a-zA-Z_]\w*(?:\s*,\s*[a-zA-Z_]\w*)*|\([^)]*\)))?\s*\{(?P<body>[\s\S]*?)\n\}\s*(?:$|\n)`, regexp.QuoteMeta("registerRoutes2"))
+	//regexPattern = fmt.Sprintf(`(?s)^func(?:\s*\(([^)]+)\))?\s+(%s\w*)\s*\([^)]*\)(?:\s*(?:[a-zA-Z_]\w*(?:\s*,\s*[a-zA-Z_]\w*)*|\([^)]*\)))?\s*\{(?s:.*?)\}`, regexp.QuoteMeta("registerRoutes2"))
+	re = regexp.MustCompile(regexPattern)
+	matches = re.FindStringSubmatch(string(case1))
+
+	t.Log(matches[0])
+
 }
