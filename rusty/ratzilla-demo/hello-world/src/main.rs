@@ -44,9 +44,9 @@ fn main() -> io::Result<()> {
     //     );
     // });
 
+    let mut rng = rand::rng();
     terminal.draw_web(move |f| {
         let size = f.area();
-        let mut rng = rand::rng();
 
         for y in 0..size.height {
             for x in 0..size.width {
