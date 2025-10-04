@@ -7,6 +7,7 @@ use qdrant_client::qdrant::{
 };
 use qdrant_client::{Payload, Qdrant};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::error::Error;
 use std::{env, marker::PhantomData};
 use uuid::Uuid;
@@ -91,7 +92,8 @@ struct EmbedContentRequest {
     model_id: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    embedding_config: Option<EmbeddingConfig>,
+    //embedding_config: Option<EmbeddingConfig>,
+    output_dimensionality: Option<u64>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -108,12 +110,12 @@ struct EmbedContentResponse {
 // hard code everything
 pub async fn call(msg: Option<&'static str>) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
     let google_client = APIClient::new(
-        "https://generativelanguage.googleapis.com/v1beta/models/embedding-001:embedContent"
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
             .to_string(),
         "x-goog-api-key".to_string(),
         env::var("GEMINI_API_KEY")
             .expect("GEMINI_API_KEY must be set in your environment variables"),
-        "models/embedding-001".to_string(),
+        "models/gemini-embedding-001".to_string(),
     );
 
     let text_to_embed = msg.unwrap_or("Hello, world! This is a test for the Gemini Embedding API.");
@@ -125,11 +127,12 @@ pub async fn call(msg: Option<&'static str>) -> Result<Vec<f32>, Box<dyn std::er
             }],
         },
         model_id: google_client.model_version.clone(),
-        ..Default::default()
+        output_dimensionality: Some(768),
     };
 
     println!("Sending request to Gemini Embedding API...");
     println!("Text to embed: \"{}\"", text_to_embed);
+    println!("The request I sent: \"{}\"", json!(request_body));
 
     let embedding_response: EmbedContentResponse = google_client.call_api(request_body).await?;
     println!("\nSuccessfully received embedding from Gemini API");
