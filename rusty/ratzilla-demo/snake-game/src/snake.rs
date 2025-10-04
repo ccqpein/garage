@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+#[derive(Debug, Eq, PartialEq)]
 enum Status {
     Eaten,  // eat one food
     Full,   // win
@@ -39,10 +40,28 @@ struct SnakeWidget {
     body: VecDeque<(u32, u32)>,
     dir: Dir,
 
-    /// row axis limit, 0 indexed
+    /// row axis limit, 1 indexed
     row_limit: u32,
-    /// col axis limit, 0 indexed
+    /// col axis limit, 1 indexed
     col_limit: u32,
+}
+
+impl SnakeWidget {
+    fn new(row_limit: u32, col_limit: u32) -> Result<Self, String> {
+        let a = row_limit / 2;
+        let b = col_limit / 2;
+
+        if a == row_limit - 1 {
+            return Err("too small row limit".to_string());
+        }
+
+        Ok(Self {
+            body: vec![(a, b), (a + 1, b)].into(),
+            dir: Dir::Up,
+            row_limit,
+            col_limit,
+        })
+    }
 }
 
 // impl<'s> Snake<'s, (u32, u32)> for SnakeWidget {
@@ -138,7 +157,7 @@ impl Snake for SnakeWidget {
                 }
             }
             Dir::Down => {
-                if head.0 == self.row_limit {
+                if head.0 == self.row_limit - 1 {
                     Ok(None)
                 } else {
                     Ok(Some((head.0 + 1, head.1)))
@@ -152,7 +171,7 @@ impl Snake for SnakeWidget {
                 }
             }
             Dir::Right => {
-                if head.1 == self.col_limit {
+                if head.1 == self.col_limit - 1 {
                     Ok(None)
                 } else {
                     Ok(Some((head.0, head.1 + 1)))
@@ -164,9 +183,7 @@ impl Snake for SnakeWidget {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::VecDeque;
-
-    use crate::snake::{Dir, Snake, SnakeWidget};
+    use crate::snake::{Dir, Snake, SnakeWidget, Status};
 
     // #[test]
     // fn trait_impl_test() {
@@ -179,4 +196,39 @@ mod tests {
     //         col_limit: 1,
     //     })
     // }
+
+    #[test]
+    fn next_head_test() {
+        let mut sw = SnakeWidget::new(10, 10).unwrap();
+
+        let nh = sw.next_head();
+        assert!(nh.is_ok());
+        let nh = nh.unwrap();
+        assert!(nh.is_some());
+        assert_eq!(nh.unwrap(), (4u32, 5u32));
+
+        assert!(sw.one_step(&(0, 0)).is_ok());
+        assert_eq!(sw.body().collect::<Vec<_>>(), vec![&(4, 5), &(5, 5)]);
+
+        assert!(sw.one_step(&(0, 0)).is_ok());
+        assert_eq!(sw.body().collect::<Vec<_>>(), vec![&(3, 5), &(4, 5)]);
+
+        // turn sw to left
+        sw.dir = Dir::Left;
+        assert!(sw.one_step(&(0, 0)).is_ok());
+        assert_eq!(sw.body().collect::<Vec<_>>(), vec![&(3, 4), &(3, 5)]);
+
+        // eat the food
+        assert_eq!(sw.one_step(&(3, 3)), Ok(Status::Eaten));
+        assert_eq!(
+            sw.body().collect::<Vec<_>>(),
+            vec![&(3, 3), &(3, 4), &(3, 5)]
+        );
+
+        assert!(sw.one_step(&(0, 0)).is_ok());
+        assert!(sw.one_step(&(0, 0)).is_ok());
+        assert!(sw.one_step(&(0, 0)).is_ok());
+        //dbg!(sw.body().collect::<Vec<_>>());
+        assert_eq!(sw.one_step(&(0, 0)), Ok(Status::Lose));
+    }
 }
