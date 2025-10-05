@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 #[derive(Debug, Eq, PartialEq)]
-enum Status {
+pub enum Status {
     Eaten,  // eat one food
     Full,   // win
     Normal, // keep playing
@@ -36,18 +36,18 @@ enum Dir {
     Right,
 }
 
-struct SnakeWidget {
-    body: VecDeque<(u32, u32)>,
-    dir: Dir,
+pub struct SnakeWidget {
+    pub body: VecDeque<(u16, u16)>,
+    pub dir: Dir,
 
     /// row axis limit, 1 indexed
-    row_limit: u32,
+    pub row_limit: u16,
     /// col axis limit, 1 indexed
-    col_limit: u32,
+    pub col_limit: u16,
 }
 
 impl SnakeWidget {
-    fn new(row_limit: u32, col_limit: u32) -> Result<Self, String> {
+    pub fn new(row_limit: u16, col_limit: u16) -> Result<Self, String> {
         let a = row_limit / 2;
         let b = col_limit / 2;
 
@@ -64,16 +64,16 @@ impl SnakeWidget {
     }
 }
 
-// impl<'s> Snake<'s, (u32, u32)> for SnakeWidget {
-//     fn body(&'s self) -> impl Iterator<Item = &'s (u32, u32)> {
+// impl<'s> Snake<'s, (u16, u16)> for SnakeWidget {
+//     fn body(&'s self) -> impl Iterator<Item = &'s (u16, u16)> {
 //         self.body.iter()
 //     }
 
-//     fn one_step(&'s mut self, food: &(u32, u32)) -> Result<Status, String> {
+//     fn one_step(&'s mut self, food: &(u16, u16)) -> Result<Status, String> {
 //         todo!()
 //     }
 
-//     fn next_head(&'s self) -> Result<Option<(u32, u32)>, String> {
+//     fn next_head(&'s self) -> Result<Option<(u16, u16)>, String> {
 //         let head = self.body.front().ok_or("snake is empty".to_string())?;
 //         match self.dir {
 //             Dir::Up => {
@@ -108,7 +108,7 @@ impl SnakeWidget {
 //     }
 // }
 
-trait Snake {
+pub(crate) trait Snake {
     type Coord;
     /// get the body
     fn body<'s>(&'s self) -> impl Iterator<Item = &'s Self::Coord>;
@@ -122,7 +122,7 @@ trait Snake {
 }
 
 impl Snake for SnakeWidget {
-    type Coord = (u32, u32);
+    type Coord = (u16, u16);
 
     fn body<'s>(&'s self) -> impl Iterator<Item = &'s Self::Coord> {
         self.body.iter()
@@ -188,7 +188,7 @@ mod tests {
     // #[test]
     // fn trait_impl_test() {
     //     // function
-    //     fn a<'a>(_: impl Snake<'a, (u32, u32)>) {}
+    //     fn a<'a>(_: impl Snake<'a, (u16, u16)>) {}
     //     a(SnakeWidget {
     //         body: VecDeque::new(),
     //         dir: Dir::Up,
@@ -205,7 +205,7 @@ mod tests {
         assert!(nh.is_ok());
         let nh = nh.unwrap();
         assert!(nh.is_some());
-        assert_eq!(nh.unwrap(), (4u32, 5u32));
+        assert_eq!(nh.unwrap(), (4u16, 5u16));
 
         assert!(sw.one_step(&(0, 0)).is_ok());
         assert_eq!(sw.body().collect::<Vec<_>>(), vec![&(4, 5), &(5, 5)]);
