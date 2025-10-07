@@ -1,4 +1,4 @@
-use std::{cell::RefCell, io, rc::Rc};
+use std::io;
 
 use rand::Rng;
 use ratzilla::{

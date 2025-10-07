@@ -5,6 +5,7 @@ use ratzilla::{
     CanvasBackend,
     ratatui::{Frame, Terminal, layout::Rect, widgets::Block},
 };
+use ratzilla::{WebRenderer, event::KeyCode};
 
 mod snake;
 use snake::*;
@@ -23,8 +24,16 @@ fn main() -> io::Result<()> {
     let terminal = Terminal::new(backend)?;
 
     let mut rng = rand::rng();
-    let mut snake = SnakeWidget::new(10, 10); //:= need some tricks to get the size
-    terminal.draw_web(move |f| {});
+    let mut snake = SnakeWidget::new(0, 0)?;
+    terminal.draw_web(move |f| {
+        let size = f.area();
+        if snake.row_limit == 0 {
+            snake.row_limit = size.height;
+            snake.col_limit = size.width;
+        }
+
+        let mut snake = SnakeWidget::new(size.height); //:= need some tricks to get the size
+    });
 
     Ok(())
 }
