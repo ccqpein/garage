@@ -40,26 +40,30 @@ pub struct SnakeWidget {
     pub body: VecDeque<(u16, u16)>,
     pub dir: Dir,
 
-    /// row axis limit, 1 indexed
-    pub row_limit: u16,
-    /// col axis limit, 1 indexed
-    pub col_limit: u16,
+    // X -->
+    // Y
+    // |
+    // v
+    /// x axis limit, 1 indexed
+    pub x_limit: u16,
+    /// y axis limit, 1 indexed
+    pub y_limit: u16,
 }
 
 impl SnakeWidget {
-    pub fn new(row_limit: u16, col_limit: u16) -> Result<Self, String> {
-        let a = row_limit / 2;
-        let b = col_limit / 2;
+    pub fn new(x_limit: u16, y_limit: u16) -> Result<Self, String> {
+        let a = x_limit / 2;
+        let b = y_limit / 2;
 
-        if a == row_limit - 1 {
+        if b == y_limit - 1 {
             return Err("too small row limit".to_string());
         }
 
         Ok(Self {
             body: vec![(a, b), (a + 1, b)].into(),
             dir: Dir::Up,
-            row_limit,
-            col_limit,
+            x_limit,
+            y_limit,
         })
     }
 }
@@ -147,34 +151,38 @@ impl Snake for SnakeWidget {
     }
 
     fn next_head(&self) -> Result<Option<Self::Coord>, String> {
+        // X --->
+        // Y
+        // |
+        // v
         let head = self.body.front().ok_or("snake is empty".to_string())?;
         match self.dir {
             Dir::Up => {
-                if head.0 == 0 {
-                    Ok(None)
-                } else {
-                    Ok(Some((head.0 - 1, head.1)))
-                }
-            }
-            Dir::Down => {
-                if head.0 == self.row_limit - 1 {
-                    Ok(None)
-                } else {
-                    Ok(Some((head.0 + 1, head.1)))
-                }
-            }
-            Dir::Left => {
                 if head.1 == 0 {
                     Ok(None)
                 } else {
                     Ok(Some((head.0, head.1 - 1)))
                 }
             }
-            Dir::Right => {
-                if head.1 == self.col_limit - 1 {
+            Dir::Down => {
+                if head.1 == self.y_limit - 1 {
                     Ok(None)
                 } else {
                     Ok(Some((head.0, head.1 + 1)))
+                }
+            }
+            Dir::Left => {
+                if head.0 == 0 {
+                    Ok(None)
+                } else {
+                    Ok(Some((head.0 - 1, head.1)))
+                }
+            }
+            Dir::Right => {
+                if head.0 == self.x_limit - 1 {
+                    Ok(None)
+                } else {
+                    Ok(Some((head.0 + 1, head.1)))
                 }
             }
         }
