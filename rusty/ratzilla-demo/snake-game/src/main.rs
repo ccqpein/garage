@@ -1,5 +1,8 @@
 use std::io;
 
+use std::thread;
+use std::time::Duration;
+
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use ratzilla::{
@@ -26,6 +29,8 @@ struct RenderArgs {
 
     each_width: u16,
     each_height: u16,
+
+    init_board_yet: bool,
 }
 
 /// get the range, return the start point and the width
@@ -58,6 +63,7 @@ fn render_board(
             y_start,
             each_width,
             each_height,
+            init_board_yet: false,
         })
     }
 
@@ -78,36 +84,78 @@ fn render_board(
     // }
 
     // init the board
-    for x in 0..snake.x_limit {
-        for y in 0..snake.y_limit {
-            let character = format!(
-                "{}, {}",
-                x * each_width + x_start,
-                y * each_height + y_start
-            );
-            //console::log_1(&JsValue::from_str(&format!("{x}, {y}")));
-            let color = match rng.random_range(0..5) {
-                0 => Color::Red,
-                1 => Color::Green,
-                2 => Color::Blue,
-                3 => Color::Yellow,
-                _ => Color::DarkGray,
-            };
-            let block = Block::default().style(Style::default().bg(color));
+    if !args.as_ref().unwrap().init_board_yet {
+        for x in 0..snake.x_limit {
+            for y in 0..snake.y_limit {
+                let color = Color::DarkGray;
+                let block = Block::default().style(Style::default().bg(color));
 
-            f.render_widget(
-                Paragraph::new(character)
-                    .alignment(Alignment::Center)
-                    .block(block),
-                Rect::new(
-                    x * each_width + x_start,
-                    y * each_height + y_start,
-                    each_width,
-                    each_height,
-                ),
-            );
+                f.render_widget(
+                    block,
+                    Rect::new(
+                        x * each_width + x_start,
+                        y * each_height + y_start,
+                        each_width,
+                        each_height,
+                    ),
+                );
+            }
         }
+        args.as_mut().unwrap().init_board_yet = true
     }
+
+    //:= need the timer here
+
+    for (x, y) in snake.body() {
+        // console::log_1(&JsValue::from_str(&format!(
+        //     "{:?}",
+        //     snake.body().collect::<Vec<_>>()
+        // )));
+        let color = Color::DarkGray;
+        let block = Block::default().style(Style::default().bg(color));
+
+        f.render_widget(
+            block,
+            Rect::new(
+                x * each_width + x_start,
+                y * each_height + y_start,
+                each_width,
+                each_height,
+            ),
+        );
+    }
+    snake.one_step(&(0, 0));
+
+    // for x in 0..snake.x_limit {
+    //     for y in 0..snake.y_limit {
+    //         let character = format!(
+    //             "{}, {}",
+    //             x * each_width + x_start,
+    //             y * each_height + y_start
+    //         );
+    //         //console::log_1(&JsValue::from_str(&format!("{x}, {y}")));
+    //         let color = match rng.random_range(0..5) {
+    //             0 => Color::Red,
+    //             1 => Color::Green,
+    //             2 => Color::Blue,
+    //             3 => Color::Yellow,
+    //             _ => Color::DarkGray,
+    //         };
+    //         let block = Block::default().style(Style::default().bg(color));
+
+    //         f.render_widget(
+    //             Paragraph::new(character)
+    //                 .alignment(Alignment::Center)
+    //                 .block(block),
+    //             Rect::new(
+    //                 x * each_width + x_start,
+    //                 y * each_height + y_start,
+    //                 each_width,
+    //                 each_height,
+    //             ),
+    //         );
+    //     }
+    // }
 }
 
 fn main() -> io::Result<()> {
@@ -115,9 +163,9 @@ fn main() -> io::Result<()> {
     let backend = CanvasBackend::new_with_size(1210, 779)?;
     let terminal = Terminal::new(backend)?;
 
-    // let mut rng = rand::rng();
     let mut snake = SnakeWidget::new(12, 8).unwrap();
     let mut render_arg = None;
+
     terminal.draw_web(move |f| {
         render_board(f, &mut render_arg, &mut snake, &mut rng);
     });

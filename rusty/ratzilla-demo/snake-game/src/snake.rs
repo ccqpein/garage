@@ -68,50 +68,6 @@ impl SnakeWidget {
     }
 }
 
-// impl<'s> Snake<'s, (u16, u16)> for SnakeWidget {
-//     fn body(&'s self) -> impl Iterator<Item = &'s (u16, u16)> {
-//         self.body.iter()
-//     }
-
-//     fn one_step(&'s mut self, food: &(u16, u16)) -> Result<Status, String> {
-//         todo!()
-//     }
-
-//     fn next_head(&'s self) -> Result<Option<(u16, u16)>, String> {
-//         let head = self.body.front().ok_or("snake is empty".to_string())?;
-//         match self.dir {
-//             Dir::Up => {
-//                 if head.0 == 0 {
-//                     Ok(None)
-//                 } else {
-//                     Ok(Some((head.0 - 1, head.1)))
-//                 }
-//             }
-//             Dir::Down => {
-//                 if head.0 == self.row_limit {
-//                     Ok(None)
-//                 } else {
-//                     Ok(Some((head.0 + 1, head.1)))
-//                 }
-//             }
-//             Dir::Left => {
-//                 if head.1 == 0 {
-//                     Ok(None)
-//                 } else {
-//                     Ok(Some((head.0, head.1 - 1)))
-//                 }
-//             }
-//             Dir::Right => {
-//                 if head.1 == self.col_limit {
-//                     Ok(None)
-//                 } else {
-//                     Ok(Some((head.0, head.1 + 1)))
-//                 }
-//             }
-//         }
-//     }
-// }
-
 pub(crate) trait Snake {
     type Coord;
     /// get the body
