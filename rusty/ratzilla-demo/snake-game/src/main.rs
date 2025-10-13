@@ -19,6 +19,15 @@ use snake::*;
 use wasm_bindgen::JsValue;
 use web_sys::console;
 
+/// just the wrapper of rendor arguments
+struct RenderArgs {
+    x_start: u16,
+    y_start: u16,
+
+    each_width: u16,
+    each_height: u16,
+}
+
 /// get the range, return the start point and the width
 fn range_make(v: u16, div: u16) -> (u16, u16) {
     if v % div == 0 {
@@ -29,20 +38,37 @@ fn range_make(v: u16, div: u16) -> (u16, u16) {
     }
 }
 
-fn render_board(f: &mut Frame, snake: &mut SnakeWidget, rng: &mut ThreadRng) {
+fn render_board(
+    f: &mut Frame,
+    args: &mut Option<RenderArgs>,
+    snake: &mut SnakeWidget,
+    rng: &mut ThreadRng,
+) {
     // the size should sync with the snake limit
-    let size = f.area();
-    let y_all = size.height;
-    let x_all = size.width;
+    if args.is_none() {
+        let size = f.area();
+        let y_all = size.height;
+        let x_all = size.width;
 
-    // let each_height = y_all / (snake.y_limit + 2);
-    // let each_width = x_all / (snake.x_limit + 2);
+        let (x_start, each_width) = range_make(x_all, snake.x_limit);
+        let (y_start, each_height) = range_make(y_all, snake.y_limit);
 
-    let (x_start, each_width) = range_make(x_all, snake.x_limit);
-    let (y_start, each_height) = range_make(y_all, snake.y_limit);
+        *args = Some(RenderArgs {
+            x_start,
+            y_start,
+            each_width,
+            each_height,
+        })
+    }
+
+    let x_start = args.as_ref().unwrap().x_start;
+    let y_start = args.as_ref().unwrap().y_start;
+    let each_width = args.as_ref().unwrap().each_width;
+    let each_height = args.as_ref().unwrap().each_height;
+
     let msg = format!(
         "{each_height}, {each_width}, {x_start}, {y_start}, {:?}\n",
-        size.clone()
+        f.area(),
     );
 
     // 4, 8, 8, 4, Rect { x: 0, y: 0, width: 120, height: 40 }
@@ -52,8 +78,8 @@ fn render_board(f: &mut Frame, snake: &mut SnakeWidget, rng: &mut ThreadRng) {
     // }
 
     // init the board
-    for x in (0..snake.x_limit) {
-        for y in (0..snake.y_limit) {
+    for x in 0..snake.x_limit {
+        for y in 0..snake.y_limit {
             let character = format!(
                 "{}, {}",
                 x * each_width + x_start,
@@ -91,8 +117,9 @@ fn main() -> io::Result<()> {
 
     // let mut rng = rand::rng();
     let mut snake = SnakeWidget::new(12, 8).unwrap();
+    let mut render_arg = None;
     terminal.draw_web(move |f| {
-        render_board(f, &mut snake, &mut rng);
+        render_board(f, &mut render_arg, &mut snake, &mut rng);
     });
 
     Ok(())
