@@ -1,8 +1,4 @@
-use std::io;
-
-use std::thread;
-use std::time::Duration;
-
+#![feature(duration_constants)]
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use ratzilla::{
@@ -14,11 +10,13 @@ use ratzilla::{
         widgets::{Block, Paragraph},
     },
 };
+use std::{cell::RefCell, io, rc::Rc};
 
 use ratzilla::{WebRenderer, event::KeyCode};
 
 mod snake;
 use snake::*;
+
 use wasm_bindgen::JsValue;
 use web_sys::console;
 
@@ -104,8 +102,6 @@ fn render_board(
         args.as_mut().unwrap().init_board_yet = true
     }
 
-    //:= need the timer here
-
     for (x, y) in snake.body() {
         // console::log_1(&JsValue::from_str(&format!(
         //     "{:?}",
@@ -163,8 +159,19 @@ fn main() -> io::Result<()> {
     let backend = CanvasBackend::new_with_size(1210, 779)?;
     let terminal = Terminal::new(backend)?;
 
-    let mut snake = SnakeWidget::new(12, 8).unwrap();
+    let dir = Rc::new(RefCell::new(Dir::Up));
+
+    let mut snake = SnakeWidget::new(12, 8, Rc::clone(&dir)).unwrap();
     let mut render_arg = None;
+
+    terminal.on_key_event({
+        move |key_event| {
+            if key_event.code == KeyCode::Char(' ') {
+                //:= todo
+                *dir.borrow_mut() = Dir::Left
+            }
+        }
+    });
 
     terminal.draw_web(move |f| {
         render_board(f, &mut render_arg, &mut snake, &mut rng);

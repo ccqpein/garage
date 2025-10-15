@@ -1,4 +1,7 @@
-use std::collections::VecDeque;
+//use instant::{Duration, Instant};
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+//use std::time::{Duration, Instant};
+use web_time::{Duration, Instant};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Status {
@@ -29,7 +32,7 @@ pub enum Status {
 //     // fn pop_back(&'s mut self) -> Result<Status, String>;
 // }
 
-enum Dir {
+pub enum Dir {
     Up,
     Down,
     Left,
@@ -38,7 +41,7 @@ enum Dir {
 
 pub struct SnakeWidget {
     pub body: VecDeque<(u16, u16)>,
-    pub dir: Dir,
+    pub dir: Rc<RefCell<Dir>>,
 
     // X -->
     // Y
@@ -48,10 +51,13 @@ pub struct SnakeWidget {
     pub x_limit: u16,
     /// y axis limit, 1 indexed
     pub y_limit: u16,
+    // the easiest way to modify the speed
+    duration: Duration,
+    last_move_time: Instant,
 }
 
 impl SnakeWidget {
-    pub fn new(x_limit: u16, y_limit: u16) -> Result<Self, String> {
+    pub fn new(x_limit: u16, y_limit: u16, dir: Rc<RefCell<Dir>>) -> Result<Self, String> {
         let a = x_limit / 2;
         let b = y_limit / 2;
 
@@ -61,9 +67,11 @@ impl SnakeWidget {
 
         Ok(Self {
             body: vec![(a, b), (a + 1, b)].into(),
-            dir: Dir::Up,
+            dir: dir,
             x_limit,
             y_limit,
+            duration: Duration::from_millis(1000),
+            last_move_time: Instant::now(),
         })
     }
 }
@@ -89,16 +97,23 @@ impl Snake for SnakeWidget {
     }
 
     fn one_step(&mut self, food: &Self::Coord) -> Result<Status, String> {
+        if Instant::now().duration_since(self.last_move_time) <= self.duration {
+            return Ok(Status::Normal);
+        }
+
         let next_head = self.next_head()?;
 
         match next_head {
             Some(nh) => {
                 if nh == *food {
                     self.body.push_front(nh);
+                    self.duration = self.duration - Duration::from_millis(50);
+                    self.last_move_time = Instant::now();
                     return Ok(Status::Eaten);
                 } else {
                     self.body.push_front(nh);
                     self.body.pop_back();
+                    self.last_move_time = Instant::now();
                     return Ok(Status::Normal);
                 }
             }
@@ -112,7 +127,7 @@ impl Snake for SnakeWidget {
         // |
         // v
         let head = self.body.front().ok_or("snake is empty".to_string())?;
-        match self.dir {
+        match *self.dir.borrow() {
             Dir::Up => {
                 if head.1 == 0 {
                     Ok(None)
@@ -147,23 +162,13 @@ impl Snake for SnakeWidget {
 
 #[cfg(test)]
 mod tests {
-    use crate::snake::{Dir, Snake, SnakeWidget, Status};
+    use std::{cell::RefCell, rc::Rc};
 
-    // #[test]
-    // fn trait_impl_test() {
-    //     // function
-    //     fn a<'a>(_: impl Snake<'a, (u16, u16)>) {}
-    //     a(SnakeWidget {
-    //         body: VecDeque::new(),
-    //         dir: Dir::Up,
-    //         row_limit: 1,
-    //         col_limit: 1,
-    //     })
-    // }
+    use crate::snake::{Dir, Snake, SnakeWidget, Status};
 
     #[test]
     fn next_head_test() {
-        let mut sw = SnakeWidget::new(10, 10).unwrap();
+        let mut sw = SnakeWidget::new(10, 10, Rc::new(RefCell::new(Dir::Up))).unwrap();
 
         let nh = sw.next_head();
         assert!(nh.is_ok());
@@ -178,7 +183,7 @@ mod tests {
         assert_eq!(sw.body().collect::<Vec<_>>(), vec![&(3, 5), &(4, 5)]);
 
         // turn sw to left
-        sw.dir = Dir::Left;
+        sw.dir = Rc::new(RefCell::new(Dir::Left));
         assert!(sw.one_step(&(0, 0)).is_ok());
         assert_eq!(sw.body().collect::<Vec<_>>(), vec![&(3, 4), &(3, 5)]);
 
