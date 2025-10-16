@@ -39,6 +39,33 @@ pub enum Dir {
     Right,
 }
 
+impl Dir {
+    pub fn is_up(&self) -> bool {
+        match self {
+            Dir::Up => true,
+            _ => false,
+        }
+    }
+    pub fn is_down(&self) -> bool {
+        match self {
+            Dir::Down => true,
+            _ => false,
+        }
+    }
+    pub fn is_left(&self) -> bool {
+        match self {
+            Dir::Left => true,
+            _ => false,
+        }
+    }
+    pub fn is_right(&self) -> bool {
+        match self {
+            Dir::Right => true,
+            _ => false,
+        }
+    }
+}
+
 pub struct SnakeWidget {
     pub body: VecDeque<(u16, u16)>,
     pub dir: Rc<RefCell<Dir>>,

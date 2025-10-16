@@ -165,11 +165,29 @@ fn main() -> io::Result<()> {
     let mut render_arg = None;
 
     terminal.on_key_event({
-        move |key_event| {
-            if key_event.code == KeyCode::Char(' ') {
-                //:= todo
-                *dir.borrow_mut() = Dir::Left
+        move |key_event| match key_event.code {
+            KeyCode::Left => {
+                if !dir.borrow().is_right() {
+                    *dir.borrow_mut() = Dir::Left;
+                }
             }
+            KeyCode::Right => {
+                if !dir.borrow().is_left() {
+                    *dir.borrow_mut() = Dir::Right;
+                }
+            }
+            KeyCode::Up => {
+                if !dir.borrow().is_down() {
+                    *dir.borrow_mut() = Dir::Up;
+                }
+            }
+            KeyCode::Down => {
+                if !dir.borrow().is_up() {
+                    *dir.borrow_mut() = Dir::Down;
+                }
+            }
+            KeyCode::Esc => todo!(),
+            _ => (),
         }
     });
 
