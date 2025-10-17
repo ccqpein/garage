@@ -1,12 +1,16 @@
 //use instant::{Duration, Instant};
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use rand::{rngs::ThreadRng, seq::IndexedRandom};
+use std::{
+    cell::RefCell,
+    collections::{HashSet, VecDeque},
+    rc::Rc,
+};
 //use std::time::{Duration, Instant};
 use web_time::{Duration, Instant};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Status {
     Eaten,  // eat one food
-    Full,   // win
     Normal, // keep playing
     Lose,   // lose
 }
@@ -78,6 +82,10 @@ pub struct SnakeWidget {
     pub x_limit: u16,
     /// y axis limit, 1 indexed
     pub y_limit: u16,
+
+    rng: ThreadRng,
+    whole_board: HashSet<(u16, u16)>,
+
     // the easiest way to modify the speed
     duration: Duration,
     last_move_time: Instant,
@@ -92,11 +100,18 @@ impl SnakeWidget {
             return Err("too small row limit".to_string());
         }
 
+        let whole_board = (0..x_limit)
+            .map(|x| (0..y_limit).map(move |y| (x, y)))
+            .flatten()
+            .collect();
+
         Ok(Self {
             body: vec![(a, b), (a + 1, b)].into(),
             dir: dir,
             x_limit,
             y_limit,
+            rng: rand::rng(),
+            whole_board,
             duration: Duration::from_millis(1000),
             last_move_time: Instant::now(),
         })
@@ -114,6 +129,9 @@ pub(crate) trait Snake {
 
     /// the next coord the snake will reach
     fn next_head(&self) -> Result<Option<Self::Coord>, String>;
+
+    /// new food, need snake to find the new food in case it random on the snake body
+    fn new_food(&mut self) -> Option<Self::Coord>;
 }
 
 impl Snake for SnakeWidget {
@@ -184,6 +202,17 @@ impl Snake for SnakeWidget {
                 }
             }
         }
+    }
+
+    fn new_food(&mut self) -> Option<Self::Coord> {
+        let all_left = self
+            .whole_board
+            .iter()
+            .filter(|(x, y)| !self.body.contains(&(*x, *y)))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        all_left.choose(&mut self.rng).copied()
     }
 }
 

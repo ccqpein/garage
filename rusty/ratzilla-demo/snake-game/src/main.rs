@@ -1,4 +1,5 @@
 #![feature(duration_constants)]
+use core::panic;
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use ratzilla::{
@@ -45,7 +46,7 @@ fn render_board(
     f: &mut Frame,
     args: &mut Option<RenderArgs>,
     snake: &mut SnakeWidget,
-    rng: &mut ThreadRng,
+    food: &mut (u16, u16),
 ) {
     // the size should sync with the snake limit
     if args.is_none() {
@@ -99,6 +100,7 @@ fn render_board(
                 );
             }
         }
+
         args.as_mut().unwrap().init_board_yet = true
     }
 
@@ -120,7 +122,20 @@ fn render_board(
             ),
         );
     }
-    snake.one_step(&(0, 0));
+
+    match snake.one_step(food) {
+        Ok(status) => match status {
+            Status::Eaten => {
+                *food = match snake.new_food() {
+                    Some(f) => f,
+                    None => todo!(), //:= win
+                }
+            }
+            Status::Normal => (),
+            Status::Lose => todo!(),
+        },
+        Err(e) => panic!("{}", e),
+    }
 
     // for x in 0..snake.x_limit {
     //     for y in 0..snake.y_limit {
@@ -155,11 +170,11 @@ fn render_board(
 }
 
 fn main() -> io::Result<()> {
-    let mut rng = rand::rng();
     let backend = CanvasBackend::new_with_size(1210, 779)?;
     let terminal = Terminal::new(backend)?;
 
     let dir = Rc::new(RefCell::new(Dir::Up));
+    let mut food = (0, 0);
 
     let mut snake = SnakeWidget::new(12, 8, Rc::clone(&dir)).unwrap();
     let mut render_arg = None;
@@ -192,7 +207,7 @@ fn main() -> io::Result<()> {
     });
 
     terminal.draw_web(move |f| {
-        render_board(f, &mut render_arg, &mut snake, &mut rng);
+        render_board(f, &mut render_arg, &mut snake, &mut food);
     });
 
     Ok(())
