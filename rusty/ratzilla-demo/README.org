@@ -1,0 +1,7 @@
+* README
+
+in ~snake-game~ and run
+
+#+begin_src shell
+  trunk serve
+#+end_src

@@ -1,11 +1,10 @@
-//use instant::{Duration, Instant};
 use rand::{rngs::ThreadRng, seq::IndexedRandom};
 use std::{
     cell::RefCell,
     collections::{HashSet, VecDeque},
     rc::Rc,
 };
-//use std::time::{Duration, Instant};
+
 use web_time::{Duration, Instant};
 
 #[derive(Debug, Eq, PartialEq)]
@@ -14,27 +13,6 @@ pub enum Status {
     Normal, // keep playing
     Lose,   // lose
 }
-
-// /// maybe reuse it in future some time. Make it a bit abstract
-// trait Snake<'s, Coord: 's + Eq + PartialEq> {
-//     /// get the body
-//     fn body(&'s self) -> impl Iterator<Item = &'s Coord>;
-
-//     // /// this snake can grow
-//     // /// grow the one pixel in the front of snake
-//     // fn grow(&'s mut self) -> Result<Status, String>;
-
-//     /// this snake move one step
-//     /// if the head eat the food, it should grow, or keep moving
-//     fn one_step(&'s mut self, food: &Coord) -> Result<Status, String>;
-
-//     /// the next coord the snake will reach
-//     fn next_head(&'s self) -> Result<Option<Coord>, String>;
-
-//     // fn push_front(&'s mut self, next: Coord) -> Result<Status, String>;
-
-//     // fn pop_back(&'s mut self) -> Result<Status, String>;
-// }
 
 pub enum Dir {
     Up,

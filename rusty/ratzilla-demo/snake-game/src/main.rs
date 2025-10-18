@@ -1,7 +1,3 @@
-#![feature(duration_constants)]
-use core::panic;
-use rand::Rng;
-use rand::rngs::ThreadRng;
 use ratzilla::{
     CanvasBackend,
     ratatui::{
@@ -47,8 +43,7 @@ fn render_board(
     args: &mut Option<RenderArgs>,
     snake: &mut SnakeWidget,
     food: &mut (u16, u16),
-) {
-    // the size should sync with the snake limit
+) -> Option<String> {
     if args.is_none() {
         let size = f.area();
         let y_all = size.height;
@@ -71,16 +66,11 @@ fn render_board(
     let each_width = args.as_ref().unwrap().each_width;
     let each_height = args.as_ref().unwrap().each_height;
 
-    let msg = format!(
-        "{each_height}, {each_width}, {x_start}, {y_start}, {:?}\n",
-        f.area(),
-    );
-
     // 4, 8, 8, 4, Rect { x: 0, y: 0, width: 120, height: 40 }
-    //console::log_1(&JsValue::from_str(&msg));
-    // for (x, y) in snake.body() {
-    //     f.render_widget(Block::new(), Rect::new(*x, *y, 1, 1));
-    // }
+    // let msg = format!(
+    //     "{each_height}, {each_width}, {x_start}, {y_start}, {:?}\n",
+    //     f.area(),
+    // );
 
     // init the board
     if !args.as_ref().unwrap().init_board_yet {
@@ -100,6 +90,12 @@ fn render_board(
                 );
             }
         }
+
+        *food = if let Some(f) = snake.new_food() {
+            f
+        } else {
+            return Some("full board".to_string());
+        };
 
         args.as_mut().unwrap().init_board_yet = true
     }
@@ -123,50 +119,41 @@ fn render_board(
         );
     }
 
+    f.render_widget(
+        Block::default().style(Style::default().bg(Color::Red)),
+        Rect::new(
+            food.0 * each_width + x_start,
+            food.1 * each_height + y_start,
+            each_width,
+            each_height,
+        ),
+    );
+
     match snake.one_step(food) {
         Ok(status) => match status {
             Status::Eaten => {
                 *food = match snake.new_food() {
                     Some(f) => f,
-                    None => todo!(), //:= win
-                }
+                    None => return Some("You win!".to_string()),
+                };
+
+                f.render_widget(
+                    Block::default().style(Style::default().bg(Color::Red)),
+                    Rect::new(
+                        food.0 * each_width + x_start,
+                        food.1 * each_height + y_start,
+                        each_width,
+                        each_height,
+                    ),
+                );
             }
             Status::Normal => (),
-            Status::Lose => todo!(),
+            Status::Lose => return Some("You lose!".to_string()),
         },
-        Err(e) => panic!("{}", e),
+        Err(e) => return Some(format!("ERROR: {e}")),
     }
 
-    // for x in 0..snake.x_limit {
-    //     for y in 0..snake.y_limit {
-    //         let character = format!(
-    //             "{}, {}",
-    //             x * each_width + x_start,
-    //             y * each_height + y_start
-    //         );
-    //         //console::log_1(&JsValue::from_str(&format!("{x}, {y}")));
-    //         let color = match rng.random_range(0..5) {
-    //             0 => Color::Red,
-    //             1 => Color::Green,
-    //             2 => Color::Blue,
-    //             3 => Color::Yellow,
-    //             _ => Color::DarkGray,
-    //         };
-    //         let block = Block::default().style(Style::default().bg(color));
-
-    //         f.render_widget(
-    //             Paragraph::new(character)
-    //                 .alignment(Alignment::Center)
-    //                 .block(block),
-    //             Rect::new(
-    //                 x * each_width + x_start,
-    //                 y * each_height + y_start,
-    //                 each_width,
-    //                 each_height,
-    //             ),
-    //         );
-    //     }
-    // }
+    None
 }
 
 fn main() -> io::Result<()> {
@@ -176,7 +163,8 @@ fn main() -> io::Result<()> {
     let dir = Rc::new(RefCell::new(Dir::Up));
     let mut food = (0, 0);
 
-    let mut snake = SnakeWidget::new(12, 8, Rc::clone(&dir)).unwrap();
+    
+    let mut snake = SnakeWidget::new(6, 6, Rc::clone(&dir)).unwrap();
     let mut render_arg = None;
 
     terminal.on_key_event({
@@ -207,7 +195,10 @@ fn main() -> io::Result<()> {
     });
 
     terminal.draw_web(move |f| {
-        render_board(f, &mut render_arg, &mut snake, &mut food);
+        if let Some(msg) = render_board(f, &mut render_arg, &mut snake, &mut food) {
+            
+            //console::log_1(&JsValue::from_str(&msg));
+        }
     });
 
     Ok(())
