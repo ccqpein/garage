@@ -1,0 +1,16 @@
+* Spec
+
+** Plain mode
+Lisp data type, it should be ~(funcname &args &keywords)~
+
+#+begin_src lisp
+  (get-book :title "hello world" :version "1984")
+#+end_src
+
+this means server receive the ~get-book~ call and receive the titles and versions as the arguments
+
+then the client just send this data to host server, and server handle this request.
+
+** Spec mode
+
+this mode will generate the client and server lib for 
