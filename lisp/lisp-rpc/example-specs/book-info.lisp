@@ -9,7 +9,7 @@
   :lang 'language-perfer
   :title 'string
   :version 'string
-  :id 'string)
+  :id 'number)
 
 (def-rpc get-book
     '(:title 'string :vesion 'string :lang 'language-perfer)
