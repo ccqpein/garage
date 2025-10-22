@@ -1,6 +1,9 @@
-use std::{collections::VecDeque, io::Read};
+#![feature(iter_array_chunks)]
+mod data;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+use std::{collections::VecDeque, error::Error, io::Read};
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ParserType {
     Symbol,
     String,
@@ -13,7 +16,7 @@ impl Default for ParserType {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
 pub struct Sym {
     pub name: String,
     pub read_type: ParserType,
@@ -60,6 +63,14 @@ pub enum ParserError {
     UnknownToken,
 }
 
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "unable to read configuration at {:?}", self)
+    }
+}
+
+impl Error for ParserError {}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Atom {
     /// symbol, if it is the number, it can also be number, can parse when use it
@@ -86,6 +97,20 @@ impl Atom {
                     + ")"
             }
             Atom::Quote(atom) => String::from("'") + &atom.into_tokens(),
+        }
+    }
+
+    pub fn nth(&self, ind: usize) -> Option<&Self> {
+        match self {
+            Atom::List(atoms) => atoms.get(ind),
+            _ => None,
+        }
+    }
+
+    pub fn iter(&self) -> Option<impl Iterator<Item = &Atom>> {
+        match self {
+            Atom::List(atoms) => Some(atoms.iter()),
+            _ => None,
         }
     }
 }
@@ -187,7 +212,7 @@ fn read_quote(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
 }
 
 /// start from '\('
-fn read_exp(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
+pub fn read_exp(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
     let mut res = vec![];
     tokens.pop_front();
 

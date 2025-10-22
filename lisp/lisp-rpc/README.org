@@ -23,3 +23,6 @@
     + etc.
 #+end_quote
 
+** some optimize ideas
+
+- [ ] parser need to read the dyn impl struct rather than the vecdeque
