@@ -1,58 +1,70 @@
 #![feature(iter_array_chunks)]
+#![feature(lazy_get)]
 mod data;
 
-use std::{collections::VecDeque, error::Error, io::Read};
+use std::{
+    cell::{LazyCell, RefCell},
+    collections::VecDeque,
+    error::Error,
+    io::Read,
+    sync::{LazyLock, Mutex},
+};
+
+static READ_NUMBER: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(false));
+//static READ_NUMBER: LazyCell<RefCell<bool>> = LazyCell::new(|| RefCell::new(false));
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum ParserType {
-    Symbol,
-    String,
-    Keyword,
+enum TypeValue {
+    Symbol(String),
+    String(String),
+    Keyword(String),
+    Number(i64),
 }
 
-impl Default for ParserType {
-    fn default() -> Self {
-        Self::Symbol
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Default, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Sym {
-    pub name: String,
-    pub read_type: ParserType,
+    pub literal: String,
+    pub value: TypeValue,
 }
 
 impl Sym {
     fn read(s: &str) -> Self {
         Self {
-            name: s.to_string(),
-            read_type: ParserType::Symbol,
+            literal: s.to_string(),
+            value: TypeValue::Symbol(s.to_string()),
         }
     }
 
     fn read_string(s: &str) -> Self {
         Self {
-            name: s.to_string(),
-            read_type: ParserType::String,
+            literal: s.to_string(),
+            value: TypeValue::String(s.to_string()),
         }
     }
 
     fn read_keyword(s: &str) -> Self {
         Self {
-            name: s.to_string(),
-            read_type: ParserType::Keyword,
+            literal: s.to_string(),
+            value: TypeValue::Keyword(s.to_string()),
+        }
+    }
+
+    fn read_number(s: &str, n: i64) -> Self {
+        Self {
+            literal: s.to_string(),
+            value: TypeValue::Number(n),
         }
     }
 
     pub fn is_string(&self) -> bool {
-        match self.read_type {
-            ParserType::String => true,
+        match self.value {
+            TypeValue::String(_) => true,
             _ => false,
         }
     }
 
-    pub fn sym_name(&self) -> &str {
-        &self.name
+    pub fn sym_lit(&self) -> &str {
+        &self.literal
     }
 }
 
@@ -82,10 +94,11 @@ pub enum Atom {
 impl Atom {
     pub fn into_tokens(&self) -> String {
         match self {
-            Atom::Sym(sym) => match sym.read_type {
-                ParserType::Symbol => sym.name.clone(),
-                ParserType::String => String::from("\"") + &sym.name + "\"",
-                ParserType::Keyword => String::from(":") + &sym.name,
+            Atom::Sym(sym) => match sym.value {
+                TypeValue::Symbol(_) => sym.literal.clone(),
+                TypeValue::String(_) => String::from("\"") + &sym.literal + "\"",
+                TypeValue::Keyword(_) => String::from(":") + &sym.literal,
+                TypeValue::Number(_) => todo!(),
             },
             Atom::List(atoms) => {
                 String::from("(")
@@ -147,6 +160,10 @@ pub fn tokenize(mut source_code: impl Read) -> VecDeque<String> {
         }
     }
 
+    if !cache.is_empty() {
+        res.push(String::from_utf8(cache.clone()).unwrap());
+    }
+
     res.into()
 }
 
@@ -199,11 +216,19 @@ fn read_sym(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
         .pop_front()
         .ok_or(ParserError::InvalidToken("in read_sym"))?;
 
+    if let Ok(flag) = READ_NUMBER.lock()
+        && *flag
+    {
+        match token.parse::<i64>() {
+            Ok(n) => return Ok(Atom::Sym(Sym::read_number(&token, n))),
+            Err(_) => (),
+        }
+    }
+
     Ok(Atom::Sym(Sym::read(&token)))
 }
 
 fn read_quote(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
-    //let mut res = vec![];
     tokens
         .pop_front()
         .ok_or(ParserError::InvalidToken("in read_quote"))?;
@@ -396,7 +421,6 @@ mod tests {
         );
 
         // escapr "
-
         let s = r#"( get-book :title "hello \"world" :version "1984")"#;
         assert_eq!(
             tokenize(Cursor::new(s.as_bytes())),
@@ -407,7 +431,49 @@ mod tests {
             .into_iter()
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
-        )
+        );
+
+        // number
+
+        let s = r#"( get-book :id 1984)"#;
+        assert_eq!(
+            tokenize(Cursor::new(s.as_bytes())),
+            vec!["(", " ", "get-book", " ", ":", "id", " ", "1984", ")"]
+                .into_iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_read_string() {
+        let mut t = tokenize(Cursor::new(r#""hello""#.as_bytes()));
+        assert_eq!(
+            read_string(&mut t),
+            Ok(Atom::Sym(Sym::read_string("hello")))
+        );
+        assert!(t.is_empty());
+    }
+
+    #[test]
+    fn test_read_number() {
+        let _ = LazyLock::force(&READ_NUMBER);
+        {
+            let mut flag = READ_NUMBER.lock().unwrap(); // acquire mutable lock
+            *flag = true;
+        } // drop the lock
+
+        let mut t = tokenize(Cursor::new(r#"123"#.as_bytes()));
+
+        assert_eq!(
+            read_sym(&mut t),
+            Ok(Atom::Sym(Sym::read_number("123", 123)))
+        );
+
+        {
+            let mut flag = READ_NUMBER.lock().unwrap(); // acquire mutable lock
+            *flag = false;
+        } // drop the lock
     }
 
     #[test]
@@ -534,16 +600,37 @@ mod tests {
                 .to_vec()
             ),)
         );
-    }
 
-    #[test]
-    fn test_read_string() {
-        let mut t = tokenize(Cursor::new(r#""hello""#.as_bytes()));
+        //
+
+        let _ = LazyLock::force(&READ_NUMBER);
+        {
+            let mut flag = READ_NUMBER.lock().unwrap(); // acquire mutable lock
+            *flag = true;
+        } // drop the lock
+
+        let mut t = tokenize(Cursor::new(
+            r#"(get-book :title "hello world" :id 1984)"#.as_bytes(),
+        ));
+
         assert_eq!(
-            read_string(&mut t),
-            Ok(Atom::Sym(Sym::read_string("hello")))
+            read_exp(&mut t),
+            Ok(Atom::List(
+                [
+                    Atom::Sym(Sym::read("get-book")),
+                    Atom::Sym(Sym::read_keyword("title")),
+                    Atom::Sym(Sym::read_string("hello world")),
+                    Atom::Sym(Sym::read_keyword("id")),
+                    Atom::Sym(Sym::read_number("1984", 1984)),
+                ]
+                .to_vec()
+            ),)
         );
-        assert!(t.is_empty());
+
+        {
+            let mut flag = READ_NUMBER.lock().unwrap(); // acquire mutable lock
+            *flag = false;
+        } // drop the lock
     }
 
     #[test]
@@ -608,7 +695,7 @@ mod tests {
         assert_eq!(
             read_root(&mut t),
             Ok(vec![read_exp(&mut t0).unwrap(), read_exp(&mut t1).unwrap()])
-        )
+        );
     }
 
     #[test]

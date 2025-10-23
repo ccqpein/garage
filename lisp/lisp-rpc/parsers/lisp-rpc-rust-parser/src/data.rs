@@ -43,9 +43,9 @@ impl Data {
         let name = if let Some(first_atom) = exp.nth(0) {
             match first_atom {
                 Atom::Sym(Sym {
-                    name,
-                    read_type: crate::ParserType::Symbol,
-                }) => Some(name.to_string()),
+                    literal,
+                    value: crate::TypeValue::Symbol(_),
+                }) => Some(literal.to_string()),
                 _ => None,
             }
         } else {
@@ -77,7 +77,7 @@ impl Data {
                 (
                     Atom::Sym(
                         s @ Sym {
-                            read_type: crate::ParserType::Keyword,
+                            value: crate::TypeValue::Keyword(_),
                             ..
                         },
                     ),
