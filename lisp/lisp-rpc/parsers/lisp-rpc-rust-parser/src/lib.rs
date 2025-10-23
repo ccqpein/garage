@@ -130,9 +130,12 @@ pub fn tokenize(mut source_code: impl Read) -> VecDeque<String> {
                             cache.clear();
                         }
 
-                        if *c != b' ' && *c != b'\n' {
-                            res.push(String::from_utf8(vec![*c]).unwrap());
+                        match res.last() {
+                            Some(le) if le == " " && *c == b' ' => continue,
+                            _ => (),
                         }
+
+                        res.push(String::from_utf8(vec![*c]).unwrap())
                     }
                     _ => {
                         cache.push(*c);
@@ -161,7 +164,9 @@ pub fn read_root(tokens: &mut VecDeque<String>) -> Result<Vec<Atom>, ParserError
                 "(" => {
                     res.push(read_exp(tokens)?);
                 }
-                " " => (),
+                " " | "\n" => {
+                    tokens.pop_front();
+                }
                 _ => {
                     return {
                         println!("{:?}", b);
@@ -222,6 +227,10 @@ pub fn read_exp(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
                 tokens.pop_front();
                 break;
             }
+            // ignore spaces
+            Some(t) if t == " " || t == "\n" => {
+                tokens.pop_front();
+            }
             Some(t) => res.push(read_router(t)?(tokens)?),
             None => return Err(ParserError::InvalidToken("in read_exp")),
         }
@@ -234,12 +243,28 @@ pub fn read_exp(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
 fn read_string(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
     tokens.pop_front();
 
-    let token = tokens
-        .pop_front()
-        .ok_or(ParserError::InvalidToken("in read_string"))?;
+    let mut escape = false;
+    let mut res = String::new();
+    let mut this_token;
+    loop {
+        this_token = tokens
+            .pop_front()
+            .ok_or(ParserError::InvalidToken("in read_string"))?;
 
-    tokens.pop_front();
-    Ok(Atom::Sym(Sym::read_string(&token)))
+        if escape {
+            res = res + &this_token;
+            escape = false;
+            continue;
+        }
+
+        match this_token.as_str() {
+            "\\" => escape = true,
+            "\"" => break,
+            _ => res = res + &this_token,
+        }
+    }
+
+    Ok(Atom::Sym(Sym::read_string(&res)))
 }
 
 /// start with :
@@ -254,7 +279,7 @@ fn read_keyword(tokens: &mut VecDeque<String>) -> Result<Atom, ParserError> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::io::Cursor;
 
     use super::*;
@@ -265,7 +290,7 @@ mod test {
         let s = "(a b c 123 c)";
         assert_eq!(
             tokenize(Cursor::new(s.as_bytes())),
-            vec!["(", "a", "b", "c", "123", "c", ")"]
+            vec!["(", "a", " ", "b", " ", "c", " ", "123", " ", "c", ")"]
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>()
@@ -275,7 +300,7 @@ mod test {
         let s = r#"(a '(""))"#;
         assert_eq!(
             tokenize(Cursor::new(s.as_bytes())),
-            vec!["(", "a", "'", "(", "\"", "\"", ")", ")"]
+            vec!["(", "a", " ", "'", "(", "\"", "\"", ")", ")"]
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>()
@@ -285,7 +310,7 @@ mod test {
         let s = r#"(a '() '1)"#;
         assert_eq!(
             tokenize(Cursor::new(s.as_bytes())),
-            vec!["(", "a", "'", "(", ")", "'", "1", ")"]
+            vec!["(", "a", " ", "'", "(", ")", " ", "'", "1", ")"]
                 .into_iter()
                 .map(|s| s.to_string())
                 .collect::<Vec<_>>()
@@ -298,9 +323,12 @@ mod test {
             vec![
                 "(",
                 "def-msg",
+                " ",
                 "language-perfer",
+                " ",
                 ":",
                 "lang",
+                " ",
                 "'",
                 "string",
                 ")"
@@ -319,22 +347,32 @@ mod test {
             vec![
                 "(",
                 "def-rpc",
+                " ",
                 "get-book",
+                "\n",
+                " ",
                 "'",
                 "(",
                 ":",
                 "title",
+                " ",
                 "'",
                 "string",
+                " ",
                 ":",
                 "vesion",
+                " ",
                 "'",
                 "string",
+                " ",
                 ":",
                 "lang",
+                " ",
                 "'",
                 "language-perfer",
                 ")",
+                "\n",
+                " ",
                 "'",
                 "book-info",
                 ")"
@@ -343,6 +381,33 @@ mod test {
             .map(|s| s.to_string())
             .collect::<Vec<_>>()
         );
+
+        //
+        let s = r#"(get-book :title "hello world" :version "1984")"#;
+        assert_eq!(
+            tokenize(Cursor::new(s.as_bytes())),
+            vec![
+                "(", "get-book", " ", ":", "title", " ", "\"", "hello", " ", "world", "\"", " ",
+                ":", "version", " ", "\"", "1984", "\"", ")"
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+        );
+
+        // escapr "
+
+        let s = r#"( get-book :title "hello \"world" :version "1984")"#;
+        assert_eq!(
+            tokenize(Cursor::new(s.as_bytes())),
+            vec![
+                "(", " ", "get-book", " ", ":", "title", " ", "\"", "hello", " ", "\\", "\"",
+                "world", "\"", " ", ":", "version", " ", "\"", "1984", "\"", ")"
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+        )
     }
 
     #[test]
@@ -432,6 +497,43 @@ mod test {
         );
         //dbg!(&t);
         assert!(t.is_empty());
+
+        //
+        let mut t = tokenize(Cursor::new(
+            r#"(get-book :title "hello world" :version "1984")"#.as_bytes(),
+        ));
+
+        assert_eq!(
+            read_exp(&mut t),
+            Ok(Atom::List(
+                [
+                    Atom::Sym(Sym::read("get-book")),
+                    Atom::Sym(Sym::read_keyword("title")),
+                    Atom::Sym(Sym::read_string("hello world")),
+                    Atom::Sym(Sym::read_keyword("version")),
+                    Atom::Sym(Sym::read_string("1984")),
+                ]
+                .to_vec()
+            ),)
+        );
+
+        let mut t = tokenize(Cursor::new(
+            r#"(get-book :title "hello \"world" :version "1984")"#.as_bytes(),
+        ));
+
+        assert_eq!(
+            read_exp(&mut t),
+            Ok(Atom::List(
+                [
+                    Atom::Sym(Sym::read("get-book")),
+                    Atom::Sym(Sym::read_keyword("title")),
+                    Atom::Sym(Sym::read_string("hello \"world")),
+                    Atom::Sym(Sym::read_keyword("version")),
+                    Atom::Sym(Sym::read_string("1984")),
+                ]
+                .to_vec()
+            ),)
+        );
     }
 
     #[test]

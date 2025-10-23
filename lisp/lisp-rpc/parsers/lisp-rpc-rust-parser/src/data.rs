@@ -5,6 +5,7 @@
 use std::{collections::HashMap, error::Error, io::Cursor};
 
 use itertools::Itertools;
+use tracing::debug;
 
 use crate::{Atom, Sym, read_exp, tokenize};
 
@@ -27,6 +28,7 @@ impl std::fmt::Display for DataError {
 
 impl Error for DataError {}
 
+#[derive(Debug)]
 pub struct Data {
     name: String,
     inner_atom: Atom,
@@ -34,14 +36,15 @@ pub struct Data {
 
 impl Data {
     /// generate the Data from string directly
-    fn from_string(s: &str) -> Result<Self, Box<dyn Error>> {
+    fn from_str(s: &str) -> Result<Self, Box<dyn Error>> {
         let c = Cursor::new(s);
         let exp = read_exp(&mut tokenize(c))?;
+
         let name = if let Some(first_atom) = exp.nth(0) {
             match first_atom {
                 Atom::Sym(Sym {
                     name,
-                    read_type: crate::ParserType::String,
+                    read_type: crate::ParserType::Symbol,
                 }) => Some(name.to_string()),
                 _ => None,
             }
@@ -49,7 +52,7 @@ impl Data {
             None
         }
         .ok_or(DataError {
-            msg: "the first isn't the name of data (string)",
+            msg: "the first isn't the name of data (symbol)",
             err_type: DataErrorType::InvalidInput,
         })?;
 
@@ -60,7 +63,7 @@ impl Data {
     }
 
     /// to the data map struct
-    fn to_hash_map<'d>(&'d self) -> Result<DataMap<'d>, Box<dyn Error>> {
+    fn to_map<'d>(&'d self) -> Result<DataMap<'d>, Box<dyn Error>> {
         let table = self
             .inner_atom
             .iter()
@@ -96,13 +99,52 @@ impl Data {
     }
 }
 
+#[derive(Debug)]
 struct DataMap<'d> {
     expr: &'d Data,
+
+    /// sym has to be the keyword type
     hash_map: HashMap<&'d Sym, &'d Atom>,
 }
 
 impl<'d> DataMap<'d> {
     fn get_name(&self) -> &str {
         self.expr.get_name()
+    }
+
+    /// get the value of the keyword
+    /// the value has to be the Atom::Sym by now
+    fn get(&self, k: &str) -> Option<&Sym> {
+        match self.hash_map.get(&Sym::read_keyword(k)) {
+            Some(vv) => match vv {
+                Atom::Sym(sym) => Some(sym),
+                _ => {
+                    debug!("not support the other atom yet");
+                    None
+                }
+            },
+            None => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_data_from_str() {
+        let s = r#"(get-book :title "hello world" :version "1984")"#;
+
+        let d = Data::from_str(s);
+        dbg!(&d);
+        assert!(d.is_ok());
+
+        let dd = d.unwrap();
+        assert_eq!(dd.get_name(), "get-book");
+
+        let dd_map = dd.to_map().unwrap();
+        assert_eq!(dd_map.get_name(), "get-book");
+        assert_eq!(dd_map.get("title"), Some(&Sym::read_string("hello world")));
     }
 }
