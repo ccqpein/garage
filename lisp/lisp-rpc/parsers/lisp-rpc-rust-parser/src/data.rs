@@ -7,7 +7,7 @@ use std::{collections::HashMap, error::Error, io::Cursor};
 use itertools::Itertools;
 use tracing::debug;
 
-use crate::{Atom, Parser, Sym};
+use crate::{Atom, Expr, Parser};
 
 #[derive(Debug)]
 enum DataErrorType {
@@ -31,7 +31,7 @@ impl Error for DataError {}
 #[derive(Debug, PartialEq, Eq)]
 pub struct Data {
     name: String,
-    inner_atom: Atom,
+    inner_atom: Expr,
 }
 
 impl Data {
@@ -42,7 +42,7 @@ impl Data {
 
         let name = if let Some(first_atom) = exp.nth(0) {
             match first_atom {
-                Atom::Sym(Sym {
+                Expr::Atom(Atom {
                     literal,
                     value: crate::TypeValue::Symbol(_),
                 }) => Some(literal.to_string()),
@@ -75,8 +75,8 @@ impl Data {
             .array_chunks()
             .filter_map(|[k, v]| match (k, v) {
                 (
-                    Atom::Sym(
-                        s @ Sym {
+                    Expr::Atom(
+                        s @ Atom {
                             value: crate::TypeValue::Keyword(_),
                             ..
                         },
@@ -99,10 +99,10 @@ impl Data {
     }
 
     /// generate the data
-    fn new(name: &str, rest_datas: &[Sym]) -> Result<Self, Box<dyn Error>> {
+    fn new(name: &str, rest_datas: &[Atom]) -> Result<Self, Box<dyn Error>> {
         let mut d = vec![];
 
-        d.push(Atom::Sym(Sym::read(name)));
+        d.push(Expr::Atom(Atom::read(name)));
 
         // check
 
@@ -125,11 +125,11 @@ impl Data {
             }
         }
 
-        d.append(&mut rest_datas.iter().map(|s| Atom::Sym(s.clone())).collect());
+        d.append(&mut rest_datas.iter().map(|s| Expr::Atom(s.clone())).collect());
 
         Ok(Self {
             name: name.to_string(),
-            inner_atom: Atom::List(d),
+            inner_atom: Expr::List(d),
         })
     }
 
@@ -144,7 +144,7 @@ struct DataMap<'d> {
     expr: &'d Data,
 
     /// sym has to be the keyword type
-    hash_map: HashMap<&'d Sym, &'d Atom>,
+    hash_map: HashMap<&'d Atom, &'d Expr>,
 }
 
 impl<'d> DataMap<'d> {
@@ -153,11 +153,11 @@ impl<'d> DataMap<'d> {
     }
 
     /// get the value of the keyword
-    /// the value has to be the Atom::Sym by now
-    fn get(&self, k: &str) -> Option<&Sym> {
-        match self.hash_map.get(&Sym::read_keyword(k)) {
+    /// the value has to be the Expr::Atom by now
+    fn get(&self, k: &str) -> Option<&Atom> {
+        match self.hash_map.get(&Atom::read_keyword(k)) {
             Some(vv) => match vv {
-                Atom::Sym(sym) => Some(sym),
+                Expr::Atom(sym) => Some(sym),
                 _ => {
                     debug!("not support the other atom yet");
                     None
@@ -185,7 +185,7 @@ mod tests {
 
         let dd_map = dd.to_map().unwrap();
         assert_eq!(dd_map.get_name(), "get-book");
-        assert_eq!(dd_map.get("title"), Some(&Sym::read_string("hello world")));
+        assert_eq!(dd_map.get("title"), Some(&Atom::read_string("hello world")));
 
         //
 
@@ -195,7 +195,7 @@ mod tests {
         let d = d.to_map().unwrap();
 
         assert_eq!(d.get_name(), "get-book");
-        assert_eq!(d.get("version"), Some(&Sym::read_number("1984", 1984)));
+        assert_eq!(d.get("version"), Some(&Atom::read_number("1984", 1984)));
     }
 
     #[test]
@@ -209,10 +209,10 @@ mod tests {
             Data::new(
                 "get-book",
                 &vec![
-                    Sym::read_keyword("title"),
-                    Sym::read_string("hello world"),
-                    Sym::read_keyword("version"),
-                    Sym::read_string("1984")
+                    Atom::read_keyword("title"),
+                    Atom::read_string("hello world"),
+                    Atom::read_keyword("version"),
+                    Atom::read_string("1984")
                 ]
             )
             .unwrap()
