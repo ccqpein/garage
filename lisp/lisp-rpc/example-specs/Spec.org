@@ -4,7 +4,7 @@
 
 client just send the Lisp type data (pure string) to server. Server get the data and return the result.
 
-It should be ~(funcname &args &keywords)~
+It should be ~(data-name &keywords)~
 
 #+begin_src lisp
   (get-book :title "hello world" :version "1984")
@@ -42,7 +42,7 @@ it should look like:
     'book-info)
 #+end_src
 
-if will generate the client/server libs. Client just given the data struct which can generate the pure string data that send to server like plain mode:
+if will generate the client/server libs. Client just given the data struct which can generate the data that send to server like plain mode:
 
 #+begin_src lisp
   (get-book :title "hello world" :version "1984" :lang '(:lang "english"))

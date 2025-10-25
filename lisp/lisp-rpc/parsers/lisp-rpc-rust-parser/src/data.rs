@@ -7,7 +7,7 @@ use std::{collections::HashMap, error::Error, io::Cursor};
 use itertools::Itertools;
 use tracing::debug;
 
-use crate::{Atom, Sym, read_exp, tokenize};
+use crate::{Atom, Parser, Sym};
 
 #[derive(Debug)]
 enum DataErrorType {
@@ -28,7 +28,7 @@ impl std::fmt::Display for DataError {
 
 impl Error for DataError {}
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Data {
     name: String,
     inner_atom: Atom,
@@ -36,9 +36,9 @@ pub struct Data {
 
 impl Data {
     /// generate the Data from string directly
-    fn from_str(s: &str) -> Result<Self, Box<dyn Error>> {
+    fn from_str(p: &Parser, s: &str) -> Result<Self, Box<dyn Error>> {
         let c = Cursor::new(s);
-        let exp = read_exp(&mut tokenize(c))?;
+        let exp = p.read_exp(&mut p.tokenize(c))?;
 
         let name = if let Some(first_atom) = exp.nth(0) {
             match first_atom {
@@ -97,6 +97,46 @@ impl Data {
     fn get_name(&self) -> &str {
         &self.name
     }
+
+    /// generate the data
+    fn new(name: &str, rest_datas: &[Sym]) -> Result<Self, Box<dyn Error>> {
+        let mut d = vec![];
+
+        d.push(Atom::Sym(Sym::read(name)));
+
+        // check
+
+        if rest_datas.len() % 2 != 0 {
+            return Err(Box::new(DataError {
+                msg: "rest data has to be odd length elements",
+                err_type: DataErrorType::InvalidInput,
+            }));
+        }
+
+        for [k, _] in rest_datas.iter().array_chunks() {
+            match k.value {
+                crate::TypeValue::Keyword(_) => (),
+                _ => {
+                    return Err(Box::new(DataError {
+                        msg: "data has to be keyword-value pair",
+                        err_type: DataErrorType::InvalidInput,
+                    }));
+                }
+            }
+        }
+
+        d.append(&mut rest_datas.iter().map(|s| Atom::Sym(s.clone())).collect());
+
+        Ok(Self {
+            name: name.to_string(),
+            inner_atom: Atom::List(d),
+        })
+    }
+
+    /// generate the data
+    fn to_str(&self) -> String {
+        self.inner_atom.into_tokens()
+    }
 }
 
 #[derive(Debug)]
@@ -135,9 +175,9 @@ mod tests {
     #[test]
     fn test_read_data_from_str() {
         let s = r#"(get-book :title "hello world" :version "1984")"#;
-
-        let d = Data::from_str(s);
-        dbg!(&d);
+        let p = Parser::new();
+        let d = Data::from_str(&p, s);
+        //dbg!(&d);
         assert!(d.is_ok());
 
         let dd = d.unwrap();
@@ -146,5 +186,45 @@ mod tests {
         let dd_map = dd.to_map().unwrap();
         assert_eq!(dd_map.get_name(), "get-book");
         assert_eq!(dd_map.get("title"), Some(&Sym::read_string("hello world")));
+
+        //
+
+        let s = r#"(get-book :title "hello world" :version 1984)"#;
+
+        let d = Data::from_str(&Parser::new().config_read_number(true), s).unwrap();
+        let d = d.to_map().unwrap();
+
+        assert_eq!(d.get_name(), "get-book");
+        assert_eq!(d.get("version"), Some(&Sym::read_number("1984", 1984)));
+    }
+
+    #[test]
+    fn test_new_data() {
+        let p = Parser::new().config_read_number(true);
+        let s = r#"(get-book :title "hello world" :version "1984")"#;
+        let d = Data::from_str(&p, s).unwrap();
+
+        assert_eq!(
+            d,
+            Data::new(
+                "get-book",
+                &vec![
+                    Sym::read_keyword("title"),
+                    Sym::read_string("hello world"),
+                    Sym::read_keyword("version"),
+                    Sym::read_string("1984")
+                ]
+            )
+            .unwrap()
+        )
+    }
+
+    #[test]
+    fn test_data_to_str() {
+        let p = Parser::new();
+        let s = r#"(get-book :title "hello world" :version "1984")"#;
+        let d = Data::from_str(&p, s).unwrap();
+
+        assert_eq!(s, d.to_str());
     }
 }
