@@ -1,10 +1,7 @@
 #![feature(iter_array_chunks)]
-#![feature(lazy_get)]
 mod data;
 
 use std::{collections::VecDeque, error::Error, io::Read};
-
-use itertools::Itertools;
 use tracing::error;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]

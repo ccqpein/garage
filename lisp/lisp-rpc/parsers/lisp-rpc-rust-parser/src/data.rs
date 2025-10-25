@@ -99,7 +99,7 @@ impl Data {
     }
 
     /// generate the data
-    fn new(name: &str, rest_datas: &[Atom]) -> Result<Self, Box<dyn Error>> {
+    fn new(name: &str, rest_datas: &[Expr]) -> Result<Self, Box<dyn Error>> {
         let mut d = vec![];
 
         d.push(Expr::Atom(Atom::read(name)));
@@ -114,8 +114,11 @@ impl Data {
         }
 
         for [k, _] in rest_datas.iter().array_chunks() {
-            match k.value {
-                crate::TypeValue::Keyword(_) => (),
+            match k {
+                Expr::Atom(Atom {
+                    value: crate::TypeValue::Keyword(_),
+                    ..
+                }) => (),
                 _ => {
                     return Err(Box::new(DataError {
                         msg: "data has to be keyword-value pair",
@@ -125,7 +128,7 @@ impl Data {
             }
         }
 
-        d.append(&mut rest_datas.iter().map(|s| Expr::Atom(s.clone())).collect());
+        d.append(&mut rest_datas.iter().map(|s| s.clone()).collect());
 
         Ok(Self {
             name: name.to_string(),
@@ -154,15 +157,9 @@ impl<'d> DataMap<'d> {
 
     /// get the value of the keyword
     /// the value has to be the Expr::Atom by now
-    fn get(&self, k: &str) -> Option<&Atom> {
+    fn get(&self, k: &'_ str) -> Option<&Expr> {
         match self.hash_map.get(&Atom::read_keyword(k)) {
-            Some(vv) => match vv {
-                Expr::Atom(sym) => Some(sym),
-                _ => {
-                    debug!("not support the other atom yet");
-                    None
-                }
-            },
+            Some(vv) => Some(*vv),
             None => None,
         }
     }
@@ -185,7 +182,10 @@ mod tests {
 
         let dd_map = dd.to_map().unwrap();
         assert_eq!(dd_map.get_name(), "get-book");
-        assert_eq!(dd_map.get("title"), Some(&Atom::read_string("hello world")));
+        assert_eq!(
+            dd_map.get("title"),
+            Some(&Expr::Atom(Atom::read_string("hello world")))
+        );
 
         //
 
@@ -195,7 +195,10 @@ mod tests {
         let d = d.to_map().unwrap();
 
         assert_eq!(d.get_name(), "get-book");
-        assert_eq!(d.get("version"), Some(&Atom::read_number("1984", 1984)));
+        assert_eq!(
+            d.get("version"),
+            Some(&Expr::Atom(Atom::read_number("1984", 1984)))
+        );
     }
 
     #[test]
@@ -209,10 +212,10 @@ mod tests {
             Data::new(
                 "get-book",
                 &vec![
-                    Atom::read_keyword("title"),
-                    Atom::read_string("hello world"),
-                    Atom::read_keyword("version"),
-                    Atom::read_string("1984")
+                    Expr::Atom(Atom::read_keyword("title")),
+                    Expr::Atom(Atom::read_string("hello world")),
+                    Expr::Atom(Atom::read_keyword("version")),
+                    Expr::Atom(Atom::read_string("1984"))
                 ]
             )
             .unwrap()
