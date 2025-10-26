@@ -1,4 +1,5 @@
 #![feature(iter_array_chunks)]
+#![feature(assert_matches)]
 mod data;
 
 use std::{collections::VecDeque, error::Error, io::Read};
@@ -10,6 +11,17 @@ pub enum TypeValue {
     String(String),
     Keyword(String),
     Number(i64),
+}
+
+impl TypeValue {
+    pub fn to_string(&self) -> String {
+        match self {
+            TypeValue::Symbol(s) => s.clone(),
+            TypeValue::String(s) => String::from("\"") + s + "\"",
+            TypeValue::Keyword(s) => String::from(":") + s,
+            TypeValue::Number(d) => d.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -57,6 +69,10 @@ impl Atom {
     pub fn atom_lit(&self) -> &str {
         &self.literal
     }
+
+    pub fn to_string(&self) -> String {
+        self.value.to_string()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -84,12 +100,7 @@ pub enum Expr {
 impl Expr {
     pub fn into_tokens(&self) -> String {
         match self {
-            Expr::Atom(atom) => match atom.value {
-                TypeValue::Symbol(_) => atom.literal.clone(),
-                TypeValue::String(_) => String::from("\"") + &atom.literal + "\"",
-                TypeValue::Keyword(_) => String::from(":") + &atom.literal,
-                TypeValue::Number(d) => d.to_string(),
-            },
+            Expr::Atom(atom) => atom.to_string(),
             Expr::List(exprs) => {
                 String::from("(")
                     + &exprs
@@ -118,6 +129,11 @@ impl Expr {
     }
 }
 
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.into_tokens())
+    }
+}
 pub struct Parser {
     /// will read number if this field is true
     read_number_config: bool,

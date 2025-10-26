@@ -14,13 +14,38 @@ this means server receive the ~get-book~ call and receive the titles and version
 
 server should do the parsing job and handle the call
 
-it should return the
+the return format can be
 
 #+begin_src lisp
   (book-info :result "aaa")
 #+end_src
 
-~book-info~ is the response data type
+~book-info~ is the response data name. And the response format is same as request. They are ~data~ type.
+
+*** Nest data
+
+the root data (request or response) has to be ~(data-name &keywords)~ (data type). but it can have some nesty data as the value of keyword.
+
+the value of keyword can be the ~data~, ~list~, or ~map~.
+
+*data*:
+
+#+begin_src lisp
+  (get-book :some-keyword (sub-name-data :a 1 :b 2))
+#+end_src
+
+list and map have to have *quote* (~'~) symbol. list just a list, map is the keyword-value pairs. (like data, but without the name)
+
+#+begin_src lisp
+  (get-sum-number :argumets '(1 2 3))
+#+end_src
+
+and
+
+#+begin_src lisp
+  (get-sum-number :argumets '(:first 1 :second 2 :third 3))
+#+end_src
+
 
 ** Spec mode
 
