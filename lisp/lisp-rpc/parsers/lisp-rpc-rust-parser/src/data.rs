@@ -193,9 +193,8 @@ impl ExprData {
 
         let name = match &exprs[0] {
             Expr::Atom(Atom {
-                literal,
-                value: crate::TypeValue::Symbol(_),
-            }) => literal,
+                value: crate::TypeValue::Symbol(s),
+            }) => s,
             _ => {
                 return Err(Box::new(DataError {
                     msg: "data's first element has to be symbol",
@@ -209,11 +208,10 @@ impl ExprData {
             match (k, v) {
                 (
                     Expr::Atom(Atom {
-                        value: crate::TypeValue::Keyword(_),
-                        literal,
+                        value: crate::TypeValue::Keyword(k),
                     }),
                     _,
-                ) => kwrds.push(literal.to_string()),
+                ) => kwrds.push(k.to_string()),
                 _ => {
                     return Err(Box::new(DataError {
                         msg: "",
@@ -336,10 +334,9 @@ impl MapData {
                     for [k, _] in ee.iter().array_chunks() {
                         match k {
                             Expr::Atom(Atom {
-                                literal,
-                                value: crate::TypeValue::Keyword(_),
+                                value: crate::TypeValue::Keyword(k),
                             }) => {
-                                kwrds.push(literal.to_string());
+                                kwrds.push(k.to_string());
                             }
                             _ => {
                                 return Err(Box::new(DataError {
@@ -403,12 +400,11 @@ impl DataMap {
             match (k, v) {
                 (
                     Expr::Atom(Atom {
-                        value: crate::TypeValue::Keyword(_),
-                        literal,
+                        value: crate::TypeValue::Keyword(k),
                     }),
                     _,
                 ) => {
-                    table.insert(literal.to_string(), Data::from_expr(v)?);
+                    table.insert(k.to_string(), Data::from_expr(v)?);
                 }
                 _ => (),
             };
