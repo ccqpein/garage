@@ -8,15 +8,6 @@ use std::os::raw::{c_char, c_int, c_longlong}; // c_longlong for i64
 use std::{collections::VecDeque, error::Error, io::Read};
 use tracing::error;
 
-// C-compatible enum for TypeValue discrimination
-#[repr(C)]
-pub enum CTypeValueType {
-    Symbol = 0,
-    String = 1,
-    Keyword = 2,
-    Number = 3,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum TypeValue {
     Symbol(String),
@@ -77,6 +68,284 @@ impl Atom {
     pub fn to_string(&self) -> String {
         self.value.to_string()
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Expr {
+    Atom(Atom),
+    List(Vec<Expr>),
+    Quote(Box<Expr>),
+}
+
+impl Expr {
+    pub fn into_tokens(&self) -> String {
+        match self {
+            Expr::Atom(atom) => atom.to_string(),
+            Expr::List(exprs) => {
+                String::from("(")
+                    + &exprs
+                        .iter()
+                        .map(|a| a.into_tokens())
+                        .collect::<Vec<String>>()
+                        .join(" ")
+                    + ")"
+            }
+            Expr::Quote(expr) => String::from("'") + &expr.into_tokens(),
+        }
+    }
+
+    pub fn nth(&self, ind: usize) -> Option<&Self> {
+        match self {
+            Expr::List(exprs) => exprs.get(ind),
+            _ => None,
+        }
+    }
+
+    pub fn iter(&self) -> Option<impl Iterator<Item = &Expr>> {
+        match self {
+            Expr::List(exprs) => Some(exprs.iter()),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.into_tokens())
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ParserError {
+    InvalidStart,
+    InvalidToken(&'static str),
+    UnknownToken,
+}
+
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParserError::InvalidStart => write!(f, "parser error: Invalid start token"),
+            ParserError::InvalidToken(msg) => write!(f, "parser error: Invalid token: {}", msg),
+            ParserError::UnknownToken => write!(f, "parser error: Unknown token"),
+        }
+    }
+}
+
+impl Error for ParserError {}
+
+pub struct Parser {
+    /// will read number if this field is true
+    read_number_config: bool,
+}
+
+impl Parser {
+    fn new() -> Self {
+        Self {
+            read_number_config: false,
+        }
+    }
+
+    /// set the parser read_number config
+    fn config_read_number(mut self, v: bool) -> Self {
+        self.read_number_config = v;
+        self
+    }
+
+    /// config_read_number_internal for C ffi
+    fn config_read_number_internal(&mut self, v: bool) {
+        // Changed to take `&mut self`
+        self.read_number_config = v;
+    }
+
+    /// tokenize the source code
+    pub fn tokenize(&self, mut source_code: impl Read) -> VecDeque<String> {
+        let mut buf = [0; 1];
+        let mut cache = vec![];
+        let mut res = vec![];
+        loop {
+            match source_code.read(&mut buf) {
+                Ok(n) if n != 0 => {
+                    let c = buf.get(0).unwrap();
+                    match c {
+                        b'(' | b' ' | b')' | b'\'' | b'"' | b':' | b'\n' => {
+                            if !cache.is_empty() {
+                                res.push(String::from_utf8(cache.clone()).unwrap());
+                                cache.clear();
+                            }
+
+                            match res.last() {
+                                Some(le) if le == " " && *c == b' ' => continue,
+                                _ => (),
+                            }
+
+                            res.push(String::from_utf8(vec![*c]).unwrap())
+                        }
+                        _ => {
+                            cache.push(*c);
+                        }
+                    }
+                }
+                Ok(_) => break,
+                Err(e) => error!("error in tokenize step {}", e),
+            }
+        }
+
+        if !cache.is_empty() {
+            res.push(String::from_utf8(cache.clone()).unwrap());
+        }
+
+        res.into()
+    }
+
+    pub fn parse_root(&mut self, source_code: impl Read) -> Result<Vec<Expr>, ParserError> {
+        let mut tokens = self.tokenize(source_code);
+
+        let mut res = vec![];
+        match tokens.get(0) {
+            Some(t) if t == "(" => {}
+            _ => return Err(ParserError::InvalidStart),
+        }
+
+        loop {
+            match tokens.front() {
+                Some(b) => match b.as_str() {
+                    "(" => {
+                        res.push(self.read_exp(&mut tokens)?);
+                    }
+                    " " | "\n" => {
+                        tokens.pop_front();
+                    }
+                    _ => {
+                        return {
+                            println!("{:?}", b);
+                            Err(ParserError::InvalidToken("in read_root"))
+                        };
+                    }
+                },
+                None => break,
+            }
+        }
+
+        Ok(res)
+    }
+
+    /// choose which read function
+    fn read_router(
+        &self,
+        token: &str,
+    ) -> Result<fn(&Self, &mut VecDeque<String>) -> Result<Expr, ParserError>, ParserError> {
+        match token {
+            "(" => Ok(Self::read_exp),
+            "'" => Ok(Self::read_quote),
+            "\"" => Ok(Self::read_string),
+            ":" => Ok(Self::read_keyword),
+            _ => Ok(Self::read_atom),
+        }
+    }
+
+    fn read_atom(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
+        let token = tokens
+            .pop_front()
+            .ok_or(ParserError::InvalidToken("in read_sym"))?;
+
+        if self.read_number_config {
+            match token.parse::<i64>() {
+                Ok(n) => return Ok(Expr::Atom(Atom::read_number(&token, n))),
+                Err(_) => (),
+            }
+        }
+
+        Ok(Expr::Atom(Atom::read(&token)))
+    }
+
+    fn read_quote(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
+        tokens
+            .pop_front()
+            .ok_or(ParserError::InvalidToken("in read_quote"))?;
+
+        let res = match tokens.front() {
+            Some(t) => self.read_router(t)?(self, tokens)?,
+            None => return Err(ParserError::InvalidToken("in read_quote")),
+        };
+
+        Ok(Expr::Quote(Box::new(res)))
+    }
+
+    /// start from '\('
+    pub fn read_exp(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
+        let mut res = vec![];
+        tokens.pop_front();
+
+        loop {
+            match tokens.front() {
+                Some(t) if t == ")" => {
+                    tokens.pop_front();
+                    break;
+                }
+                // ignore spaces
+                Some(t) if t == " " || t == "\n" => {
+                    tokens.pop_front();
+                }
+                Some(t) => res.push(self.read_router(t)?(self, tokens)?),
+                None => return Err(ParserError::InvalidToken("in read_exp")),
+            }
+        }
+
+        Ok(Expr::List(res))
+    }
+
+    /// start with "
+    fn read_string(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
+        tokens.pop_front();
+
+        let mut escape = false;
+        let mut res = String::new();
+        let mut this_token;
+        loop {
+            this_token = tokens
+                .pop_front()
+                .ok_or(ParserError::InvalidToken("in read_string"))?;
+
+            if escape {
+                res = res + &this_token;
+                escape = false;
+                continue;
+            }
+
+            match this_token.as_str() {
+                "\\" => escape = true,
+                "\"" => break,
+                _ => res = res + &this_token,
+            }
+        }
+
+        Ok(Expr::Atom(Atom::read_string(&res)))
+    }
+
+    /// start with :
+    fn read_keyword(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
+        tokens.pop_front();
+
+        let token = tokens
+            .pop_front()
+            .ok_or(ParserError::InvalidToken("in read_keyword"))?;
+
+        Ok(Expr::Atom(Atom::read_keyword(&token)))
+    }
+}
+
+//
+// =========== FFI bleow (gemini) ================
+//
+
+// C-compatible enum for TypeValue discrimination
+#[repr(C)]
+pub enum CTypeValueType {
+    Symbol = 0,
+    String = 1,
+    Keyword = 2,
+    Number = 3,
 }
 
 // --- FFI functions for Atom ---
@@ -218,28 +487,6 @@ pub enum CParserErrorCode {
     InternalError = 6,      // General catch-all
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ParserError {
-    InvalidStart,
-    InvalidToken(&'static str),
-    UnknownToken,
-    // Store CString for FFI message
-    //FfiError(CParserErrorCode, String),
-}
-
-impl std::fmt::Display for ParserError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParserError::InvalidStart => write!(f, "parser error: Invalid start token"),
-            ParserError::InvalidToken(msg) => write!(f, "parser error: Invalid token: {}", msg),
-            ParserError::UnknownToken => write!(f, "parser error: Unknown token"),
-            //ParserError::FfiError(_, msg) => write!(f, "ffi error: {}", msg),
-        }
-    }
-}
-
-impl Error for ParserError {}
-
 // Global buffer for the last error message
 
 // C-compatible enum for Expr discrimination
@@ -248,51 +495,6 @@ pub enum CExprType {
     ExprTypeAtom = 0,
     List = 1,
     Quote = 2,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Expr {
-    Atom(Atom),
-    List(Vec<Expr>),
-    Quote(Box<Expr>),
-}
-
-impl Expr {
-    pub fn into_tokens(&self) -> String {
-        match self {
-            Expr::Atom(atom) => atom.to_string(),
-            Expr::List(exprs) => {
-                String::from("(")
-                    + &exprs
-                        .iter()
-                        .map(|a| a.into_tokens())
-                        .collect::<Vec<String>>()
-                        .join(" ")
-                    + ")"
-            }
-            Expr::Quote(expr) => String::from("'") + &expr.into_tokens(),
-        }
-    }
-
-    pub fn nth(&self, ind: usize) -> Option<&Self> {
-        match self {
-            Expr::List(exprs) => exprs.get(ind),
-            _ => None,
-        }
-    }
-
-    pub fn iter(&self) -> Option<impl Iterator<Item = &Expr>> {
-        match self {
-            Expr::List(exprs) => Some(exprs.iter()),
-            _ => None,
-        }
-    }
-}
-
-impl std::fmt::Display for Expr {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.into_tokens())
-    }
 }
 
 // --- FFI functions for Expr ---
@@ -417,11 +619,6 @@ pub extern "C" fn expr_to_string(ptr: *const Expr) -> *mut c_char {
         .into_raw()
 }
 
-pub struct Parser {
-    /// will read number if this field is true
-    read_number_config: bool,
-}
-
 // A C-compatible struct to hold the tokenized strings.
 // This allows returning an array of strings and its length.
 #[repr(C)]
@@ -439,63 +636,47 @@ pub struct CExprArray {
     pub error_code: CParserErrorCode, // Add error code directly
 }
 
+// --- FFI functions for Parser ---
+
 impl Parser {
-    fn new() -> Self {
-        Self {
-            read_number_config: false,
-        }
-    }
+    /// parse_root_internal for C ffi
+    pub fn parse_root_internal(&mut self, source_code: &str) -> Result<Vec<Expr>, ParserError> {
+        let mut tokens = self.tokenize_internal(source_code);
 
-    /// set the parser read_number config
-    fn config_read_number(mut self, v: bool) -> Self {
-        self.read_number_config = v;
-        self
-    }
-
-    /// config_read_number_internal for C ffi
-    fn config_read_number_internal(&mut self, v: bool) {
-        // Changed to take `&mut self`
-        self.read_number_config = v;
-    }
-
-    /// tokenize the source code
-    pub fn tokenize(&self, mut source_code: impl Read) -> VecDeque<String> {
-        let mut buf = [0; 1];
-        let mut cache = vec![];
         let mut res = vec![];
+
+        let first_token = tokens.front().cloned();
+        match first_token.as_deref() {
+            Some("(") => { // It must start with an open parenthesis
+                // Read the whole expression list, effectively populating `res`
+            }
+            Some(t) if t == " " || t == "\n" => {
+                tokens.pop_front();
+            }
+            _ => return Err(ParserError::InvalidStart),
+        }
+
+        let root_expr = self.read_exp(&mut tokens)?;
+
         loop {
-            match source_code.read(&mut buf) {
-                Ok(n) if n != 0 => {
-                    let c = buf.get(0).unwrap();
-                    match c {
-                        b'(' | b' ' | b')' | b'\'' | b'"' | b':' | b'\n' => {
-                            if !cache.is_empty() {
-                                res.push(String::from_utf8(cache.clone()).unwrap());
-                                cache.clear();
-                            }
-
-                            match res.last() {
-                                Some(le) if le == " " && *c == b' ' => continue,
-                                _ => (),
-                            }
-
-                            res.push(String::from_utf8(vec![*c]).unwrap())
-                        }
-                        _ => {
-                            cache.push(*c);
+            match tokens.front() {
+                Some(b) => match b.as_str() {
+                    " " | "\n" => {
+                        tokens.pop_front();
+                    }
+                    _ => {
+                        // Attempt to read an expression
+                        match self.read_router(b)?(self, &mut tokens) {
+                            Ok(expr) => res.push(expr),
+                            Err(e) => return Err(e), // Propagate parse error
                         }
                     }
-                }
-                Ok(_) => break,
-                Err(e) => error!("error in tokenize step {}", e),
+                },
+                None => break,
             }
         }
 
-        if !cache.is_empty() {
-            res.push(String::from_utf8(cache.clone()).unwrap());
-        }
-
-        res.into()
+        Ok(res)
     }
 
     /// tokenize_internal for C ffi
@@ -543,185 +724,7 @@ impl Parser {
 
         res.into()
     }
-
-    pub fn parse_root(&mut self, source_code: impl Read) -> Result<Vec<Expr>, ParserError> {
-        let mut tokens = self.tokenize(source_code);
-
-        let mut res = vec![];
-        match tokens.get(0) {
-            Some(t) if t == "(" => {}
-            _ => return Err(ParserError::InvalidStart),
-        }
-
-        loop {
-            match tokens.front() {
-                Some(b) => match b.as_str() {
-                    "(" => {
-                        res.push(self.read_exp(&mut tokens)?);
-                    }
-                    " " | "\n" => {
-                        tokens.pop_front();
-                    }
-                    _ => {
-                        return {
-                            println!("{:?}", b);
-                            Err(ParserError::InvalidToken("in read_root"))
-                        };
-                    }
-                },
-                None => break,
-            }
-        }
-
-        Ok(res)
-    }
-
-    /// parse_root_internal for C ffi
-    pub fn parse_root_internal(&mut self, source_code: &str) -> Result<Vec<Expr>, ParserError> {
-        let mut tokens = self.tokenize_internal(source_code);
-
-        let mut res = vec![];
-
-        let first_token = tokens.front().cloned();
-        match first_token.as_deref() {
-            Some("(") => { // It must start with an open parenthesis
-                // Read the whole expression list, effectively populating `res`
-            }
-            Some(t) if t == " " || t == "\n" => {
-                tokens.pop_front();
-            }
-            _ => return Err(ParserError::InvalidStart),
-        }
-
-        let root_expr = self.read_exp(&mut tokens)?;
-
-        loop {
-            match tokens.front() {
-                Some(b) => match b.as_str() {
-                    " " | "\n" => {
-                        tokens.pop_front();
-                    }
-                    _ => {
-                        // Attempt to read an expression
-                        match self.read_router(b)?(self, &mut tokens) {
-                            Ok(expr) => res.push(expr),
-                            Err(e) => return Err(e), // Propagate parse error
-                        }
-                    }
-                },
-                None => break,
-            }
-        }
-
-        Ok(res)
-    }
-
-    /// choose which read function
-    fn read_router(
-        &self,
-        token: &str,
-    ) -> Result<fn(&Self, &mut VecDeque<String>) -> Result<Expr, ParserError>, ParserError> {
-        match token {
-            "(" => Ok(Self::read_exp),
-            "'" => Ok(Self::read_quote),
-            "\"" => Ok(Self::read_string),
-            ":" => Ok(Self::read_keyword),
-            _ => Ok(Self::read_atom),
-        }
-    }
-
-    fn read_atom(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
-        let token = tokens
-            .pop_front()
-            .ok_or(ParserError::InvalidToken("in read_sym"))?;
-
-        if self.read_number_config {
-            match token.parse::<i64>() {
-                Ok(n) => return Ok(Expr::Atom(Atom::read_number(&token, n))),
-                Err(_) => (),
-            }
-        }
-
-        Ok(Expr::Atom(Atom::read(&token)))
-    }
-
-    fn read_quote(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
-        tokens
-            .pop_front()
-            .ok_or(ParserError::InvalidToken("in read_quote"))?;
-
-        let res = match tokens.front() {
-            Some(t) => self.read_router(t)?(self, tokens)?,
-            None => return Err(ParserError::InvalidToken("in read_quote")),
-        };
-
-        Ok(Expr::Quote(Box::new(res)))
-    }
-
-    /// start from '\('
-    pub fn read_exp(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
-        let mut res = vec![];
-        tokens.pop_front();
-
-        loop {
-            match tokens.front() {
-                Some(t) if t == ")" => {
-                    tokens.pop_front();
-                    break;
-                }
-                // ignore spaces
-                Some(t) if t == " " || t == "\n" => {
-                    tokens.pop_front();
-                }
-                Some(t) => res.push(self.read_router(t)?(self, tokens)?),
-                None => return Err(ParserError::InvalidToken("in read_exp")),
-            }
-        }
-
-        Ok(Expr::List(res))
-    }
-
-    /// start with "
-    fn read_string(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
-        tokens.pop_front();
-
-        let mut escape = false;
-        let mut res = String::new();
-        let mut this_token;
-        loop {
-            this_token = tokens
-                .pop_front()
-                .ok_or(ParserError::InvalidToken("in read_string"))?;
-
-            if escape {
-                res = res + &this_token;
-                escape = false;
-                continue;
-            }
-
-            match this_token.as_str() {
-                "\\" => escape = true,
-                "\"" => break,
-                _ => res = res + &this_token,
-            }
-        }
-
-        Ok(Expr::Atom(Atom::read_string(&res)))
-    }
-
-    /// start with :
-    fn read_keyword(&self, tokens: &mut VecDeque<String>) -> Result<Expr, ParserError> {
-        tokens.pop_front();
-
-        let token = tokens
-            .pop_front()
-            .ok_or(ParserError::InvalidToken("in read_keyword"))?;
-
-        Ok(Expr::Atom(Atom::read_keyword(&token)))
-    }
 }
-
-// --- FFI functions for Parser ---
 
 /// Creates a new Parser instance.
 #[unsafe(no_mangle)]
