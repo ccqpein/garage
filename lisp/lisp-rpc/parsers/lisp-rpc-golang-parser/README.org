@@ -1,0 +1,15 @@
+* README
+
+this golang parser read the shared lib that compiled from [[../lisp-rpc-rust-parser/][rust part]]
+
+** pre-work
+
+#+begin_src
+  cargo build --release
+#+end_src
+
+then copy it to ~parser~ folder, and the ~parser_lib.h~ is the header file
+
+
+
+
