@@ -9,13 +9,13 @@ use tracing::{debug, error};
 
 use crate::{Atom, Expr, Parser, TypeValue};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum DataErrorType {
     InvalidInput,
     CorruptedData,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct DataError {
     msg: &'static str,
     err_type: DataErrorType,
@@ -52,8 +52,12 @@ trait FromStr: FromExpr {
     }
 }
 
+pub trait IntoData {
+    fn into_rpc_data(&self) -> Data;
+}
+
 /// define all the data, list, and map type that can be treat as Data
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Data {
     /// Data is (data-name keyword-data-pairs...)
     Data(ExprData),
@@ -137,16 +141,14 @@ impl Data {
     ) -> Self {
         Data::Data(ExprData::new(
             name,
-            kv_pairs
-                .map(|(s, x)| {
-                    [
-                        Expr::Atom(Atom {
-                            value: TypeValue::Keyword(s.to_string()),
-                        }),
-                        x,
-                    ]
-                })
-                .flatten(),
+            kv_pairs.map(|(s, x)| {
+                (
+                    Expr::Atom(Atom {
+                        value: TypeValue::Keyword(s.to_string()),
+                    }),
+                    x.into_rpc_data(),
+                )
+            }),
         ))
     }
 }
@@ -168,14 +170,15 @@ impl std::fmt::Display for Data {
     }
 }
 
-trait IntoData {
-    fn into_rpc_data(&self) -> Data;
+impl IntoData for Data {
+    fn into_rpc_data(&self) -> Data {
+        self.clone()
+    }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ExprData {
     name: String,
-    //key_words: Vec<String>,
     rest_args: Vec<(Expr, Data)>,
     inner_map: OnceCell<DataMap>,
 }
@@ -190,6 +193,12 @@ impl FromExpr for ExprData {
 }
 
 impl FromStr for ExprData {}
+
+impl IntoData for ExprData {
+    fn into_rpc_data(&self) -> Data {
+        Data::Data(self.clone())
+    }
+}
 
 impl ExprData {
     fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
@@ -229,29 +238,33 @@ impl ExprData {
             }
         };
 
-        if exprs[1..].into_iter().array_chunks().any(|[k, v]| {
-            !matches!(
-                k,
-                Expr::Atom(Atom {
-                    value: crate::TypeValue::Keyword(_),
-                })
-            )
-        }) {
-            return Err(Box::new(DataError {
-                msg: "has to be keyword value pairs",
-                err_type: DataErrorType::InvalidInput,
-            }));
+        let mut rest_a = vec![];
+        for [k, v] in exprs[1..].into_iter().array_chunks() {
+            match (k, v) {
+                (
+                    Expr::Atom(Atom {
+                        value: crate::TypeValue::Keyword(_),
+                    }),
+                    _,
+                ) => rest_a.push((k.clone(), Data::from_expr(v)?)),
+                _ => {
+                    return Err(Box::new(DataError {
+                        msg: "has to be keyword value pairs",
+                        err_type: DataErrorType::InvalidInput,
+                    }));
+                }
+            }
         }
 
         Ok(Self {
             name: name.to_string(),
-            rest_args: exprs[1..].to_vec(),
+            rest_args: rest_a,
             inner_map: OnceCell::new(), // generate when get method called
         })
     }
 
     /// make new expr data
-    fn new<'a>(name: &str, rest_args: impl Iterator<Item = Expr>) -> Self {
+    fn new<'a>(name: &str, rest_args: impl Iterator<Item = (Expr, Data)>) -> Self {
         Self {
             name: name.to_string(),
             rest_args: rest_args.collect(),
@@ -271,8 +284,7 @@ impl ExprData {
             self.name,
             self.rest_args
                 .iter()
-                .array_chunks()
-                .map(|[k, v]| format!(":{} {}", k.to_string(), v.to_string()))
+                .map(|(k, v)| format!("{} {}", k.to_string(), v.to_string()))
                 .join(" ")
         )
     }
@@ -285,7 +297,7 @@ impl ExprData {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct ListData {
     inner_data: Vec<Data>,
 }
@@ -300,6 +312,12 @@ impl FromExpr for ListData {
 }
 
 impl FromStr for ListData {}
+
+impl IntoData for ListData {
+    fn into_rpc_data(&self) -> Data {
+        Data::List(self.clone())
+    }
+}
 
 impl ListData {
     fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
@@ -333,7 +351,7 @@ impl ListData {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct MapData {
     kwrds: Vec<String>,
     map: DataMap,
@@ -349,6 +367,12 @@ impl FromExpr for MapData {
 }
 
 impl FromStr for MapData {}
+
+impl IntoData for MapData {
+    fn into_rpc_data(&self) -> Data {
+        Data::Map(self.clone())
+    }
+}
 
 impl MapData {
     fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
@@ -372,7 +396,7 @@ impl MapData {
                         }
                     }
 
-                    DataMap::new(&ee)?
+                    DataMap::from_exprs(&ee)?
                 }
                 _ => {
                     return Err(Box::new(DataError {
@@ -413,13 +437,13 @@ impl MapData {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct DataMap {
     hash_map: HashMap<String, Data>,
 }
 
 impl DataMap {
-    fn new(exprs: &[Expr]) -> Result<Self, Box<dyn Error>> {
+    fn from_exprs(exprs: &[Expr]) -> Result<Self, Box<dyn Error>> {
         let mut table = HashMap::new();
         for [k, v] in exprs.iter().array_chunks() {
             match (k, v) {
@@ -431,7 +455,35 @@ impl DataMap {
                 ) => {
                     table.insert(k.to_string(), Data::from_expr(v)?);
                 }
-                _ => (),
+                _ => {
+                    return Err(Box::new(DataError {
+                        msg: "has to be keyword value pairs for making the data map",
+                        err_type: DataErrorType::InvalidInput,
+                    }));
+                }
+            }
+        }
+
+        Ok(Self { hash_map: table })
+    }
+
+    fn new(kv: &[(Expr, Data)]) -> Result<Self, Box<dyn Error>> {
+        let mut table = HashMap::new();
+
+        for (e, d) in kv {
+            match (e, d) {
+                (
+                    Expr::Atom(Atom {
+                        value: TypeValue::Keyword(k),
+                    }),
+                    dd,
+                ) => table.insert(k.to_string(), dd.clone()),
+                _ => {
+                    return Err(Box::new(DataError {
+                        msg: "has to be keyword value pairs for making the data map",
+                        err_type: DataErrorType::InvalidInput,
+                    }));
+                }
             };
         }
 
@@ -506,7 +558,7 @@ mod tests {
 
         let d = Data::from_str(&p, s).unwrap();
 
-        dbg!(&d);
+        //dbg!(&d);
         assert_matches!(d, Data::Data(ExprData { .. }));
 
         assert_eq!(
