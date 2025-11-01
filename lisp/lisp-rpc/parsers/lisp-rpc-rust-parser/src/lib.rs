@@ -8,6 +8,27 @@ use std::os::raw::{c_char, c_int, c_longlong}; // c_longlong for i64
 use std::{collections::VecDeque, error::Error, io::Read};
 use tracing::error;
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum ParserError {
+    InvalidStart,
+    InvalidToken(&'static str),
+    CorruptData(&'static str),
+    UnknownToken,
+}
+
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParserError::InvalidStart => write!(f, "parser error: Invalid start token"),
+            ParserError::InvalidToken(msg) => write!(f, "parser error: Invalid token: {}", msg),
+            ParserError::UnknownToken => write!(f, "parser error: Unknown token"),
+            ParserError::CorruptData(msg) => write!(f, "parser error: illegal data: {}", msg),
+        }
+    }
+}
+
+impl Error for ParserError {}
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum TypeValue {
     Symbol(String),
@@ -23,6 +44,16 @@ impl TypeValue {
             TypeValue::String(s) => format!("\"{}\"", s),
             TypeValue::Keyword(s) => format!(":{}", s),
             TypeValue::Number(d) => d.to_string(),
+        }
+    }
+
+    pub fn make_symbol(s: &str) -> Result<Self, Box<dyn Error>> {
+        if s.contains([' ']) {
+            Err(Box::new(ParserError::CorruptData(
+                "cannot make symbol with this str",
+            )))
+        } else {
+            Ok(Self::Symbol(s.to_string()))
         }
     }
 }
@@ -115,25 +146,7 @@ impl std::fmt::Display for Expr {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ParserError {
-    InvalidStart,
-    InvalidToken(&'static str),
-    UnknownToken,
-}
-
-impl std::fmt::Display for ParserError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParserError::InvalidStart => write!(f, "parser error: Invalid start token"),
-            ParserError::InvalidToken(msg) => write!(f, "parser error: Invalid token: {}", msg),
-            ParserError::UnknownToken => write!(f, "parser error: Unknown token"),
-        }
-    }
-}
-
-impl Error for ParserError {}
-
+#[derive(Default)]
 pub struct Parser {
     /// will read number if this field is true
     read_number_config: bool,
@@ -914,6 +927,7 @@ impl From<ParserError> for CParserErrorCode {
             ParserError::InvalidStart => CParserErrorCode::InvalidStart,
             ParserError::InvalidToken(_) => CParserErrorCode::InvalidToken,
             ParserError::UnknownToken => CParserErrorCode::UnknownToken,
+            ParserError::CorruptData(_) => todo!(),
         }
     }
 }

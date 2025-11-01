@@ -138,8 +138,8 @@ impl Data {
     pub fn new<'a>(
         name: &str,
         kv_pairs: impl Iterator<Item = (&'a str, &'a dyn IntoData)>,
-    ) -> Self {
-        Data::Data(ExprData::new(
+    ) -> Result<Self, Box<dyn Error>> {
+        Ok(Data::Data(ExprData::new(
             name,
             kv_pairs.map(|(s, x)| {
                 (
@@ -149,7 +149,7 @@ impl Data {
                     x.into_rpc_data(),
                 )
             }),
-        ))
+        )?))
     }
 }
 
@@ -264,12 +264,16 @@ impl ExprData {
     }
 
     /// make new expr data
-    fn new<'a>(name: &str, rest_args: impl Iterator<Item = (Expr, Data)>) -> Self {
-        Self {
+    fn new<'a>(
+        name: &str,
+        rest_args: impl Iterator<Item = (Expr, Data)>,
+    ) -> Result<Self, Box<dyn Error>> {
+        let _ = TypeValue::make_symbol(name)?;
+        Ok(Self {
             name: name.to_string(),
             rest_args: rest_args.collect(),
             inner_map: OnceCell::new(),
-        }
+        })
     }
 
     /// the name of the expr, always the first element depending on the spec
@@ -595,6 +599,17 @@ mod tests {
         let d = ExprData::from_str(&p, s).unwrap();
 
         assert_eq!(s, d.to_string());
+
+        //
+
+        let e = ExprData::new("a b", [].into_iter());
+        assert!(e.is_err());
+
+        //
+
+        let e = ExprData::new("a-b", [].into_iter());
+        assert!(e.is_ok());
+        assert_eq!(e.unwrap().to_string(), "(a-b )")
     }
 
     #[test]
