@@ -3,10 +3,10 @@ name = "lisp-rpc-rust-parser"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-crate-type = ["cdylib"]
+# [lib]
+# crate-type = ["cdylib"]
 
 [dependencies]
-itertools = "0.14.0"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+itertools = "0"
+tracing = "0"
+tracing-subscriber = { version = "0", features = ["env-filter"] }

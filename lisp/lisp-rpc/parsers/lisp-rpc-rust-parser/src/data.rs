@@ -2,7 +2,7 @@
 //!
 //! The first symbol is the name of data, and everything else are the "arguments"
 
-use std::{collections::HashMap, env, error::Error, io::Cursor};
+use std::{cell::OnceCell, collections::HashMap, env, error::Error, io::Cursor};
 
 use itertools::Itertools;
 use tracing::{debug, error};
@@ -71,23 +71,6 @@ pub enum Data {
     Error(DataError),
 }
 
-impl FromExpr for Data {
-    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>>
-    where
-        Self: Sized,
-    {
-        Self::from_expr(expr)
-    }
-}
-
-impl FromStr for Data {}
-
-impl std::fmt::Display for Data {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
-
 impl Data {
     fn from_expr(e: &Expr) -> Result<Self, Box<dyn Error>> {
         match e {
@@ -145,13 +128,56 @@ impl Data {
             Data::Error(data_error) => format!("{:?}", data_error),
         }
     }
+
+    /// generate the root data.
+    /// root data has to be expr
+    pub fn new<'a>(
+        name: &str,
+        kv_pairs: impl Iterator<Item = (&'a str, &'a dyn IntoData)>,
+    ) -> Self {
+        Data::Data(ExprData::new(
+            name,
+            kv_pairs
+                .map(|(s, x)| {
+                    [
+                        Expr::Atom(Atom {
+                            value: TypeValue::Keyword(s.to_string()),
+                        }),
+                        x,
+                    ]
+                })
+                .flatten(),
+        ))
+    }
+}
+
+impl FromExpr for Data {
+    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        Self::from_expr(expr)
+    }
+}
+
+impl FromStr for Data {}
+
+impl std::fmt::Display for Data {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+trait IntoData {
+    fn into_rpc_data(&self) -> Data;
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExprData {
     name: String,
-    args: Vec<String>,
-    inner_map: DataMap,
+    //key_words: Vec<String>,
+    rest_args: Vec<(Expr, Data)>,
+    inner_map: OnceCell<DataMap>,
 }
 
 impl FromExpr for ExprData {
@@ -203,29 +229,34 @@ impl ExprData {
             }
         };
 
-        let mut kwrds = vec![];
-        for [k, v] in exprs[1..].into_iter().array_chunks() {
-            match (k, v) {
-                (
-                    Expr::Atom(Atom {
-                        value: crate::TypeValue::Keyword(k),
-                    }),
-                    _,
-                ) => kwrds.push(k.to_string()),
-                _ => {
-                    return Err(Box::new(DataError {
-                        msg: "",
-                        err_type: DataErrorType::InvalidInput,
-                    }));
-                }
-            };
+        if exprs[1..].into_iter().array_chunks().any(|[k, v]| {
+            !matches!(
+                k,
+                Expr::Atom(Atom {
+                    value: crate::TypeValue::Keyword(_),
+                })
+            )
+        }) {
+            return Err(Box::new(DataError {
+                msg: "has to be keyword value pairs",
+                err_type: DataErrorType::InvalidInput,
+            }));
         }
 
         Ok(Self {
             name: name.to_string(),
-            args: kwrds,
-            inner_map: DataMap::new(&exprs[1..])?,
+            rest_args: exprs[1..].to_vec(),
+            inner_map: OnceCell::new(), // generate when get method called
         })
+    }
+
+    /// make new expr data
+    fn new<'a>(name: &str, rest_args: impl Iterator<Item = Expr>) -> Self {
+        Self {
+            name: name.to_string(),
+            rest_args: rest_args.collect(),
+            inner_map: OnceCell::new(),
+        }
     }
 
     /// the name of the expr, always the first element depending on the spec
@@ -238,25 +269,19 @@ impl ExprData {
         format!(
             "({} {})",
             self.name,
-            self.args
+            self.rest_args
                 .iter()
-                .map(|k| [
-                    format!(":{}", k.to_string()),
-                    self.inner_map
-                        .get(k)
-                        .unwrap_or(&Data::Error(DataError {
-                            msg: "corrupted data",
-                            err_type: DataErrorType::CorruptedData
-                        }))
-                        .to_string()
-                ])
-                .flatten()
+                .array_chunks()
+                .map(|[k, v]| format!(":{} {}", k.to_string(), v.to_string()))
                 .join(" ")
         )
     }
 
     fn get(&self, k: &str) -> Option<&Data> {
-        self.inner_map.get(k)
+        let m = self
+            .inner_map
+            .get_or_init(|| DataMap::new(&self.rest_args).unwrap());
+        m.get(k)
     }
 }
 
@@ -518,5 +543,17 @@ mod tests {
         let d = ExprData::from_str(&p, s).unwrap();
 
         assert_eq!(s, d.to_string());
+    }
+
+    #[test]
+    fn test_get_data() {
+        let p = Parser::new();
+        let e =
+            ExprData::from_str(&p, r#"(get-book :title "hello world" :version "1984")"#).unwrap();
+
+        assert_eq!(
+            e.get("title"),
+            Some(&Data::Value(TypeValue::String("hello world".to_string()))),
+        );
     }
 }

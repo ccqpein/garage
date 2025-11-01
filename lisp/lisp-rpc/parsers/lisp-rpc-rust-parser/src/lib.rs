@@ -1,6 +1,6 @@
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]
-mod data;
+pub mod data;
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_longlong}; // c_longlong for i64
