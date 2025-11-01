@@ -146,29 +146,31 @@ impl std::fmt::Display for Expr {
     }
 }
 
-#[derive(Default)]
 pub struct Parser {
-    /// will read number if this field is true
+    /// will read number if this field is true. default is true
+    /// turn it off will treat the number as the symbol in Expr
     read_number_config: bool,
 }
 
-impl Parser {
-    fn new() -> Self {
+impl Default for Parser {
+    fn default() -> Self {
         Self {
-            read_number_config: false,
+            read_number_config: true,
+        }
+    }
+}
+
+impl Parser {
+    pub fn new() -> Self {
+        Self {
+            read_number_config: true,
         }
     }
 
     /// set the parser read_number config
-    fn config_read_number(mut self, v: bool) -> Self {
+    pub fn config_read_number(mut self, v: bool) -> Self {
         self.read_number_config = v;
         self
-    }
-
-    /// config_read_number_internal for C ffi
-    fn config_read_number_internal(&mut self, v: bool) {
-        // Changed to take `&mut self`
-        self.read_number_config = v;
     }
 
     /// tokenize the source code
@@ -211,7 +213,7 @@ impl Parser {
         res.into()
     }
 
-    pub fn parse_root(&mut self, source_code: impl Read) -> Result<Vec<Expr>, ParserError> {
+    fn parse_root(&mut self, source_code: impl Read) -> Result<Vec<Expr>, ParserError> {
         let mut tokens = self.tokenize(source_code);
 
         let mut res = vec![];
@@ -652,6 +654,12 @@ pub struct CExprArray {
 // --- FFI functions for Parser ---
 
 impl Parser {
+    /// config_read_number_internal for C ffi
+    fn config_read_number_internal(&mut self, v: bool) {
+        // Changed to take `&mut self`
+        self.read_number_config = v;
+    }
+
     /// parse_root_internal for C ffi
     pub fn parse_root_internal(&mut self, source_code: &str) -> Result<Vec<Expr>, ParserError> {
         let mut tokens = self.tokenize_internal(source_code);

@@ -16,8 +16,8 @@ enum DataErrorType {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct DataError {
-    msg: &'static str,
+pub struct DataError {
+    msg: String,
     err_type: DataErrorType,
 }
 
@@ -29,13 +29,13 @@ impl std::fmt::Display for DataError {
 
 impl Error for DataError {}
 
-trait FromExpr {
+pub trait FromExpr {
     fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>>
     where
         Self: Sized;
 }
 
-trait FromStr: FromExpr {
+pub trait FromStr: FromExpr {
     fn from_str(p: &Parser, s: &str) -> Result<Self, Box<dyn Error>>
     where
         Self: Sized,
@@ -44,7 +44,7 @@ trait FromStr: FromExpr {
         let mut tkn = p.tokenize(c);
 
         let exp = p.read_router(tkn.get(0).ok_or(DataError {
-            msg: "empty str",
+            msg: "empty str".to_string(),
             err_type: DataErrorType::InvalidInput,
         })?)?(p, &mut tkn)?;
 
@@ -54,6 +54,18 @@ trait FromStr: FromExpr {
 
 pub trait IntoData {
     fn into_rpc_data(&self) -> Data;
+}
+
+//:= test intoData for i32
+
+impl IntoData for i32 {
+    fn into_rpc_data(&self) -> Data {
+        Data::Value(TypeValue::Number(*self as i64))
+    }
+}
+
+pub trait GetAbleData {
+    fn get<'s>(&'s self, k: &'_ str) -> Option<&'s Data>;
 }
 
 /// define all the data, list, and map type that can be treat as Data
@@ -93,12 +105,12 @@ impl Data {
                         Expr::Atom(Atom { .. }) => Ok(Self::List(ListData::from_expr(e)?)),
 
                         _ => Err(Box::new(DataError {
-                            msg: "cannot generate Data from the expr",
+                            msg: "cannot generate Data from the expr".to_string(),
                             err_type: DataErrorType::InvalidInput,
                         })),
                     },
                     _ => Err(Box::new(DataError {
-                        msg: "cannot generate Data from the expr",
+                        msg: "cannot generate Data from the expr".to_string(),
                         err_type: DataErrorType::InvalidInput,
                     })),
                 }
@@ -107,7 +119,7 @@ impl Data {
                 TypeValue::Symbol(_) => {
                     error!("symbol cannot be data");
                     Err(Box::new(DataError {
-                        msg: "cannot generate Data from the symbol",
+                        msg: format!("cannot generate Data from the symbol {:?}", a),
                         err_type: DataErrorType::InvalidInput,
                     }))
                 }
@@ -116,7 +128,7 @@ impl Data {
             _ => {
                 error!("cannot generate Data from the expr: {e}");
                 Err(Box::new(DataError {
-                    msg: "cannot generate Data from the expr",
+                    msg: "cannot generate Data from the expr".to_string(),
                     err_type: DataErrorType::InvalidInput,
                 }))
             }
@@ -151,6 +163,26 @@ impl Data {
             }),
         )?))
     }
+
+    /// read the root data.
+    pub fn from_root_str(s: &str, parser: Option<&Parser>) -> Result<Self, Box<dyn Error>> {
+        let p = match parser {
+            Some(p) => p,
+            None => &Default::default(),
+        };
+
+        match Self::from_str(&p, s) {
+            Ok(d) => match d {
+                Data::Data(expr_data) => Ok(Self::Data(expr_data)),
+                Data::Error(data_error) => Err(Box::new(data_error)),
+                _ => Err(Box::new(DataError {
+                    msg: "root data has to be expr data".to_string(),
+                    err_type: DataErrorType::InvalidInput,
+                })),
+            },
+            e @ Err(_) => e,
+        }
+    }
 }
 
 impl FromExpr for Data {
@@ -176,28 +208,21 @@ impl IntoData for Data {
     }
 }
 
+impl GetAbleData for Data {
+    fn get<'s>(&'s self, k: &'_ str) -> Option<&'s Data> {
+        match self {
+            Data::Data(expr_data) => <ExprData as GetAbleData>::get(expr_data, k),
+            Data::Map(map_data) => <MapData as GetAbleData>::get(map_data, k),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ExprData {
     name: String,
     rest_args: Vec<(Expr, Data)>,
     inner_map: OnceCell<DataMap>,
-}
-
-impl FromExpr for ExprData {
-    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>>
-    where
-        Self: Sized,
-    {
-        Self::from_expr(expr)
-    }
-}
-
-impl FromStr for ExprData {}
-
-impl IntoData for ExprData {
-    fn into_rpc_data(&self) -> Data {
-        Data::Data(self.clone())
-    }
 }
 
 impl ExprData {
@@ -206,7 +231,7 @@ impl ExprData {
             Expr::List(ee) => ee,
             _ => {
                 return Err(Box::new(DataError {
-                    msg: "cannot generate ExprData from this expr",
+                    msg: "cannot generate ExprData from this expr".to_string(),
                     err_type: DataErrorType::InvalidInput,
                 }));
             }
@@ -214,14 +239,14 @@ impl ExprData {
 
         if exprs.len() < 1 {
             return Err(Box::new(DataError {
-                msg: "empty data",
+                msg: "empty data".to_string(),
                 err_type: DataErrorType::InvalidInput,
             }));
         }
 
         if exprs.len() % 2 != 1 {
             return Err(Box::new(DataError {
-                msg: "rest data has to be odd length elements",
+                msg: "rest data has to be odd length elements".to_string(),
                 err_type: DataErrorType::InvalidInput,
             }));
         }
@@ -232,7 +257,7 @@ impl ExprData {
             }) => s,
             _ => {
                 return Err(Box::new(DataError {
-                    msg: "data's first element has to be symbol",
+                    msg: "data's first element has to be symbol".to_string(),
                     err_type: DataErrorType::InvalidInput,
                 }));
             }
@@ -249,7 +274,7 @@ impl ExprData {
                 ) => rest_a.push((k.clone(), Data::from_expr(v)?)),
                 _ => {
                     return Err(Box::new(DataError {
-                        msg: "has to be keyword value pairs",
+                        msg: "has to be keyword value pairs".to_string(),
                         err_type: DataErrorType::InvalidInput,
                     }));
                 }
@@ -293,7 +318,7 @@ impl ExprData {
         )
     }
 
-    fn get(&self, k: &str) -> Option<&Data> {
+    pub fn get(&self, k: &str) -> Option<&Data> {
         let m = self
             .inner_map
             .get_or_init(|| DataMap::new(&self.rest_args).unwrap());
@@ -301,8 +326,31 @@ impl ExprData {
     }
 }
 
+impl FromExpr for ExprData {
+    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized,
+    {
+        Self::from_expr(expr)
+    }
+}
+
+impl FromStr for ExprData {}
+
+impl IntoData for ExprData {
+    fn into_rpc_data(&self) -> Data {
+        Data::Data(self.clone())
+    }
+}
+
+impl GetAbleData for ExprData {
+    fn get<'s>(&'s self, k: &'_ str) -> Option<&'s Data> {
+        self.get(k)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct ListData {
+pub struct ListData {
     inner_data: Vec<Data>,
 }
 
@@ -336,12 +384,13 @@ impl ListData {
                     Ok(Self { inner_data: res })
                 }
                 _ => Err(Box::new(DataError {
-                    msg: "cannot generate ListData from this expr, not list after quote",
+                    msg: "cannot generate ListData from this expr, not list after quote"
+                        .to_string(),
                     err_type: DataErrorType::InvalidInput,
                 })),
             },
             _ => Err(Box::new(DataError {
-                msg: "cannot generate ListData from this expr, need quoted",
+                msg: "cannot generate ListData from this expr, need quoted".to_string(),
                 err_type: DataErrorType::InvalidInput,
             })),
         }
@@ -356,9 +405,77 @@ impl ListData {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct MapData {
+pub struct MapData {
     kwrds: Vec<String>,
     map: DataMap,
+}
+
+impl MapData {
+    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
+        let mut kwrds = vec![];
+        let map = match expr {
+            Expr::Quote(e2) => match e2.as_ref() {
+                Expr::List(ee) => {
+                    for [k, _] in ee.iter().array_chunks() {
+                        match k {
+                            Expr::Atom(Atom {
+                                value: crate::TypeValue::Keyword(k),
+                            }) => {
+                                kwrds.push(k.to_string());
+                            }
+                            _ => {
+                                return Err(Box::new(DataError {
+                                    msg: "MapData has to be keyword pairs like '(:a 1 :b 2)"
+                                        .to_string(),
+                                    err_type: DataErrorType::InvalidInput,
+                                }));
+                            }
+                        }
+                    }
+
+                    DataMap::from_exprs(&ee)?
+                }
+                _ => {
+                    return Err(Box::new(DataError {
+                        msg: "MapData has to be quoted like '(:a 1 :b 2)".to_string(),
+                        err_type: DataErrorType::InvalidInput,
+                    }));
+                }
+            },
+            _ => {
+                return Err(Box::new(DataError {
+                    msg: "MapData has to be quoted like '(:a 1 :b 2)".to_string(),
+                    err_type: DataErrorType::InvalidInput,
+                }));
+            }
+        };
+
+        Ok(Self { kwrds, map })
+    }
+
+    fn to_string(&self) -> String {
+        format!(
+            "'({})",
+            self.kwrds
+                .iter()
+                .map(|k| [
+                    format!(":{}", k.to_string()),
+                    self.map
+                        .get(k)
+                        .unwrap_or(&Data::Error(DataError {
+                            msg: "corrupted data".to_string(),
+                            err_type: DataErrorType::CorruptedData
+                        }))
+                        .to_string()
+                ])
+                .flatten()
+                .join(" ")
+        )
+    }
+
+    fn get(&self, k: &str) -> Option<&Data> {
+        self.map.get(k)
+    }
 }
 
 impl FromExpr for MapData {
@@ -378,66 +495,9 @@ impl IntoData for MapData {
     }
 }
 
-impl MapData {
-    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
-        let mut kwrds = vec![];
-        let map = match expr {
-            Expr::Quote(e2) => match e2.as_ref() {
-                Expr::List(ee) => {
-                    for [k, _] in ee.iter().array_chunks() {
-                        match k {
-                            Expr::Atom(Atom {
-                                value: crate::TypeValue::Keyword(k),
-                            }) => {
-                                kwrds.push(k.to_string());
-                            }
-                            _ => {
-                                return Err(Box::new(DataError {
-                                    msg: "MapData has to be keyword pairs like '(:a 1 :b 2)",
-                                    err_type: DataErrorType::InvalidInput,
-                                }));
-                            }
-                        }
-                    }
-
-                    DataMap::from_exprs(&ee)?
-                }
-                _ => {
-                    return Err(Box::new(DataError {
-                        msg: "MapData has to be quoted like '(:a 1 :b 2)",
-                        err_type: DataErrorType::InvalidInput,
-                    }));
-                }
-            },
-            _ => {
-                return Err(Box::new(DataError {
-                    msg: "MapData has to be quoted like '(:a 1 :b 2)",
-                    err_type: DataErrorType::InvalidInput,
-                }));
-            }
-        };
-
-        Ok(Self { kwrds, map })
-    }
-
-    fn to_string(&self) -> String {
-        format!(
-            "'({})",
-            self.kwrds
-                .iter()
-                .map(|k| [
-                    format!(":{}", k.to_string()),
-                    self.map
-                        .get(k)
-                        .unwrap_or(&Data::Error(DataError {
-                            msg: "corrupted data",
-                            err_type: DataErrorType::CorruptedData
-                        }))
-                        .to_string()
-                ])
-                .flatten()
-                .join(" ")
-        )
+impl GetAbleData for MapData {
+    fn get<'s>(&'s self, k: &'_ str) -> Option<&'s Data> {
+        self.get(k)
     }
 }
 
@@ -461,7 +521,7 @@ impl DataMap {
                 }
                 _ => {
                     return Err(Box::new(DataError {
-                        msg: "has to be keyword value pairs for making the data map",
+                        msg: "has to be keyword value pairs for making the data map".to_string(),
                         err_type: DataErrorType::InvalidInput,
                     }));
                 }
@@ -484,7 +544,7 @@ impl DataMap {
                 ) => table.insert(k.to_string(), dd.clone()),
                 _ => {
                     return Err(Box::new(DataError {
-                        msg: "has to be keyword value pairs for making the data map",
+                        msg: "has to be keyword value pairs for making the data map".to_string(),
                         err_type: DataErrorType::InvalidInput,
                     }));
                 }
@@ -551,6 +611,12 @@ mod tests {
             d.get("version"),
             Some(&Data::Value(TypeValue::Number(1984)))
         );
+
+        //
+
+        let s = r#"(rpc-call :version 1 :aa 2)"#;
+        let d = ExprData::from_str(&Default::default(), s);
+        assert!(d.is_ok())
     }
 
     #[test]
