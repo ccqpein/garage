@@ -7,7 +7,7 @@ use std::{cell::OnceCell, collections::HashMap, env, error::Error, io::Cursor};
 use itertools::Itertools;
 use tracing::{debug, error};
 
-use crate::{Atom, Expr, Parser, TypeValue};
+use crate::{Atom, Expr, Parser, TypeValue, impl_into_data_for_numbers};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum DataErrorType {
@@ -56,13 +56,8 @@ pub trait IntoData {
     fn into_rpc_data(&self) -> Data;
 }
 
-//:= test intoData for i32
-
-impl IntoData for i32 {
-    fn into_rpc_data(&self) -> Data {
-        Data::Value(TypeValue::Number(*self as i64))
-    }
-}
+// impl the into data for several type
+impl_into_data_for_numbers!(i8, i16, i32, i64);
 
 pub trait GetAbleData {
     fn get<'s>(&'s self, k: &'_ str) -> Option<&'s Data>;
