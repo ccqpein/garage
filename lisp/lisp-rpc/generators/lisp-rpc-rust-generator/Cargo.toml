@@ -1,0 +1,9 @@
+[package]
+name = "lisp-rpc-rust-generator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lisp-rpc-rust-parser = { version = "0", path = "../../parsers/lisp-rpc-rust-parser" }
+serde = "1"
+serde_json = "1"
