@@ -56,7 +56,6 @@ impl TypeValue {
     }
 }
 
-#[repr(C)]
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Atom {
     pub value: TypeValue,
@@ -211,7 +210,7 @@ impl Parser {
         res.into()
     }
 
-    fn parse_root(&mut self, source_code: impl Read) -> Result<Vec<Expr>, ParserError> {
+    pub fn parse_root(&mut self, source_code: impl Read) -> Result<Vec<Expr>, ParserError> {
         let mut tokens = self.tokenize(source_code);
 
         let mut res = vec![];
@@ -241,6 +240,35 @@ impl Parser {
         }
 
         Ok(res)
+    }
+
+    pub fn parse_root_one(&mut self, source_code: impl Read) -> Result<Expr, ParserError> {
+        let mut tokens = self.tokenize(source_code);
+
+        match tokens.get(0) {
+            Some(t) if t == "(" => {}
+            _ => return Err(ParserError::InvalidStart),
+        }
+
+        loop {
+            match tokens.front() {
+                Some(b) => match b.as_str() {
+                    "(" => {
+                        return Ok(self.read_exp(&mut tokens)?);
+                    }
+                    " " | "\n" => {
+                        tokens.pop_front();
+                    }
+                    _ => {
+                        return {
+                            println!("{:?}", b);
+                            Err(ParserError::InvalidToken("in read_root"))
+                        };
+                    }
+                },
+                None => return Err(ParserError::InvalidToken("run out the tokens")),
+            }
+        }
     }
 
     /// choose which read function
@@ -301,7 +329,7 @@ impl Parser {
                     tokens.pop_front();
                 }
                 Some(t) => res.push(self.read_router(t)?(self, tokens)?),
-                None => return Err(ParserError::InvalidToken("in read_exp")),
+                None => return Err(ParserError::InvalidToken("in read_exp, the tokens run out")),
             }
         }
 
@@ -731,6 +759,26 @@ mod tests {
                 parser.read_exp(&mut t1).unwrap()
             ]
         );
+    }
+
+    #[test]
+    fn test_read_root_one() {
+        let mut parser = Parser::new();
+        let mut t = Cursor::new(
+            r#"(def-msg language-perfer :lang 'string)
+
+(def-rpc get-book
+                     '(:title 'string :version 'string :lang 'language-perfer)
+                    'book-info)"#
+                .as_bytes(),
+        );
+
+        let expr = parser.parse_root_one(&mut t).unwrap();
+
+        let s0 = Cursor::new(r#"(def-msg language-perfer :lang 'string)"#.as_bytes());
+        let mut t0 = parser.tokenize(s0.clone());
+
+        assert_eq!(expr, parser.read_exp(&mut t0).unwrap(),);
     }
 
     #[test]
