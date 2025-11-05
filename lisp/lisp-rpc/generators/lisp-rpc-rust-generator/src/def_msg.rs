@@ -1,6 +1,9 @@
 use std::{error::Error, io::Cursor};
 
-use lisp_rpc_rust_parser::{Atom, Parser};
+use lisp_rpc_rust_parser::{
+    Atom, Expr, Parser, TypeValue,
+    data::{ExprData, MapData},
+};
 
 #[derive(Debug)]
 enum DefMsgErrorType {
@@ -21,8 +24,15 @@ impl std::fmt::Display for DefMsgError {
 
 impl Error for DefMsgError {}
 
+#[doc = r#"the struct of def-msg expression
+(def-msg name :key value-type)
+"#]
+#[derive(Debug, Eq, PartialEq)]
 struct DefMsg {
     msg_name: String,
+
+    /// the keywords and their types pairs
+    keywords: Vec<(String, String)>,
 }
 
 impl DefMsg {
@@ -37,9 +47,9 @@ impl DefMsg {
 
         // check the first symbol has to be def-msg
         let rest_expr = match &expr {
-            lisp_rpc_rust_parser::Expr::List(e) => match &e[0] {
-                lisp_rpc_rust_parser::Expr::Atom(lisp_rpc_rust_parser::Atom {
-                    value: lisp_rpc_rust_parser::TypeValue::Symbol(s),
+            Expr::List(e) => match &e[0] {
+                Expr::Atom(Atom {
+                    value: TypeValue::Symbol(s),
                     ..
                 }) if s == "def-msg" => &e[1..],
                 _ => {
@@ -57,7 +67,39 @@ impl DefMsg {
             }
         };
 
-        todo!()
+        let name = match &rest_expr[0] {
+            Expr::Atom(Atom {
+                value: TypeValue::Symbol(s),
+                ..
+            }) => s.to_string(),
+            _ => {
+                return Err(Box::new(DefMsgError {
+                    msg: "parsing failed, msg name should be symbol".to_string(),
+                    err_type: DefMsgErrorType::InvalidInput,
+                }));
+            }
+        };
+
+        let keywords = rest_expr[1..]
+            .iter()
+            .array_chunks()
+            .filter_map(|[k, t]| match (k, t) {
+                (
+                    Expr::Atom(Atom {
+                        value: TypeValue::Keyword(kk),
+                    }),
+                    Expr::Quote(box Expr::Atom(Atom {
+                        value: TypeValue::Symbol(tt),
+                    })),
+                ) => Some((kk.to_string(), tt.to_string())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        Ok(Self {
+            msg_name: name,
+            keywords: keywords,
+        })
     }
 
     fn gen_code(&self) -> String {
@@ -71,7 +113,43 @@ mod tests {
 
     #[test]
     fn test_parse_def_msg() {
-        let case0 = r#"(def-msg language-perfer :lang 'string)"#;
+        let case = r#"(def-msg language-perfer :lang 'string)"#;
+        let dm = DefMsg::from_str(case, Default::default()).unwrap();
+
+        assert_eq!(
+            dm,
+            DefMsg {
+                msg_name: "language-perfer".to_string(),
+                keywords: vec![("lang".to_string(), "string".to_string())],
+            }
+        );
+
+        // test the dirty string
+        let case = r#"  (def-msg language-perfer :lang 'string) (additional)"#;
+        let dm = DefMsg::from_str(case, Default::default()).unwrap();
+
+        assert_eq!(
+            dm,
+            DefMsg {
+                msg_name: "language-perfer".to_string(),
+                keywords: vec![("lang".to_string(), "string".to_string())],
+            }
+        );
+
+        // test the multiple keywords
+        let case = r#"(def-msg language-perfer :lang 'string :version 'number)"#;
+        let dm = DefMsg::from_str(case, Default::default()).unwrap();
+
+        assert_eq!(
+            dm,
+            DefMsg {
+                msg_name: "language-perfer".to_string(),
+                keywords: vec![
+                    ("lang".to_string(), "string".to_string()),
+                    ("version".to_string(), "number".to_string())
+                ],
+            }
+        );
     }
 
     #[test]

@@ -212,12 +212,7 @@ impl Parser {
 
     pub fn parse_root(&mut self, source_code: impl Read) -> Result<Vec<Expr>, ParserError> {
         let mut tokens = self.tokenize(source_code);
-
         let mut res = vec![];
-        match tokens.get(0) {
-            Some(t) if t == "(" => {}
-            _ => return Err(ParserError::InvalidStart),
-        }
 
         loop {
             match tokens.front() {
@@ -244,11 +239,6 @@ impl Parser {
 
     pub fn parse_root_one(&mut self, source_code: impl Read) -> Result<Expr, ParserError> {
         let mut tokens = self.tokenize(source_code);
-
-        match tokens.get(0) {
-            Some(t) if t == "(" => {}
-            _ => return Err(ParserError::InvalidStart),
-        }
 
         loop {
             match tokens.front() {
@@ -544,7 +534,7 @@ mod tests {
 
     #[test]
     fn test_read_exp() {
-        let parser = Parser::new();
+        let parser = Parser::new().config_read_number(false);
         let mut t = parser.tokenize(Cursor::new("(a b c 123 c)".as_bytes()));
         assert_eq!(
             parser.read_exp(&mut t),
@@ -705,15 +695,15 @@ mod tests {
                     Expr::Atom(Atom::read("a")),
                     Expr::Atom(Atom::read("b")),
                     Expr::Atom(Atom::read("c")),
-                    Expr::Atom(Atom::read("123")),
+                    Expr::Atom(Atom::read_number("123", 123)),
                     Expr::Atom(Atom::read("c")),
                 ],),
                 Expr::List(vec![
                     Expr::Atom(Atom::read("a")),
                     Expr::Quote(Box::new(Expr::List(vec![
-                        Expr::Atom(Atom::read("1")),
-                        Expr::Atom(Atom::read("2")),
-                        Expr::Atom(Atom::read("3")),
+                        Expr::Atom(Atom::read_number("1", 1)),
+                        Expr::Atom(Atom::read_number("2", 2)),
+                        Expr::Atom(Atom::read_number("3", 3)),
                     ]))),
                 ],),
             ],

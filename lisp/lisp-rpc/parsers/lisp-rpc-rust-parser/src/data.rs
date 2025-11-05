@@ -367,7 +367,7 @@ impl IntoData for ListData {
 }
 
 impl ListData {
-    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
+    pub fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
         match expr {
             Expr::Quote(expr) => match expr.as_ref() {
                 Expr::List(exprs) => {
@@ -406,7 +406,7 @@ pub struct MapData {
 }
 
 impl MapData {
-    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
+    pub fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
         let mut kwrds = vec![];
         let map = match expr {
             Expr::Quote(e2) => match e2.as_ref() {
@@ -448,7 +448,7 @@ impl MapData {
         Ok(Self { kwrds, map })
     }
 
-    fn to_string(&self) -> String {
+    pub fn to_string(&self) -> String {
         format!(
             "'({})",
             self.kwrds
