@@ -1,9 +1,6 @@
 use std::{error::Error, io::Cursor};
 
-use lisp_rpc_rust_parser::{
-    Atom, Expr, Parser, TypeValue,
-    data::{ExprData, MapData},
-};
+use lisp_rpc_rust_parser::{Atom, Expr, Parser, TypeValue};
 
 #[derive(Debug)]
 enum DefMsgErrorType {
@@ -18,7 +15,7 @@ struct DefMsgError {
 
 impl std::fmt::Display for DefMsgError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "{:?}", self)
     }
 }
 

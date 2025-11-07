@@ -38,6 +38,9 @@ fn main() {
         _ => panic!(),
     };
 
+    // check the msg name
+    let _ = client_request_data.get_name();
+
     let &Data::Value(TypeValue::Number(version_v)) = client_request_data.get("version").unwrap()
     else {
         panic!()

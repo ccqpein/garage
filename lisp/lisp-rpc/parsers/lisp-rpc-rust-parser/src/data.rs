@@ -100,12 +100,13 @@ impl Data {
                         Expr::Atom(Atom { .. }) => Ok(Self::List(ListData::from_expr(e)?)),
 
                         _ => Err(Box::new(DataError {
-                            msg: "cannot generate Data from the expr".to_string(),
+                            msg: format!("cannot generate Data from the expr {:?}", e),
                             err_type: DataErrorType::InvalidInput,
                         })),
                     },
+                    Expr::Atom(Atom { value }) => Ok(Self::Value(value.clone())),
                     _ => Err(Box::new(DataError {
-                        msg: "cannot generate Data from the expr".to_string(),
+                        msg: format!("cannot generate Data from the expr {:?}", e),
                         err_type: DataErrorType::InvalidInput,
                     })),
                 }
@@ -120,13 +121,6 @@ impl Data {
                 }
                 vv @ _ => Ok(Self::Value(vv.clone())),
             },
-            _ => {
-                error!("cannot generate Data from the expr: {e}");
-                Err(Box::new(DataError {
-                    msg: "cannot generate Data from the expr".to_string(),
-                    err_type: DataErrorType::InvalidInput,
-                }))
-            }
         }
     }
 
@@ -297,7 +291,7 @@ impl ExprData {
     }
 
     /// the name of the expr, always the first element depending on the spec
-    fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         &self.name
     }
 
@@ -683,5 +677,21 @@ mod tests {
             e.get("title"),
             Some(&Data::Value(TypeValue::String("hello world".to_string()))),
         );
+    }
+
+    #[test]
+    fn test_make_map_data() {
+        let p = Parser::new();
+        let e = Data::from_str(
+            &p,
+            r#"'(:title 'string :version 'string :lang 'language-perfer)"#,
+        )
+        .unwrap();
+
+        matches!(e, Data::Map(_));
+        assert_eq!(
+            e.get("version"),
+            Some(&Data::Value(TypeValue::Symbol("string".to_string())))
+        )
     }
 }
