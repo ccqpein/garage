@@ -136,6 +136,24 @@ mod tests {
                 .unwrap(),
                 return_value: Some("book-info".to_string()),
             }
+        );
+
+        let case = r#"(def-rpc get-book
+      '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
+    'book-info)"#;
+        let dr = DefRPC::from_str(case, Default::default()).unwrap();
+
+        assert_eq!(
+            dr,
+            DefRPC {
+                rpc_name: "get-book".to_string(),
+                keywords: MapData::from_str(
+                    &Default::default(),
+                    "'(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))"
+                )
+                .unwrap(),
+                return_value: Some("book-info".to_string()),
+            }
         )
     }
 }

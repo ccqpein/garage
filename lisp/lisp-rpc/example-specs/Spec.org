@@ -63,14 +63,20 @@ it should look like:
     :id 'string)
 
   (def-rpc get-book
-      '(:title 'string :vesion 'string :lang 'language-perfer)
+      '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
     'book-info)
 #+end_src
 
 if will generate the client/server libs. Client just given the data struct which can generate the data that send to server like plain mode:
 
 #+begin_src lisp
-  (get-book :title "hello world" :version "1984" :lang '(:lang "english"))
+  (get-book :title "hello world" :version "1984" :lang '(:lang "english" :encoding 77))
+#+end_src
+
+return the response ~book-info~
+
+#+begin_src lisp
+  (book-info :id "123" :title "hello world" :version "1984" :lang (language-perfer :lang "english"))
 #+end_src
 
 server side also can use the data struct but parse the data to the languages' struct 

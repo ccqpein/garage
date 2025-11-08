@@ -609,6 +609,74 @@ mod tests {
     }
 
     #[test]
+    fn test_read_nest_data() {
+        let s = r#"(get-book :title "hello world" :version "1984" :lang '(:lang "english" :encoding 77))"#;
+        let d = Data::from_str(&Default::default(), s).unwrap();
+        //dbg!(&d);
+        assert!(matches!(d, Data::Data(_)));
+
+        assert_eq!(
+            d.get("title"),
+            Some(&Data::Value(TypeValue::String("hello world".to_string())))
+        );
+
+        assert_eq!(
+            d.get("version"),
+            Some(&Data::Value(TypeValue::String("1984".to_string())))
+        );
+
+        assert!(matches!(d.get("lang"), Some(&Data::Map(_))));
+
+        let Some(Data::Map(dd)) = d.get("lang") else {
+            panic!()
+        };
+
+        assert_eq!(
+            dd.get("lang"),
+            Some(&Data::Value(TypeValue::String("english".to_string())))
+        );
+
+        assert_eq!(
+            dd.get("encoding"),
+            Some(&Data::Value(TypeValue::Number(77)))
+        );
+
+        //
+        let s = r#"(book-info :id "123" :title "hello world" :version "1984" :lang (language-perfer :lang "english"))"#;
+        let d = Data::from_str(&Default::default(), s).unwrap();
+
+        assert!(matches!(d, Data::Data(_)));
+
+        assert_eq!(
+            d.get("title"),
+            Some(&Data::Value(TypeValue::String("hello world".to_string())))
+        );
+
+        assert_eq!(
+            d.get("id"),
+            Some(&Data::Value(TypeValue::String("123".to_string())))
+        );
+
+        assert_eq!(
+            d.get("version"),
+            Some(&Data::Value(TypeValue::String("1984".to_string())))
+        );
+
+        assert!(matches!(d.get("lang"), Some(&Data::Data(_))));
+
+        let Some(Data::Data(dd)) = d.get("lang") else {
+            panic!()
+        };
+
+        assert_eq!(
+            dd.get("lang"),
+            Some(&Data::Value(TypeValue::String("english".to_string())))
+        );
+
+        assert_eq!(dd.get_name(), "language-perfer");
+    }
+
+    #[test]
     fn test_read_data_from_str_nesty() {
         let s = r#"(get-book :title "hello world" :version '(1 2 3 4) :map '(:a 2 :r 4))"#;
         let p = Parser::new().config_read_number(true);
@@ -692,6 +760,37 @@ mod tests {
         assert_eq!(
             e.get("version"),
             Some(&Data::Value(TypeValue::Symbol("string".to_string())))
+        );
+
+        assert_eq!(
+            e.get("lang"),
+            Some(&Data::Value(TypeValue::Symbol(
+                "language-perfer".to_string()
+            )))
+        );
+
+        //
+
+        let e = Data::from_str(
+            &p,
+            r#"'(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))"#,
         )
+        .unwrap();
+        matches!(e, Data::Map(_));
+        assert_eq!(
+            e.get("lang"),
+            Some(&Data::from_str(&p, r#"'(:lang 'string :encoding 'number)"#,).unwrap())
+        );
+
+        assert_eq!(
+            e,
+            Data::Map(
+                MapData::from_str(
+                    &p,
+                    r#"'(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))"#,
+                )
+                .unwrap()
+            )
+        );
     }
 }
