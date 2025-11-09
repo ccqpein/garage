@@ -25,7 +25,7 @@ impl Error for DefMsgError {}
 (def-msg name :key value-type)
 "#]
 #[derive(Debug, Eq, PartialEq)]
-struct DefMsg {
+pub struct DefMsg {
     msg_name: String,
 
     /// the keywords and their types pairs
@@ -42,27 +42,40 @@ impl DefMsg {
 
         let expr = p.parse_root_one(Cursor::new(source))?;
 
-        // check the first symbol has to be def-msg
-        let rest_expr = match &expr {
+        Self::from_expr(&expr)
+    }
+
+    pub fn if_def_msg_expr(expr: &Expr) -> bool {
+        match &expr {
             Expr::List(e) => match &e[0] {
                 Expr::Atom(Atom {
                     value: TypeValue::Symbol(s),
                     ..
-                }) if s == "def-msg" => &e[1..],
+                }) => s == "def-msg",
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
+        let rest_expr: &[Expr];
+        if Self::if_def_msg_expr(expr) {
+            match &expr {
+                Expr::List(e) => rest_expr = &e[1..],
                 _ => {
                     return Err(Box::new(DefMsgError {
                         msg: "parsing failed, the first symbol should be def-msg".to_string(),
                         err_type: DefMsgErrorType::InvalidInput,
                     }));
                 }
-            },
-            _ => {
-                return Err(Box::new(DefMsgError {
-                    msg: "parsing failed".to_string(),
-                    err_type: DefMsgErrorType::InvalidInput,
-                }));
             }
-        };
+        } else {
+            return Err(Box::new(DefMsgError {
+                msg: "parsing failed, the first symbol should be def-msg".to_string(),
+                err_type: DefMsgErrorType::InvalidInput,
+            }));
+        }
 
         let name = match &rest_expr[0] {
             Expr::Atom(Atom {

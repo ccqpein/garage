@@ -1,7 +1,8 @@
 #![feature(iter_array_chunks)]
 #![feature(box_patterns)]
-use lisp_rpc_rust_parser::*;
 
-mod def_msg;
-mod def_rpc;
-mod templates;
+pub mod def_msg;
+pub mod def_rpc;
+
+pub use def_msg::*;
+pub use def_rpc::*;
