@@ -1,6 +1,10 @@
-use std::{error::Error, io::Cursor};
+use std::{error::Error, fs::File, io::Cursor, path::Path};
 
 use lisp_rpc_rust_parser::{Atom, Expr, Parser, TypeValue, data::MapData};
+use serde::Serialize;
+use tera::{Context, Tera};
+
+use super::*;
 
 #[derive(Debug)]
 enum DefRPCErrorType {
@@ -20,6 +24,13 @@ impl std::fmt::Display for DefRPCError {
 }
 
 impl Error for DefRPCError {}
+
+#[derive(Debug, Serialize)]
+pub struct GeneratedField {
+    pub name: String,
+    pub field_type: String,
+    pub comment: Option<String>,
+}
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct DefRPC {
@@ -121,8 +132,27 @@ impl DefRPC {
         })
     }
 
-    fn gen_code(&self) -> String {
+    /// to generate the struct fields
+    fn to_fields(&self) -> Vec<GeneratedField> {
         todo!()
+    }
+
+    fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error>> {
+        let mut tera = Tera::default();
+        let mut context = Context::new();
+
+        tera.add_template_file(temp_file_path, None)?;
+
+        let struct_name = kebab_to_pascal_case(&self.rpc_name);
+        context.insert("rpc_name", &struct_name);
+
+        let fields_data = self.to_fields();
+
+        context.insert("fields", &fields_data);
+
+        let rendered_code = tera.render("rpc_struct_template", &context)?;
+
+        Ok(rendered_code)
     }
 }
 

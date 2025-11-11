@@ -10,6 +10,9 @@ use tera::{Context, Tera};
 struct Args {
     #[arg(short, long, value_name = "spec-file")]
     input_file: PathBuf,
+
+    #[arg(short, long, value_name = "lib-name")]
+    lib_name: String,
 }
 
 fn parse_spec_file(file: File) -> io::Result<()> {
@@ -20,7 +23,9 @@ fn parse_spec_file(file: File) -> io::Result<()> {
 
     for expr in &exprs {
         if DefRPC::if_def_rpc_expr(expr) {
+            //:= rpc generate
         } else if DefMsg::if_def_msg_expr(expr) {
+            //:= sg generate
         }
 
         return Err(io::Error::new(

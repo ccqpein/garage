@@ -1,0 +1,7 @@
+#[derive(Debug)]
+pub struct {{ rpc_name }} {
+    {% for field in fields %}
+    {% if field.comment %}{{ field.comment | indent(4, true) }}
+    {% endif %}{{ field.name }}: {{ field.field_type }},
+{% endfor %}
+}

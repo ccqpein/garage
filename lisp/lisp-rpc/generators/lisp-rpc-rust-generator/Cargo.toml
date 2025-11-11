@@ -7,3 +7,4 @@ edition = "2024"
 lisp-rpc-rust-parser = { version = "0", path = "../../parsers/lisp-rpc-rust-parser" }
 tera = "1"
 clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
