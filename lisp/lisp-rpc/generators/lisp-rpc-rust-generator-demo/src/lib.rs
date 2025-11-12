@@ -12,8 +12,24 @@ mod rpc_libs;
 //     };
 // }
 
+#[derive(Debug)]
+enum RPCTypes {
+    Msg(String),
+    RPC(String),
+    Map,
+    List,
+
+    /// default value
+    V,
+}
+
 trait ToRPCData {
     fn to_rpc(&self) -> String;
+
+    /// get the type of this type
+    fn get_type() -> RPCTypes {
+        RPCTypes::V
+    }
 }
 
 impl ToRPCData for String {

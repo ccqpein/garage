@@ -6,7 +6,6 @@ pub struct LanguagePerfer {
     lang: String,
 }
 
-//:= should have some to_lisp_rpc data method inside
 impl ToRPCData for LanguagePerfer {
     fn to_rpc(&self) -> String {
         format!("(language-perfer :lang {})", self.lang.to_rpc())
@@ -85,6 +84,22 @@ mod tests {
         assert_eq!(
             gb.to_rpc(),
             r#"(get-book :title "hello world" :version "1984" :lang '(:lang "english" :encoding 11))"#
+        )
+    }
+
+    #[test]
+    fn test_book_info_to_rpc() {
+        let bi = BookInfo {
+            lang: LanguagePerfer {
+                lang: "english".to_string(),
+            },
+            title: "hello world".to_string(),
+            version: "1984".to_string(),
+            id: "123".to_string(),
+        };
+        assert_eq!(
+            bi.to_rpc(),
+            r#"(book-info :id "123" :title "hello world" :version "1984" :lang (language-perfer :lang "english"))"#
         )
     }
 }

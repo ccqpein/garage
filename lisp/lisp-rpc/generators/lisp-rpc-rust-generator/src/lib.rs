@@ -6,6 +6,7 @@ pub mod def_rpc;
 
 pub use def_msg::*;
 pub use def_rpc::*;
+use lisp_rpc_rust_parser::data::Data;
 
 pub fn kebab_to_pascal_case(s: &str) -> String {
     s.split('-')
@@ -17,4 +18,27 @@ pub fn kebab_to_pascal_case(s: &str) -> String {
             }
         })
         .collect()
+}
+
+pub fn kebab_to_snake_case(s: &str) -> String {
+    s.replace('-', "_")
+}
+
+/// the function translate the type
+fn type_translate(sym: &str) -> String {
+    match sym {
+        "string" => "String".to_string(),
+        _ => String::new(),
+    }
+}
+
+/// translate the field types
+fn data_to_field_type(d: &Data) -> String {
+    match d {
+        Data::Data(expr_data) => todo!(),
+        Data::List(list_data) => todo!(),
+        Data::Map(map_data) => todo!(),
+        Data::Value(type_value) => todo!(),
+        Data::Error(data_error) => todo!(),
+    }
 }

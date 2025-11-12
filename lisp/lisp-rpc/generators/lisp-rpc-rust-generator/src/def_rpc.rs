@@ -134,6 +134,16 @@ impl DefRPC {
 
     /// to generate the struct fields
     fn to_fields(&self) -> Vec<GeneratedField> {
+        //:= next type translater
+        self.keywords
+            .iter()
+            .map(|(field_name, data)| GeneratedField {
+                name: kebab_to_snake_case(field_name),
+                field_type: todo!(),
+                comment: None, // need add the comment in spec or not
+            })
+            .collect::<Vec<_>>();
+
         todo!()
     }
 
