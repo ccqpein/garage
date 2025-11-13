@@ -465,6 +465,10 @@ impl MapData {
     fn get(&self, k: &str) -> Option<&Data> {
         self.map.get(k)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Data)> {
+        self.map.iter()
+    }
 }
 
 impl FromExpr for MapData {
@@ -555,6 +559,10 @@ impl DataMap {
             .iter()
             .map(|(k, v)| format!(":{} {}", k, v.to_string()))
             .join(" ")
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Data)> {
+        self.hash_map.iter()
     }
 }
 

@@ -3,9 +3,12 @@
 
 pub mod def_msg;
 pub mod def_rpc;
+pub mod generater;
 
 pub use def_msg::*;
 pub use def_rpc::*;
+pub use generater::*;
+
 use lisp_rpc_rust_parser::data::Data;
 
 pub fn kebab_to_pascal_case(s: &str) -> String {
@@ -35,10 +38,10 @@ fn type_translate(sym: &str) -> String {
 /// translate the field types
 fn data_to_field_type(d: &Data) -> String {
     match d {
-        Data::Data(expr_data) => todo!(),
-        Data::List(list_data) => todo!(),
-        Data::Map(map_data) => todo!(),
-        Data::Value(type_value) => todo!(),
-        Data::Error(data_error) => todo!(),
+        Data::Data(expr_data) => todo!(), // maybe // need give the other struct name
+        Data::List(list_data) => todo!(), // need give the other struct name
+        Data::Map(map_data) => todo!(),   // need give the other struct name
+        Data::Value(type_value) => todo!(), // just change to rust type
+        Data::Error(data_error) => todo!(), // still thinking
     }
 }
