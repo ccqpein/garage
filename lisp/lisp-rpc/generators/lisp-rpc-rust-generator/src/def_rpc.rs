@@ -147,18 +147,28 @@ impl DefRPC {
         todo!()
     }
 
+    /// use the GeneratedStruct to generate the code
     fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error>> {
         let mut tera = Tera::default();
         let mut context = Context::new();
 
         tera.add_template_file(temp_file_path, None)?;
 
-        let struct_name = kebab_to_pascal_case(&self.rpc_name);
-        context.insert("rpc_name", &struct_name);
+        let gs = GeneratedStruct::new(
+            kebab_to_pascal_case(&self.rpc_name),
+            None,
+            self.to_fields(),
+            None,
+        );
 
-        let fields_data = self.to_fields();
+        gs.insert_template(&mut context);
 
-        context.insert("fields", &fields_data);
+        // let struct_name = kebab_to_pascal_case(&self.rpc_name);
+        // context.insert("rpc_name", &struct_name);
+
+        // let fields_data = self.to_fields();
+
+        // context.insert("fields", &fields_data);
 
         let rendered_code = tera.render("rpc_struct_template", &context)?;
 

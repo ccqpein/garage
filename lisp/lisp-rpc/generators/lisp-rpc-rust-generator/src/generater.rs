@@ -1,4 +1,5 @@
 use serde::Serialize;
+use tera::Context;
 
 #[derive(Debug, Serialize)]
 pub struct GeneratedField {
@@ -7,12 +8,43 @@ pub struct GeneratedField {
     pub comment: Option<String>,
 }
 
+impl GeneratedField {
+    pub fn new(name: String, field_type: String, comment: Option<String>) -> Self {
+        Self {
+            name,
+            field_type,
+            comment,
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct GeneratedStruct {
     pub name: String,
     pub derived_traits: Option<Vec<String>>,
     pub fields: Vec<GeneratedField>,
     pub comment: Option<String>,
+}
+
+impl GeneratedStruct {
+    pub fn new(
+        name: String,
+        derived_traits: Option<Vec<String>>,
+        fields: Vec<GeneratedField>,
+        comment: Option<String>,
+    ) -> Self {
+        Self {
+            name,
+            derived_traits,
+            fields,
+            comment,
+        }
+    }
+
+    pub fn insert_template(&self, ctx: &mut Context) {
+        ctx.insert("name", &self.name);
+        ctx.insert("fields", &self.fields);
+    }
 }
 
 #[cfg(test)]
@@ -50,7 +82,7 @@ mod tests {
 
         context.insert("name", &s.name);
         context.insert("fields", &s.fields);
-        dbg!(tera.render("test", &context).unwrap());
+        //dbg!(tera.render("test", &context).unwrap());
         assert_eq!(
             tera.render("test", &context).unwrap(),
             r#"#[derive(Debug)]
