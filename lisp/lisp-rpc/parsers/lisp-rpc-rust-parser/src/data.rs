@@ -469,6 +469,10 @@ impl MapData {
     pub fn iter(&self) -> impl Iterator<Item = (&String, &Data)> {
         self.map.iter()
     }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
 }
 
 impl FromExpr for MapData {
@@ -563,6 +567,10 @@ impl DataMap {
 
     pub fn iter(&self) -> impl Iterator<Item = (&String, &Data)> {
         self.hash_map.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.hash_map.len()
     }
 }
 

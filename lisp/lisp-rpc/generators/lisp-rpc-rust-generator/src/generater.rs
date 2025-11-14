@@ -18,6 +18,7 @@ impl GeneratedField {
     }
 }
 
+/// the GeneratedStruct is the middle layer between render and rpc spec
 #[derive(Debug, Serialize)]
 pub struct GeneratedStruct {
     pub name: String,

@@ -5,11 +5,32 @@ pub mod def_msg;
 pub mod def_rpc;
 pub mod generater;
 
+use std::error::Error;
+
 pub use def_msg::*;
 pub use def_rpc::*;
 pub use generater::*;
 
 use lisp_rpc_rust_parser::data::Data;
+
+#[derive(Debug)]
+enum SpecErrorType {
+    InvalidInput,
+}
+
+#[derive(Debug)]
+struct SpecError {
+    msg: String,
+    err_type: SpecErrorType,
+}
+
+impl std::fmt::Display for SpecError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for SpecError {}
 
 pub fn kebab_to_pascal_case(s: &str) -> String {
     s.split('-')
@@ -28,20 +49,29 @@ pub fn kebab_to_snake_case(s: &str) -> String {
 }
 
 /// the function translate the type
-fn type_translate(sym: &str) -> String {
+fn type_translate(sym: &str) -> Result<String, Box<dyn Error>> {
     match sym {
-        "string" => "String".to_string(),
-        _ => String::new(),
+        "string" => Ok("String".to_string()),
+        _ => Err(Box::new(SpecError {
+            msg: format!("cannot convert this type {}", sym),
+            err_type: SpecErrorType::InvalidInput,
+        })),
     }
 }
 
 /// translate the field types
-fn data_to_field_type(d: &Data) -> String {
+fn data_to_field_type(d: &Data) -> Result<String, Box<dyn Error>> {
     match d {
         Data::Data(expr_data) => todo!(), // maybe // need give the other struct name
         Data::List(list_data) => todo!(), // need give the other struct name
         Data::Map(map_data) => todo!(),   // need give the other struct name
-        Data::Value(type_value) => todo!(), // just change to rust type
+        Data::Value(type_value) => match type_value {
+            lisp_rpc_rust_parser::TypeValue::Symbol(s) => type_translate(s),
+            _ => Err(Box::new(SpecError {
+                msg: "error in type convert".to_string(),
+                err_type: SpecErrorType::InvalidInput,
+            })),
+        },
         Data::Error(data_error) => todo!(), // still thinking
     }
 }

@@ -25,13 +25,6 @@ impl std::fmt::Display for DefRPCError {
 
 impl Error for DefRPCError {}
 
-#[derive(Debug, Serialize)]
-pub struct GeneratedField {
-    pub name: String,
-    pub field_type: String,
-    pub comment: Option<String>,
-}
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct DefRPC {
     rpc_name: String,
@@ -133,18 +126,18 @@ impl DefRPC {
     }
 
     /// to generate the struct fields
-    fn to_fields(&self) -> Vec<GeneratedField> {
-        //:= next type translater
-        self.keywords
-            .iter()
-            .map(|(field_name, data)| GeneratedField {
-                name: kebab_to_snake_case(field_name),
-                field_type: todo!(),
-                comment: None, // need add the comment in spec or not
-            })
-            .collect::<Vec<_>>();
+    fn to_rust_fields(&self) -> Result<Vec<GeneratedField>, Box<dyn Error>> {
+        let mut res = Vec::with_capacity(self.keywords.len());
 
-        todo!()
+        for (field_name, data) in self.keywords.iter() {
+            res.push(GeneratedField {
+                name: kebab_to_snake_case(field_name),
+                field_type: data_to_field_type(data)?,
+                comment: None, // need add the comment in spec or not
+            });
+        }
+
+        Ok(res)
     }
 
     /// use the GeneratedStruct to generate the code
@@ -152,27 +145,18 @@ impl DefRPC {
         let mut tera = Tera::default();
         let mut context = Context::new();
 
-        tera.add_template_file(temp_file_path, None)?;
+        tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
 
         let gs = GeneratedStruct::new(
             kebab_to_pascal_case(&self.rpc_name),
             None,
-            self.to_fields(),
+            self.to_rust_fields()?,
             None,
         );
 
         gs.insert_template(&mut context);
 
-        // let struct_name = kebab_to_pascal_case(&self.rpc_name);
-        // context.insert("rpc_name", &struct_name);
-
-        // let fields_data = self.to_fields();
-
-        // context.insert("fields", &fields_data);
-
-        let rendered_code = tera.render("rpc_struct_template", &context)?;
-
-        Ok(rendered_code)
+        Ok(tera.render("rpc_struct_template", &context)?)
     }
 }
 
