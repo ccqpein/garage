@@ -1,6 +1,11 @@
-use std::{error::Error, io::Cursor};
+//! the mod that handle def-msg expr
 
-use lisp_rpc_rust_parser::{Atom, Expr, Parser, TypeValue};
+use std::{error::Error, fs::File, io::Cursor, path::Path};
+
+use lisp_rpc_rust_parser::{Atom, Expr, Parser, TypeValue, data::MapData};
+use tera::{Context, Tera};
+
+use super::*;
 
 #[derive(Debug)]
 enum DefMsgErrorType {
@@ -112,13 +117,44 @@ impl DefMsg {
         })
     }
 
-    fn gen_code(&self) -> String {
-        todo!()
+    /// to generate the struct fields
+    fn to_rust_fields(&self) -> Result<Vec<GeneratedField>, Box<dyn Error>> {
+        let mut res = Vec::with_capacity(self.keywords.len());
+
+        for (field_name, ty) in self.keywords.iter() {
+            res.push(GeneratedField {
+                name: kebab_to_snake_case(field_name),
+                field_type: type_translate(ty)?,
+                comment: None, // need add the comment in spec or not
+            });
+        }
+
+        Ok(res)
+    }
+
+    fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error>> {
+        let mut tera = Tera::default();
+        let mut context = Context::new();
+
+        tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
+
+        let gs = GeneratedStruct::new(
+            kebab_to_pascal_case(&self.msg_name),
+            None,
+            self.to_rust_fields()?,
+            None,
+        );
+
+        gs.insert_template(&mut context);
+
+        Ok(tera.render("rpc_struct_template", &context)?)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
 
     #[test]
@@ -163,5 +199,31 @@ mod tests {
     }
 
     #[test]
-    fn test_gen_code() {}
+    fn test_gen_code() {
+        let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let template_file_path = project_root.join("templates/def_struct.rs.template");
+
+        let case = r#"(def-msg language-perfer :lang 'string)"#;
+        let dm = DefMsg::from_str(case, Default::default()).unwrap();
+
+        assert_eq!(
+            dm.gen_code(&template_file_path).unwrap(),
+            r#"#[derive(Debug)]
+pub struct LanguagePerfer {
+    lang: String,
+}"#
+        );
+
+        //
+        let case = r#"(def-msg language-perfer :lang 'string :version 'number)"#;
+        let dm = DefMsg::from_str(case, Default::default()).unwrap();
+        assert_eq!(
+            dm.gen_code(&template_file_path).unwrap(),
+            r#"#[derive(Debug)]
+pub struct LanguagePerfer {
+    lang: String,
+    version: i64,
+}"#
+        );
+    }
 }

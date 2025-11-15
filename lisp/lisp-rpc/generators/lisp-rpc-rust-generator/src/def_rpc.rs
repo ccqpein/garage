@@ -1,7 +1,6 @@
 use std::{error::Error, fs::File, io::Cursor, path::Path};
 
 use lisp_rpc_rust_parser::{Atom, Expr, Parser, TypeValue, data::MapData};
-use serde::Serialize;
 use tera::{Context, Tera};
 
 use super::*;
@@ -163,6 +162,7 @@ impl DefRPC {
 #[cfg(test)]
 mod tests {
     use lisp_rpc_rust_parser::data::FromStr;
+    use std::path::PathBuf;
 
     use super::*;
 
@@ -203,5 +203,24 @@ mod tests {
                 return_value: Some("book-info".to_string()),
             }
         )
+    }
+
+    #[test]
+    fn test_gen_code() {
+        let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let template_file_path = project_root.join("templates/def_struct.rs.template");
+
+        let case = r#"(def-rpc get-book
+      '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
+    'book-info)"#;
+        let dm = DefRPC::from_str(case, Default::default()).unwrap();
+
+        //         assert_eq!(
+        //             dm.gen_code(&template_file_path).unwrap(),
+        //             r#"#[derive(Debug)]
+        // pub struct LanguagePerfer {
+        //     lang: String,
+        // }"#
+        //         );
     }
 }

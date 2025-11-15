@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_generate_struct() {
-        let temp = include_str!("../templates/def_rpc.rs.template");
+        let temp = include_str!("../templates/def_struct.rs.template");
         let mut tera = Tera::default();
         let mut context = Context::new();
 

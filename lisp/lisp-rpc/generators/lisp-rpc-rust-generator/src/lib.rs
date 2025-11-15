@@ -52,6 +52,7 @@ pub fn kebab_to_snake_case(s: &str) -> String {
 fn type_translate(sym: &str) -> Result<String, Box<dyn Error>> {
     match sym {
         "string" => Ok("String".to_string()),
+        "number" => Ok("i64".to_string()),
         _ => Err(Box::new(SpecError {
             msg: format!("cannot convert this type {}", sym),
             err_type: SpecErrorType::InvalidInput,
@@ -73,5 +74,25 @@ fn data_to_field_type(d: &Data) -> Result<String, Box<dyn Error>> {
             })),
         },
         Data::Error(data_error) => todo!(), // still thinking
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use lisp_rpc_rust_parser::TypeValue;
+
+    use super::*;
+
+    fn test_type_translate() {
+        assert_eq!(type_translate("string").unwrap(), "String".to_string());
+        assert_eq!(type_translate("number").unwrap(), "i64".to_string());
+    }
+
+    fn test_data_to_field_type() {
+        let d = Data::Value(TypeValue::Symbol("number".to_string()));
+        assert_eq!(data_to_field_type(&d).unwrap(), "i64".to_string());
+
+        let d = Data::Value(TypeValue::Symbol("string".to_string()));
+        assert_eq!(data_to_field_type(&d).unwrap(), "String".to_string());
     }
 }
