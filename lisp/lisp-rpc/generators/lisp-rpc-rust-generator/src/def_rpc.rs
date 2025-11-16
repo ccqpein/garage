@@ -62,6 +62,7 @@ impl DefRPC {
 
     fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
         let rest_expr: &[Expr];
+
         if Self::if_def_rpc_expr(expr) {
             match &expr {
                 Expr::List(e) => rest_expr = &e[1..],
@@ -125,10 +126,12 @@ impl DefRPC {
     }
 
     /// to generate the struct fields
-    fn to_rust_fields(&self) -> Result<Vec<GeneratedField>, Box<dyn Error>> {
+    fn to_rust_fields(&self) -> Result<Vec<GeneratedField>, Box<dyn Error + '_>> {
         let mut res = Vec::with_capacity(self.keywords.len());
 
         for (field_name, data) in self.keywords.iter() {
+            let field_type = data_to_field_type(data)?;
+
             res.push(GeneratedField {
                 name: kebab_to_snake_case(field_name),
                 field_type: data_to_field_type(data)?,
@@ -139,8 +142,52 @@ impl DefRPC {
         Ok(res)
     }
 
+    /// convet this spec to GeneratedStructs (self and the anonymity type)
+    fn create_gen_structs(&self) -> Result<Vec<GeneratedStruct>, Box<dyn Error + '_>> {
+        let mut res = vec![];
+        let mut fields = vec![];
+        for (field_name, d) in self.keywords.iter() {
+            match d {
+                Data::List(list_data) => {
+                    todo!()
+                }
+                Data::Map(map_data) => {
+                    //:= make new def msg
+                }
+                Data::Value(lisp_rpc_rust_parser::TypeValue::Symbol(s)) => fields.push(
+                    GeneratedField::new(field_name.to_string(), type_translate(s), None),
+                ),
+                Data::Data(_) => {
+                    return Err(Box::new(SpecError {
+                        msg: format!(
+                            "data {} convert to type error, cannot be expr in as type",
+                            d
+                        ),
+                        err_type: SpecErrorType::InvalidInput,
+                    }));
+                }
+                Data::Error(data_error) => return Err(Box::new(data_error)),
+                _ => {
+                    return Err(Box::new(SpecError {
+                        msg: format!("data {} convert to type error", d),
+                        err_type: SpecErrorType::InvalidInput,
+                    }));
+                }
+            }
+        }
+
+        res.push(GeneratedStruct {
+            name: self.rpc_name.to_string(),
+            derived_traits: None,
+            fields,
+            comment: None,
+        });
+
+        Ok(res)
+    }
+
     /// use the GeneratedStruct to generate the code
-    fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error>> {
+    fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error + '_>> {
         let mut tera = Tera::default();
         let mut context = Context::new();
 

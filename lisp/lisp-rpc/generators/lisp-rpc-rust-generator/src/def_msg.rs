@@ -34,10 +34,31 @@ pub struct DefMsg {
     msg_name: String,
 
     /// the keywords and their types pairs
-    keywords: Vec<(String, String)>,
+    rest_expr: Vec<Expr>,
 }
 
 impl DefMsg {
+    pub fn new(msg_name: &str, rest_expr: &[Expr]) -> Result<Self, Box<dyn Error>> {
+        if rest_expr.iter().array_chunks().all(|[k, _]| {
+            matches!(
+                k,
+                Expr::Atom(Atom {
+                    value: TypeValue::Keyword(_),
+                })
+            )
+        }) {
+            Ok(Self {
+                msg_name: msg_name.to_string(),
+                rest_expr: rest_expr.to_vec(),
+            })
+        } else {
+            Err(Box::new(DefMsgError {
+                msg: "parsing failed, msg name arguments should be keyword-value pairs".to_string(),
+                err_type: DefMsgErrorType::InvalidInput,
+            }))
+        }
+    }
+
     /// make new def msg from str
     fn from_str(source: &str, parser: Option<Parser>) -> Result<Self, Box<dyn Error>> {
         let mut p = match parser {
@@ -63,6 +84,8 @@ impl DefMsg {
         }
     }
 
+    /// make new DefMsg from the one expr
+    /// (def-msg name :keyword value)
     fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
         let rest_expr: &[Expr];
         if Self::if_def_msg_expr(expr) {
@@ -86,7 +109,7 @@ impl DefMsg {
             Expr::Atom(Atom {
                 value: TypeValue::Symbol(s),
                 ..
-            }) => s.to_string(),
+            }) => s,
             _ => {
                 return Err(Box::new(DefMsgError {
                     msg: "parsing failed, msg name should be symbol".to_string(),
@@ -95,60 +118,74 @@ impl DefMsg {
             }
         };
 
-        let keywords = rest_expr[1..]
-            .iter()
-            .array_chunks()
-            .filter_map(|[k, t]| match (k, t) {
-                (
-                    Expr::Atom(Atom {
-                        value: TypeValue::Keyword(kk),
-                    }),
-                    Expr::Quote(box Expr::Atom(Atom {
-                        value: TypeValue::Symbol(tt),
-                    })),
-                ) => Some((kk.to_string(), tt.to_string())),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-
-        Ok(Self {
-            msg_name: name,
-            keywords: keywords,
-        })
+        Self::new(name, &rest_expr[1..])
     }
 
-    /// to generate the struct fields
-    fn to_rust_fields(&self) -> Result<Vec<GeneratedField>, Box<dyn Error>> {
-        let mut res = Vec::with_capacity(self.keywords.len());
-
-        for (field_name, ty) in self.keywords.iter() {
-            res.push(GeneratedField {
-                name: kebab_to_snake_case(field_name),
-                field_type: type_translate(ty)?,
-                comment: None, // need add the comment in spec or not
-            });
+    /// convet this spec to GeneratedStructs (self and the anonymity type)
+    fn create_gen_structs(&self) -> Result<Vec<GeneratedStruct>, Box<dyn Error>> {
+        let mut res = vec![];
+        let mut fields = vec![];
+        for [k, v] in self.rest_expr.iter().array_chunks() {
+            match (k, v) {
+                (
+                    Expr::Atom(Atom {
+                        value: TypeValue::Keyword(f),
+                    }),
+                    Expr::Quote(box Expr::Atom(Atom {
+                        value: TypeValue::Symbol(t),
+                    })),
+                ) => {
+                    fields.push(GeneratedField {
+                        name: f.to_string(),
+                        field_type: t.to_string(),
+                        comment: None,
+                    });
+                }
+                (
+                    Expr::Atom(Atom {
+                        value: TypeValue::Keyword(f),
+                    }),
+                    Expr::Quote(box Expr::List(inner_exprs)),
+                ) => {
+                    let new_msg_name = self.msg_name.to_string() + "-" + f;
+                    res.append(&mut Self::new(&new_msg_name, inner_exprs)?.create_gen_structs()?);
+                    fields.push(GeneratedField {
+                        name: f.to_string(),
+                        field_type: new_msg_name,
+                        comment: None,
+                    });
+                }
+                _ => todo!(),
+            }
         }
+
+        res.push(GeneratedStruct::new(
+            self.msg_name.to_string(),
+            None,
+            fields,
+            None,
+        ));
 
         Ok(res)
     }
 
-    fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error>> {
-        let mut tera = Tera::default();
-        let mut context = Context::new();
+    // fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error>> {
+    //     let mut tera = Tera::default();
+    //     let mut context = Context::new();
 
-        tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
+    //     tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
 
-        let gs = GeneratedStruct::new(
-            kebab_to_pascal_case(&self.msg_name),
-            None,
-            self.to_rust_fields()?,
-            None,
-        );
+    //     let gs = GeneratedStruct::new(
+    //         kebab_to_pascal_case(&self.msg_name),
+    //         None,
+    //         self.to_rust_fields()?,
+    //         None,
+    //     );
 
-        gs.insert_template(&mut context);
+    //     gs.insert_template(&mut context);
 
-        Ok(tera.render("rpc_struct_template", &context)?)
-    }
+    //     Ok(tera.render("rpc_struct_template", &context)?)
+    //}
 }
 
 #[cfg(test)]
@@ -156,6 +193,7 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
+    use lisp_rpc_rust_parser::Expr;
 
     #[test]
     fn test_parse_def_msg() {
@@ -166,7 +204,10 @@ mod tests {
             dm,
             DefMsg {
                 msg_name: "language-perfer".to_string(),
-                keywords: vec![("lang".to_string(), "string".to_string())],
+                rest_expr: vec![
+                    Expr::Atom(Atom::read_keyword("lang")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("string"))))
+                ],
             }
         );
 
@@ -178,7 +219,10 @@ mod tests {
             dm,
             DefMsg {
                 msg_name: "language-perfer".to_string(),
-                keywords: vec![("lang".to_string(), "string".to_string())],
+                rest_expr: vec![
+                    Expr::Atom(Atom::read_keyword("lang")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("string"))))
+                ],
             }
         );
 
@@ -190,11 +234,113 @@ mod tests {
             dm,
             DefMsg {
                 msg_name: "language-perfer".to_string(),
-                keywords: vec![
-                    ("lang".to_string(), "string".to_string()),
-                    ("version".to_string(), "number".to_string())
+                rest_expr: vec![
+                    Expr::Atom(Atom::read_keyword("lang")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("string")))),
+                    Expr::Atom(Atom::read_keyword("version")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("number"))))
                 ],
             }
+        );
+    }
+
+    #[test]
+    fn test_create_gen_structs() {
+        let spec = r#"(def-msg book-info
+    :lang 'language-perfer
+    :title 'string
+    :version 'string
+    :id 'string)"#;
+
+        let x = DefMsg::from_str(spec, None).unwrap();
+        assert_eq!(
+            x.create_gen_structs().unwrap(),
+            vec![GeneratedStruct {
+                name: "book-info".to_string(),
+                derived_traits: None,
+                fields: vec![
+                    GeneratedField {
+                        name: "lang".to_string(),
+                        field_type: "language-perfer".to_string(),
+                        comment: None
+                    },
+                    GeneratedField {
+                        name: "title".to_string(),
+                        field_type: "string".to_string(),
+                        comment: None
+                    },
+                    GeneratedField {
+                        name: "version".to_string(),
+                        field_type: "string".to_string(),
+                        comment: None
+                    },
+                    GeneratedField {
+                        name: "id".to_string(),
+                        field_type: "string".to_string(),
+                        comment: None
+                    }
+                ],
+                comment: None
+            }],
+        );
+
+        // anonymous fields
+
+        let spec = r#"(def-msg book-info
+    :lang '(:a 'string :b 'number)
+    :title 'string
+    :version 'string
+    :id 'string)"#;
+
+        let x = DefMsg::from_str(spec, None).unwrap();
+        assert_eq!(
+            x.create_gen_structs().unwrap(),
+            vec![
+                GeneratedStruct {
+                    name: "book-info-lang".to_string(),
+                    derived_traits: None,
+                    fields: vec![
+                        GeneratedField {
+                            name: "a".to_string(),
+                            field_type: "string".to_string(),
+                            comment: None
+                        },
+                        GeneratedField {
+                            name: "b".to_string(),
+                            field_type: "number".to_string(),
+                            comment: None
+                        }
+                    ],
+                    comment: None
+                },
+                GeneratedStruct {
+                    name: "book-info".to_string(),
+                    derived_traits: None,
+                    fields: vec![
+                        GeneratedField {
+                            name: "lang".to_string(),
+                            field_type: "book-info-lang".to_string(),
+                            comment: None
+                        },
+                        GeneratedField {
+                            name: "title".to_string(),
+                            field_type: "string".to_string(),
+                            comment: None
+                        },
+                        GeneratedField {
+                            name: "version".to_string(),
+                            field_type: "string".to_string(),
+                            comment: None
+                        },
+                        GeneratedField {
+                            name: "id".to_string(),
+                            field_type: "string".to_string(),
+                            comment: None
+                        }
+                    ],
+                    comment: None
+                }
+            ],
         );
     }
 
@@ -206,24 +352,24 @@ mod tests {
         let case = r#"(def-msg language-perfer :lang 'string)"#;
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
 
-        assert_eq!(
-            dm.gen_code(&template_file_path).unwrap(),
-            r#"#[derive(Debug)]
-pub struct LanguagePerfer {
-    lang: String,
-}"#
-        );
+        //         assert_eq!(
+        //             dm.gen_code(&template_file_path).unwrap(),
+        //             r#"#[derive(Debug)]
+        // pub struct LanguagePerfer {
+        //     lang: String,
+        // }"#
+        //         );
 
-        //
-        let case = r#"(def-msg language-perfer :lang 'string :version 'number)"#;
-        let dm = DefMsg::from_str(case, Default::default()).unwrap();
-        assert_eq!(
-            dm.gen_code(&template_file_path).unwrap(),
-            r#"#[derive(Debug)]
-pub struct LanguagePerfer {
-    lang: String,
-    version: i64,
-}"#
-        );
+        //         //
+        //         let case = r#"(def-msg language-perfer :lang 'string :version 'number)"#;
+        //         let dm = DefMsg::from_str(case, Default::default()).unwrap();
+        //         assert_eq!(
+        //             dm.gen_code(&template_file_path).unwrap(),
+        //             r#"#[derive(Debug)]
+        // pub struct LanguagePerfer {
+        //     lang: String,
+        //     version: i64,
+        // }"#
+        //         );
     }
 }

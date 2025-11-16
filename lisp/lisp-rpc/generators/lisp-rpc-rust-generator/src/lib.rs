@@ -49,31 +49,33 @@ pub fn kebab_to_snake_case(s: &str) -> String {
 }
 
 /// the function translate the type
-fn type_translate(sym: &str) -> Result<String, Box<dyn Error>> {
+/// also need the translate to created structure
+fn type_translate(sym: &str) -> String {
     match sym {
-        "string" => Ok("String".to_string()),
-        "number" => Ok("i64".to_string()),
-        _ => Err(Box::new(SpecError {
-            msg: format!("cannot convert this type {}", sym),
-            err_type: SpecErrorType::InvalidInput,
-        })),
+        "string" => "String".to_string(),
+        "number" => "i64".to_string(),
+        _ => sym.to_string(),
     }
 }
 
 /// translate the field types
-fn data_to_field_type(d: &Data) -> Result<String, Box<dyn Error>> {
+fn data_to_field_type(d: &Data) -> Result<String, Box<dyn Error + '_>> {
     match d {
-        Data::Data(expr_data) => todo!(), // maybe // need give the other struct name
         Data::List(list_data) => todo!(), // need give the other struct name
         Data::Map(map_data) => todo!(),   // need give the other struct name
-        Data::Value(type_value) => match type_value {
-            lisp_rpc_rust_parser::TypeValue::Symbol(s) => type_translate(s),
-            _ => Err(Box::new(SpecError {
-                msg: "error in type convert".to_string(),
-                err_type: SpecErrorType::InvalidInput,
-            })),
-        },
-        Data::Error(data_error) => todo!(), // still thinking
+        Data::Value(lisp_rpc_rust_parser::TypeValue::Symbol(s)) => Ok(type_translate(s)),
+        Data::Data(_) => Err(Box::new(SpecError {
+            msg: format!(
+                "data {} convert to type error, cannot be expr in as type",
+                d
+            ),
+            err_type: SpecErrorType::InvalidInput,
+        })),
+        Data::Error(data_error) => Err(Box::new(data_error)),
+        _ => Err(Box::new(SpecError {
+            msg: format!("data {} convert to type error", d),
+            err_type: SpecErrorType::InvalidInput,
+        })),
     }
 }
 
@@ -84,8 +86,8 @@ mod tests {
     use super::*;
 
     fn test_type_translate() {
-        assert_eq!(type_translate("string").unwrap(), "String".to_string());
-        assert_eq!(type_translate("number").unwrap(), "i64".to_string());
+        assert_eq!(type_translate("string"), "String".to_string());
+        assert_eq!(type_translate("number"), "i64".to_string());
     }
 
     fn test_data_to_field_type() {

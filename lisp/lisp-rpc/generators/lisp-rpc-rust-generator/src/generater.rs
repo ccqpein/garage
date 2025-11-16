@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tera::Context;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct GeneratedField {
     pub name: String,
     pub field_type: String,
@@ -19,7 +19,7 @@ impl GeneratedField {
 }
 
 /// the GeneratedStruct is the middle layer between render and rpc spec
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct GeneratedStruct {
     pub name: String,
     pub derived_traits: Option<Vec<String>>,
