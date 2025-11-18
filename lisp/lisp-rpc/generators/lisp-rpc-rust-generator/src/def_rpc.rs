@@ -29,7 +29,7 @@ pub struct DefRPC {
     rpc_name: String,
 
     /// the keywords and their types pairs of request body
-    keywords: MapData,
+    args: Vec<Expr>,
 
     ///
     return_value: Option<String>,
@@ -60,6 +60,8 @@ impl DefRPC {
         }
     }
 
+    /// make new DefRPC from the one expr
+    /// (def-rpc name '(:keyword value) 'return-value)
     fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
         let rest_expr: &[Expr];
 
@@ -93,8 +95,17 @@ impl DefRPC {
             }
         };
 
-        //dbg!(&rest_expr[1]);
-        let keywords_pair = MapData::from_expr(&rest_expr[1])?;
+        //dbg!(&rest_expr);
+        let arguments = match &rest_expr[1] {
+            Expr::Quote(box Expr::List(exprs)) => exprs,
+            _ => {
+                return Err(Box::new(DefRPCError {
+                    msg: "parsing failed, second arguments has to be list of keyword-value pairs"
+                        .to_string(),
+                    err_type: DefRPCErrorType::InvalidInput,
+                }));
+            }
+        };
 
         let return_value = match rest_expr.get(2) {
             Some(Expr::Quote(box e)) => match e {
@@ -120,57 +131,52 @@ impl DefRPC {
 
         Ok(Self {
             rpc_name,
-            keywords: keywords_pair,
+            args: arguments.to_vec(),
             return_value,
         })
     }
 
-    /// to generate the struct fields
-    fn to_rust_fields(&self) -> Result<Vec<GeneratedField>, Box<dyn Error + '_>> {
-        let mut res = Vec::with_capacity(self.keywords.len());
-
-        for (field_name, data) in self.keywords.iter() {
-            let field_type = data_to_field_type(data)?;
-
-            res.push(GeneratedField {
-                name: kebab_to_snake_case(field_name),
-                field_type: data_to_field_type(data)?,
-                comment: None, // need add the comment in spec or not
-            });
-        }
-
-        Ok(res)
-    }
-
     /// convet this spec to GeneratedStructs (self and the anonymity type)
-    fn create_gen_structs(&self) -> Result<Vec<GeneratedStruct>, Box<dyn Error + '_>> {
+    pub fn create_gen_structs(&self) -> Result<Vec<GeneratedStruct>, Box<dyn Error>> {
         let mut res = vec![];
         let mut fields = vec![];
-        for (field_name, d) in self.keywords.iter() {
-            match d {
-                Data::List(list_data) => {
-                    todo!()
+        for [field, ty] in self.args.iter().array_chunks() {
+            match (field, ty) {
+                (
+                    Expr::Atom(Atom {
+                        value: TypeValue::Keyword(f),
+                    }),
+                    Expr::Quote(box Expr::Atom(Atom {
+                        value: TypeValue::Symbol(t),
+                    })),
+                ) => {
+                    fields.push(GeneratedField {
+                        name: f.to_string(),
+                        field_type: t.to_string(),
+                        comment: None,
+                    });
                 }
-                Data::Map(map_data) => {
-                    //:= make new def msg
+                (
+                    Expr::Atom(Atom {
+                        value: TypeValue::Keyword(f),
+                    }),
+                    Expr::Quote(box Expr::List(inner_exprs)),
+                ) => {
+                    // anonymity msg type
+                    let new_rpc_name = self.rpc_name.to_string() + "-" + f;
+                    res.append(&mut DefMsg::new(&new_rpc_name, inner_exprs)?.create_gen_structs()?);
+                    fields.push(GeneratedField {
+                        name: f.to_string(),
+                        field_type: new_rpc_name,
+                        comment: None,
+                    });
                 }
-                Data::Value(lisp_rpc_rust_parser::TypeValue::Symbol(s)) => fields.push(
-                    GeneratedField::new(field_name.to_string(), type_translate(s), None),
-                ),
-                Data::Data(_) => {
-                    return Err(Box::new(SpecError {
-                        msg: format!(
-                            "data {} convert to type error, cannot be expr in as type",
-                            d
-                        ),
-                        err_type: SpecErrorType::InvalidInput,
-                    }));
-                }
-                Data::Error(data_error) => return Err(Box::new(data_error)),
                 _ => {
-                    return Err(Box::new(SpecError {
-                        msg: format!("data {} convert to type error", d),
-                        err_type: SpecErrorType::InvalidInput,
+                    return Err(Box::new(DefRPCError {
+                        msg:
+                            "create gen structs failed, arguments has to be the keywords-value pair"
+                                .to_string(),
+                        err_type: DefRPCErrorType::InvalidInput,
                     }));
                 }
             }
@@ -186,29 +192,29 @@ impl DefRPC {
         Ok(res)
     }
 
-    /// use the GeneratedStruct to generate the code
-    fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error + '_>> {
-        let mut tera = Tera::default();
-        let mut context = Context::new();
+    ///// use the GeneratedStruct to generate the code
+    // fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error + '_>> {
+    //     let mut tera = Tera::default();
+    //     let mut context = Context::new();
 
-        tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
+    //     tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
 
-        let gs = GeneratedStruct::new(
-            kebab_to_pascal_case(&self.rpc_name),
-            None,
-            self.to_rust_fields()?,
-            None,
-        );
+    //     let gs = GeneratedStruct::new(
+    //         kebab_to_pascal_case(&self.rpc_name),
+    //         None,
+    //         self.to_rust_fields()?,
+    //         None,
+    //     );
 
-        gs.insert_template(&mut context);
+    //     gs.insert_template(&mut context);
 
-        Ok(tera.render("rpc_struct_template", &context)?)
-    }
+    //     Ok(tera.render("rpc_struct_template", &context)?)
+    // }
 }
 
 #[cfg(test)]
 mod tests {
-    use lisp_rpc_rust_parser::data::FromStr;
+
     use std::path::PathBuf;
 
     use super::*;
@@ -216,7 +222,7 @@ mod tests {
     #[test]
     fn test_parse_def_rpc() {
         let case = r#"(def-rpc get-book
-      '(:title 'string :vesion 'string :lang 'language-perfer)
+      '(:title 'string :version 'string :lang 'language-perfer)
     'book-info)"#;
         let dr = DefRPC::from_str(case, Default::default()).unwrap();
 
@@ -224,17 +230,20 @@ mod tests {
             dr,
             DefRPC {
                 rpc_name: "get-book".to_string(),
-                keywords: MapData::from_str(
-                    &Default::default(),
-                    "'(:title 'string :vesion 'string :lang 'language-perfer)"
-                )
-                .unwrap(),
-                return_value: Some("book-info".to_string()),
+                args: vec![
+                    Expr::Atom(Atom::read_keyword("title")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("string")))),
+                    Expr::Atom(Atom::read_keyword("version")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("string")))),
+                    Expr::Atom(Atom::read_keyword("lang")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("language-perfer")))),
+                ],
+                return_value: Some("book-info".to_string())
             }
         );
 
         let case = r#"(def-rpc get-book
-      '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
+      '(:title 'string :version 'string :lang '(:lang 'string :encoding 'number))
     'book-info)"#;
         let dr = DefRPC::from_str(case, Default::default()).unwrap();
 
@@ -242,13 +251,104 @@ mod tests {
             dr,
             DefRPC {
                 rpc_name: "get-book".to_string(),
-                keywords: MapData::from_str(
-                    &Default::default(),
-                    "'(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))"
-                )
-                .unwrap(),
-                return_value: Some("book-info".to_string()),
+                args: vec![
+                    Expr::Atom(Atom::read_keyword("title")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("string")))),
+                    Expr::Atom(Atom::read_keyword("version")),
+                    Expr::Quote(Box::new(Expr::Atom(Atom::read("string")))),
+                    Expr::Atom(Atom::read_keyword("lang")),
+                    Expr::Quote(Box::new(Expr::List(vec![
+                        Expr::Atom(Atom::read_keyword("lang")),
+                        Expr::Quote(Box::new(Expr::Atom(Atom::read("string")))),
+                        Expr::Atom(Atom::read_keyword("encoding")),
+                        Expr::Quote(Box::new(Expr::Atom(Atom::read("number")))),
+                    ]))),
+                ],
+                return_value: Some("book-info".to_string())
             }
+        )
+    }
+
+    #[test]
+    fn test_create_gen_structs() {
+        let case = r#"(def-rpc get-book
+      '(:title 'string :version 'string :lang 'language-perfer)
+    'book-info)"#;
+        let dr = DefRPC::from_str(case, Default::default()).unwrap();
+        assert_eq!(
+            dr.create_gen_structs().unwrap(),
+            vec![GeneratedStruct {
+                name: "get-book".to_string(),
+                derived_traits: None,
+                fields: vec![
+                    GeneratedField {
+                        name: "title".to_string(),
+                        field_type: "string".to_string(),
+                        comment: None,
+                    },
+                    GeneratedField {
+                        name: "version".to_string(),
+                        field_type: "string".to_string(),
+                        comment: None
+                    },
+                    GeneratedField {
+                        name: "lang".to_string(),
+                        field_type: "language-perfer".to_string(),
+                        comment: None
+                    }
+                ],
+                comment: None
+            }]
+        );
+
+        let spec = r#"(def-rpc get-book
+      '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
+    'book-info)"#;
+
+        let dr = DefRPC::from_str(spec, None).unwrap();
+        assert_eq!(
+            dr.create_gen_structs().unwrap(),
+            vec![
+                GeneratedStruct {
+                    name: "get-book-lang".to_string(),
+                    derived_traits: None,
+                    fields: vec![
+                        GeneratedField {
+                            name: "lang".to_string(),
+                            field_type: "string".to_string(),
+                            comment: None
+                        },
+                        GeneratedField {
+                            name: "encoding".to_string(),
+                            field_type: "number".to_string(),
+                            comment: None
+                        }
+                    ],
+                    comment: None
+                },
+                GeneratedStruct {
+                    name: "get-book".to_string(),
+                    derived_traits: None,
+                    fields: vec![
+                        GeneratedField {
+                            name: "title".to_string(),
+                            field_type: "string".to_string(),
+                            comment: None
+                        },
+                        GeneratedField {
+                            name: "vesion".to_string(),
+                            field_type: "string".to_string(),
+                            comment: None
+                        },
+                        GeneratedField {
+                            name: "lang".to_string(),
+                            field_type: "get-book-lang".to_string(),
+                            comment: None
+                        }
+                    ],
+                    comment: None
+                }
+            ]
         )
     }
 

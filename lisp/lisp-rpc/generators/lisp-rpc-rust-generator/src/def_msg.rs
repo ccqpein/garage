@@ -122,7 +122,7 @@ impl DefMsg {
     }
 
     /// convet this spec to GeneratedStructs (self and the anonymity type)
-    fn create_gen_structs(&self) -> Result<Vec<GeneratedStruct>, Box<dyn Error>> {
+    pub fn create_gen_structs(&self) -> Result<Vec<GeneratedStruct>, Box<dyn Error>> {
         let mut res = vec![];
         let mut fields = vec![];
         for [k, v] in self.rest_expr.iter().array_chunks() {
@@ -155,7 +155,14 @@ impl DefMsg {
                         comment: None,
                     });
                 }
-                _ => todo!(),
+                _ => {
+                    return Err(Box::new(DefMsgError {
+                        msg:
+                            "create gen structs failed, arguments has to be the keywords-value pair"
+                                .to_string(),
+                        err_type: DefMsgErrorType::InvalidInput,
+                    }));
+                }
             }
         }
 
