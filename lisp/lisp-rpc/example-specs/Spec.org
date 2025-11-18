@@ -79,4 +79,4 @@ return the response ~book-info~
   (book-info :id "123" :title "hello world" :version "1984" :lang (language-perfer :lang "english"))
 #+end_src
 
-server side also can use the data struct but parse the data to the languages' struct 
+server side also can use the data struct but parse the data to the languages' struct

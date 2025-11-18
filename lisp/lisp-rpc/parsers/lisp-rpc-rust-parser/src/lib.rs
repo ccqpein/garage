@@ -62,25 +62,25 @@ pub struct Atom {
 }
 
 impl Atom {
-    fn read(s: &str) -> Self {
+    pub fn read(s: &str) -> Self {
         Self {
             value: TypeValue::Symbol(s.to_string()),
         }
     }
 
-    fn read_string(s: &str) -> Self {
+    pub fn read_string(s: &str) -> Self {
         Self {
             value: TypeValue::String(s.to_string()),
         }
     }
 
-    fn read_keyword(s: &str) -> Self {
+    pub fn read_keyword(s: &str) -> Self {
         Self {
             value: TypeValue::Keyword(s.to_string()),
         }
     }
 
-    fn read_number(_s: &str, n: i64) -> Self {
+    pub fn read_number(_s: &str, n: i64) -> Self {
         Self {
             value: TypeValue::Number(n),
         }

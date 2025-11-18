@@ -136,8 +136,8 @@ impl DefMsg {
                     })),
                 ) => {
                     fields.push(GeneratedField {
-                        name: f.to_string(),
-                        field_type: t.to_string(),
+                        name: kebab_to_snake_case(f),
+                        field_type: type_translate(t),
                         comment: None,
                     });
                 }
@@ -150,8 +150,8 @@ impl DefMsg {
                     let new_msg_name = self.msg_name.to_string() + "-" + f;
                     res.append(&mut Self::new(&new_msg_name, inner_exprs)?.create_gen_structs()?);
                     fields.push(GeneratedField {
-                        name: f.to_string(),
-                        field_type: new_msg_name,
+                        name: kebab_to_snake_case(f),
+                        field_type: type_translate(&new_msg_name),
                         comment: None,
                     });
                 }
@@ -167,7 +167,7 @@ impl DefMsg {
         }
 
         res.push(GeneratedStruct::new(
-            self.msg_name.to_string(),
+            kebab_to_pascal_case(&self.msg_name),
             None,
             fields,
             None,
@@ -176,23 +176,23 @@ impl DefMsg {
         Ok(res)
     }
 
-    // fn gen_code(&self, temp_file_path: impl AsRef<Path>) -> Result<String, Box<dyn Error>> {
-    //     let mut tera = Tera::default();
-    //     let mut context = Context::new();
+    fn gen_code_with_file(
+        &self,
+        temp_file_path: impl AsRef<Path>,
+    ) -> Result<String, Box<dyn Error>> {
+        let mut tera = Tera::default();
+        let mut context = Context::new();
 
-    //     tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
+        tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
 
-    //     let gs = GeneratedStruct::new(
-    //         kebab_to_pascal_case(&self.msg_name),
-    //         None,
-    //         self.to_rust_fields()?,
-    //         None,
-    //     );
+        let mut bucket = vec![];
+        for s in self.create_gen_structs()? {
+            s.insert_template(&mut context);
+            bucket.push(tera.render("rpc_struct_template", &context)?);
+        }
 
-    //     gs.insert_template(&mut context);
-
-    //     Ok(tera.render("rpc_struct_template", &context)?)
-    //}
+        Ok(bucket.join("\n\n"))
+    }
 }
 
 #[cfg(test)]
@@ -263,27 +263,27 @@ mod tests {
         assert_eq!(
             x.create_gen_structs().unwrap(),
             vec![GeneratedStruct {
-                name: "book-info".to_string(),
+                name: "BookInfo".to_string(),
                 derived_traits: None,
                 fields: vec![
                     GeneratedField {
                         name: "lang".to_string(),
-                        field_type: "language-perfer".to_string(),
+                        field_type: "LanguagePerfer".to_string(),
                         comment: None
                     },
                     GeneratedField {
                         name: "title".to_string(),
-                        field_type: "string".to_string(),
+                        field_type: "String".to_string(),
                         comment: None
                     },
                     GeneratedField {
                         name: "version".to_string(),
-                        field_type: "string".to_string(),
+                        field_type: "String".to_string(),
                         comment: None
                     },
                     GeneratedField {
                         name: "id".to_string(),
-                        field_type: "string".to_string(),
+                        field_type: "String".to_string(),
                         comment: None
                     }
                 ],
@@ -304,44 +304,44 @@ mod tests {
             x.create_gen_structs().unwrap(),
             vec![
                 GeneratedStruct {
-                    name: "book-info-lang".to_string(),
+                    name: "BookInfoLang".to_string(),
                     derived_traits: None,
                     fields: vec![
                         GeneratedField {
                             name: "a".to_string(),
-                            field_type: "string".to_string(),
+                            field_type: "String".to_string(),
                             comment: None
                         },
                         GeneratedField {
                             name: "b".to_string(),
-                            field_type: "number".to_string(),
+                            field_type: "i64".to_string(),
                             comment: None
                         }
                     ],
                     comment: None
                 },
                 GeneratedStruct {
-                    name: "book-info".to_string(),
+                    name: "BookInfo".to_string(),
                     derived_traits: None,
                     fields: vec![
                         GeneratedField {
                             name: "lang".to_string(),
-                            field_type: "book-info-lang".to_string(),
+                            field_type: "BookInfoLang".to_string(),
                             comment: None
                         },
                         GeneratedField {
                             name: "title".to_string(),
-                            field_type: "string".to_string(),
+                            field_type: "String".to_string(),
                             comment: None
                         },
                         GeneratedField {
                             name: "version".to_string(),
-                            field_type: "string".to_string(),
+                            field_type: "String".to_string(),
                             comment: None
                         },
                         GeneratedField {
                             name: "id".to_string(),
-                            field_type: "string".to_string(),
+                            field_type: "String".to_string(),
                             comment: None
                         }
                     ],
@@ -359,24 +359,49 @@ mod tests {
         let case = r#"(def-msg language-perfer :lang 'string)"#;
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
 
-        //         assert_eq!(
-        //             dm.gen_code(&template_file_path).unwrap(),
-        //             r#"#[derive(Debug)]
-        // pub struct LanguagePerfer {
-        //     lang: String,
-        // }"#
-        //         );
+        assert_eq!(
+            dm.gen_code_with_file(&template_file_path).unwrap(),
+            r#"#[derive(Debug)]
+pub struct LanguagePerfer {
+    lang: String,
+}"#
+        );
 
-        //         //
-        //         let case = r#"(def-msg language-perfer :lang 'string :version 'number)"#;
-        //         let dm = DefMsg::from_str(case, Default::default()).unwrap();
-        //         assert_eq!(
-        //             dm.gen_code(&template_file_path).unwrap(),
-        //             r#"#[derive(Debug)]
-        // pub struct LanguagePerfer {
-        //     lang: String,
-        //     version: i64,
-        // }"#
-        //         );
+        //
+        let case = r#"(def-msg language-perfer :lang 'string :version 'number)"#;
+        let dm = DefMsg::from_str(case, Default::default()).unwrap();
+        assert_eq!(
+            dm.gen_code_with_file(&template_file_path).unwrap(),
+            r#"#[derive(Debug)]
+pub struct LanguagePerfer {
+    lang: String,
+    version: i64,
+}"#
+        );
+
+        //
+        let case = r#"(def-msg book-info
+    :lang '(:a 'string :b 'number)
+    :title 'string
+    :version 'string
+    :id 'string)"#;
+
+        let dm = DefMsg::from_str(case, Default::default()).unwrap();
+        assert_eq!(
+            dm.gen_code_with_file(&template_file_path).unwrap(),
+            r#"#[derive(Debug)]
+pub struct BookInfoLang {
+    a: String,
+    b: i64,
+}
+
+#[derive(Debug)]
+pub struct BookInfo {
+    lang: BookInfoLang,
+    title: String,
+    version: String,
+    id: String,
+}"#
+        );
     }
 }

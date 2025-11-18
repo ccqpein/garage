@@ -48,53 +48,10 @@ pub fn kebab_to_snake_case(s: &str) -> String {
     s.replace('-', "_")
 }
 
-/// the function translate the type
-/// also need the translate to created structure
+/// the function translate the type, the sym's first chat is upper because the kebab_to_pascal_case
 fn type_translate(sym: &str) -> String {
-    match sym {
-        "string" => "String".to_string(),
-        "number" => "i64".to_string(),
-        _ => sym.to_string(),
-    }
-}
-
-/// translate the field types
-fn data_to_field_type(d: &Data) -> Result<String, Box<dyn Error + '_>> {
-    match d {
-        Data::List(list_data) => todo!(), // need give the other struct name
-        Data::Map(map_data) => todo!(),   // need give the other struct name
-        Data::Value(lisp_rpc_rust_parser::TypeValue::Symbol(s)) => Ok(type_translate(s)),
-        Data::Data(_) => Err(Box::new(SpecError {
-            msg: format!(
-                "data {} convert to type error, cannot be expr in as type",
-                d
-            ),
-            err_type: SpecErrorType::InvalidInput,
-        })),
-        Data::Error(data_error) => Err(Box::new(data_error)),
-        _ => Err(Box::new(SpecError {
-            msg: format!("data {} convert to type error", d),
-            err_type: SpecErrorType::InvalidInput,
-        })),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use lisp_rpc_rust_parser::TypeValue;
-
-    use super::*;
-
-    fn test_type_translate() {
-        assert_eq!(type_translate("string"), "String".to_string());
-        assert_eq!(type_translate("number"), "i64".to_string());
-    }
-
-    fn test_data_to_field_type() {
-        let d = Data::Value(TypeValue::Symbol("number".to_string()));
-        assert_eq!(data_to_field_type(&d).unwrap(), "i64".to_string());
-
-        let d = Data::Value(TypeValue::Symbol("string".to_string()));
-        assert_eq!(data_to_field_type(&d).unwrap(), "String".to_string());
+    match kebab_to_pascal_case(sym).as_str() {
+        "Number" => "i64".to_string(),
+        s @ _ => s.to_string(),
     }
 }
