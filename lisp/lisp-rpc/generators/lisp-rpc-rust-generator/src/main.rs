@@ -3,7 +3,6 @@ use lisp_rpc_rust_generator::*;
 use std::fs::File;
 use std::io;
 use std::path::PathBuf;
-use tera::{Context, Tera};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
