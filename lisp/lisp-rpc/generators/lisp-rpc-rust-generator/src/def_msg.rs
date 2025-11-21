@@ -86,7 +86,7 @@ impl DefMsg {
 
     /// make new DefMsg from the one expr
     /// (def-msg name :keyword value)
-    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
+    pub fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
         let rest_expr: &[Expr];
         if Self::if_def_msg_expr(expr) {
             match &expr {
@@ -192,6 +192,12 @@ impl DefMsg {
         }
 
         Ok(bucket.join("\n\n"))
+    }
+}
+
+impl RPCSpec for DefMsg {
+    fn gen_code_with_file(&self, temp_file_path: &str) -> Result<String, Box<dyn Error>> {
+        self.gen_code_with_file(temp_file_path)
     }
 }
 

@@ -6,8 +6,8 @@ pub mod def_rpc;
 pub mod generater;
 
 use std::error::Error;
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 use url::Url;
 
 pub use def_msg::*;
@@ -34,6 +34,10 @@ impl std::fmt::Display for SpecError {
 }
 
 impl Error for SpecError {}
+
+pub trait RPCSpec {
+    fn gen_code_with_file(&self, temp_file_path: &str) -> Result<String, Box<dyn Error>>;
+}
 
 pub fn kebab_to_pascal_case(s: &str) -> String {
     s.split('-')
@@ -103,4 +107,45 @@ pub fn get_all_file_paths_in_folder(folder_path: &Path) -> Result<Vec<PathBuf>, 
     }
 
     Ok(file_paths)
+}
+
+pub fn copy_folder_to_new_name(
+    source_path: &Path,
+    new_folder_name: &str,
+) -> Result<(), Box<dyn Error>> {
+    if !source_path.is_dir() {
+        return Err(format!("Source path is not a directory: {}", source_path.display()).into());
+    }
+
+    let current_dir = env::current_dir()?;
+    let destination_path = current_dir.join(new_folder_name);
+
+    println!(
+        "Copying '{}' to '{}'",
+        source_path.display(),
+        destination_path.display()
+    );
+
+    fs::create_dir_all(&destination_path)?;
+
+    copy_recursive(source_path, &destination_path)?;
+
+    Ok(())
+}
+
+fn copy_recursive(source: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
+    for entry_result in fs::read_dir(source)? {
+        let entry = entry_result?;
+        let entry_path = entry.path();
+        let relative_path = entry_path.strip_prefix(source)?;
+        let dest_entry_path = destination.join(relative_path);
+
+        if entry_path.is_file() {
+            fs::copy(&entry_path, &dest_entry_path)?;
+        } else if entry_path.is_dir() {
+            fs::create_dir_all(&dest_entry_path)?;
+            copy_recursive(&entry_path, &dest_entry_path)?;
+        }
+    }
+    Ok(())
 }

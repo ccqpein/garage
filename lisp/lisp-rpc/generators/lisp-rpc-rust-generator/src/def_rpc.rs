@@ -62,7 +62,7 @@ impl DefRPC {
 
     /// make new DefRPC from the one expr
     /// (def-rpc name '(:keyword value) 'return-value)
-    fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
+    pub fn from_expr(expr: &Expr) -> Result<Self, Box<dyn Error>> {
         let rest_expr: &[Expr];
 
         if Self::if_def_rpc_expr(expr) {
@@ -209,6 +209,12 @@ impl DefRPC {
         }
 
         Ok(bucket.join("\n\n"))
+    }
+}
+
+impl RPCSpec for DefRPC {
+    fn gen_code_with_file(&self, temp_file_path: &str) -> Result<String, Box<dyn Error>> {
+        self.gen_code_with_file(temp_file_path)
     }
 }
 
