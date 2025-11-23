@@ -1,3 +1,4 @@
+use super::*;
 use serde::Serialize;
 use tera::Context;
 
@@ -6,14 +7,19 @@ pub struct GeneratedField {
     pub name: String,
     pub field_type: String,
     pub comment: Option<String>,
+
+    /// the original keyword name
+    key_name: String,
 }
 
 impl GeneratedField {
-    pub fn new(name: String, field_type: String, comment: Option<String>) -> Self {
+    pub fn new(key_name: &str, field_type: &str, comment: Option<String>) -> Self {
         Self {
-            name,
-            field_type,
+            name: kebab_to_snake_case(key_name),
+            field_type: type_translate(field_type),
             comment,
+
+            key_name: key_name.to_string(),
         }
     }
 }
@@ -25,20 +31,25 @@ pub struct GeneratedStruct {
     pub derived_traits: Option<Vec<String>>,
     pub fields: Vec<GeneratedField>,
     pub comment: Option<String>,
+
+    /// the original data name
+    data_name: String,
 }
 
 impl GeneratedStruct {
     pub fn new(
-        name: String,
+        data_name: &str,
         derived_traits: Option<Vec<String>>,
         fields: Vec<GeneratedField>,
         comment: Option<String>,
     ) -> Self {
         Self {
-            name,
+            name: kebab_to_pascal_case(data_name),
             derived_traits,
             fields,
             comment,
+
+            data_name: data_name.to_string(),
         }
     }
 
@@ -67,18 +78,11 @@ mod tests {
             name: "name".to_string(),
             derived_traits: None,
             fields: vec![
-                GeneratedField {
-                    name: "a".to_string(),
-                    field_type: "String".to_string(),
-                    comment: None,
-                },
-                GeneratedField {
-                    name: "a".to_string(),
-                    field_type: "i64".to_string(),
-                    comment: None,
-                },
+                GeneratedField::new("a", "string", None),
+                GeneratedField::new("a", "number", None),
             ],
             comment: None,
+            data_name: "name".to_string(),
         };
 
         context.insert("name", &s.name);

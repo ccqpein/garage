@@ -135,11 +135,7 @@ impl DefMsg {
                         value: TypeValue::Symbol(t),
                     })),
                 ) => {
-                    fields.push(GeneratedField {
-                        name: kebab_to_snake_case(f),
-                        field_type: type_translate(t),
-                        comment: None,
-                    });
+                    fields.push(GeneratedField::new(f, t, None));
                 }
                 (
                     Expr::Atom(Atom {
@@ -149,11 +145,7 @@ impl DefMsg {
                 ) => {
                     let new_msg_name = self.msg_name.to_string() + "-" + f;
                     res.append(&mut Self::new(&new_msg_name, inner_exprs)?.create_gen_structs()?);
-                    fields.push(GeneratedField {
-                        name: kebab_to_snake_case(f),
-                        field_type: type_translate(&new_msg_name),
-                        comment: None,
-                    });
+                    fields.push(GeneratedField::new(f, &new_msg_name, None));
                 }
                 _ => {
                     return Err(Box::new(DefMsgError {
@@ -166,12 +158,7 @@ impl DefMsg {
             }
         }
 
-        res.push(GeneratedStruct::new(
-            kebab_to_pascal_case(&self.msg_name),
-            None,
-            fields,
-            None,
-        ));
+        res.push(GeneratedStruct::new(&self.msg_name, None, fields, None));
 
         Ok(res)
     }
@@ -268,33 +255,17 @@ mod tests {
         let x = DefMsg::from_str(spec, None).unwrap();
         assert_eq!(
             x.create_gen_structs().unwrap(),
-            vec![GeneratedStruct {
-                name: "BookInfo".to_string(),
-                derived_traits: None,
-                fields: vec![
-                    GeneratedField {
-                        name: "lang".to_string(),
-                        field_type: "LanguagePerfer".to_string(),
-                        comment: None
-                    },
-                    GeneratedField {
-                        name: "title".to_string(),
-                        field_type: "String".to_string(),
-                        comment: None
-                    },
-                    GeneratedField {
-                        name: "version".to_string(),
-                        field_type: "String".to_string(),
-                        comment: None
-                    },
-                    GeneratedField {
-                        name: "id".to_string(),
-                        field_type: "String".to_string(),
-                        comment: None
-                    }
+            vec![GeneratedStruct::new(
+                "book-info",
+                None,
+                vec![
+                    GeneratedField::new("lang", "language-perfer", None),
+                    GeneratedField::new("title", "string", None),
+                    GeneratedField::new("version", "string", None),
+                    GeneratedField::new("id", "string", None),
                 ],
-                comment: None
-            }],
+                None
+            ),],
         );
 
         // anonymous fields
@@ -309,50 +280,26 @@ mod tests {
         assert_eq!(
             x.create_gen_structs().unwrap(),
             vec![
-                GeneratedStruct {
-                    name: "BookInfoLang".to_string(),
-                    derived_traits: None,
-                    fields: vec![
-                        GeneratedField {
-                            name: "a".to_string(),
-                            field_type: "String".to_string(),
-                            comment: None
-                        },
-                        GeneratedField {
-                            name: "b".to_string(),
-                            field_type: "i64".to_string(),
-                            comment: None
-                        }
+                GeneratedStruct::new(
+                    "book-info-lang",
+                    None,
+                    vec![
+                        GeneratedField::new("a", "string", None),
+                        GeneratedField::new("b", "number", None),
                     ],
-                    comment: None
-                },
-                GeneratedStruct {
-                    name: "BookInfo".to_string(),
-                    derived_traits: None,
-                    fields: vec![
-                        GeneratedField {
-                            name: "lang".to_string(),
-                            field_type: "BookInfoLang".to_string(),
-                            comment: None
-                        },
-                        GeneratedField {
-                            name: "title".to_string(),
-                            field_type: "String".to_string(),
-                            comment: None
-                        },
-                        GeneratedField {
-                            name: "version".to_string(),
-                            field_type: "String".to_string(),
-                            comment: None
-                        },
-                        GeneratedField {
-                            name: "id".to_string(),
-                            field_type: "String".to_string(),
-                            comment: None
-                        }
+                    None
+                ),
+                GeneratedStruct::new(
+                    "book-info",
+                    None,
+                    vec![
+                        GeneratedField::new("lang", "book-info-lang", None),
+                        GeneratedField::new("title", "string", None),
+                        GeneratedField::new("version", "string", None),
+                        GeneratedField::new("id", "string", None),
                     ],
-                    comment: None
-                }
+                    None
+                ),
             ],
         );
     }
