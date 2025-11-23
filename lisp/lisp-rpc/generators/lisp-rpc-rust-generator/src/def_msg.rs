@@ -311,12 +311,22 @@ mod tests {
 
         let case = r#"(def-msg language-perfer :lang 'string)"#;
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
+        dbg!(dm.gen_code_with_file(&template_file_path).unwrap());
 
         assert_eq!(
             dm.gen_code_with_file(&template_file_path).unwrap(),
             r#"#[derive(Debug)]
 pub struct LanguagePerfer {
     lang: String,
+}
+
+impl ToRPCData for LanguagePerfer {
+    fn to_rpc(&self) -> String {
+        format!(
+            "(language-perfer :lang {})",
+            self.lang.to_rpc()
+        )
+    }
 }"#
         );
 
@@ -329,6 +339,16 @@ pub struct LanguagePerfer {
 pub struct LanguagePerfer {
     lang: String,
     version: i64,
+}
+
+impl ToRPCData for LanguagePerfer {
+    fn to_rpc(&self) -> String {
+        format!(
+            "(language-perfer :lang {} :version {})",
+            self.lang.to_rpc(),
+            self.version.to_rpc()
+        )
+    }
 }"#
         );
 
@@ -340,6 +360,7 @@ pub struct LanguagePerfer {
     :id 'string)"#;
 
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
+        dbg!(dm.gen_code_with_file(&template_file_path).unwrap());
         assert_eq!(
             dm.gen_code_with_file(&template_file_path).unwrap(),
             r#"#[derive(Debug)]
@@ -348,12 +369,34 @@ pub struct BookInfoLang {
     b: i64,
 }
 
+impl ToRPCData for BookInfoLang {
+    fn to_rpc(&self) -> String {
+        format!(
+            "(book-info-lang :a {} :b {})",
+            self.a.to_rpc(),
+            self.b.to_rpc()
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct BookInfo {
     lang: BookInfoLang,
     title: String,
     version: String,
     id: String,
+}
+
+impl ToRPCData for BookInfo {
+    fn to_rpc(&self) -> String {
+        format!(
+            "(book-info :lang {} :title {} :version {} :id {})",
+            self.lang.to_rpc(),
+            self.title.to_rpc(),
+            self.version.to_rpc(),
+            self.id.to_rpc()
+        )
+    }
 }"#
         );
     }

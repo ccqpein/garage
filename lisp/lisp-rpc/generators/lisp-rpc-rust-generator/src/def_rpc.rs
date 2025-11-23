@@ -323,6 +323,8 @@ mod tests {
     'book-info)"#;
         let dm = DefRPC::from_str(case, Default::default()).unwrap();
 
+        //dbg!(dm.gen_code_with_file(&template_file_path).unwrap());
+
         assert_eq!(
             dm.gen_code_with_file(&template_file_path).unwrap(),
             r#"#[derive(Debug)]
@@ -331,11 +333,32 @@ pub struct GetBookLang {
     encoding: i64,
 }
 
+impl ToRPCData for GetBookLang {
+    fn to_rpc(&self) -> String {
+        format!(
+            "(get-book-lang :lang {} :encoding {})",
+            self.lang.to_rpc(),
+            self.encoding.to_rpc()
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct GetBook {
     title: String,
     version: String,
     lang: GetBookLang,
+}
+
+impl ToRPCData for GetBook {
+    fn to_rpc(&self) -> String {
+        format!(
+            "(get-book :title {} :version {} :lang {})",
+            self.title.to_rpc(),
+            self.version.to_rpc(),
+            self.lang.to_rpc()
+        )
+    }
 }"#
         );
     }

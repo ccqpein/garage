@@ -1,11 +1,3 @@
-#[derive(Debug)]
-pub struct {{ name }} {
-{%- for field in fields %}
-{% if field.comment -%}
-    {{ field.comment | indent(width=4, indent_first_line=true) }}
-{% endif %}    {{ field.name }}: {{ field.field_type }},{%- endfor %}
-}
-
 impl ToRPCData for {{ name }} {
     fn to_rpc(&self) -> String {
         format!(

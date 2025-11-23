@@ -9,6 +9,7 @@ pub struct GeneratedField {
     pub comment: Option<String>,
 
     /// the original keyword name
+    /// for insert the impl block of gen_data
     key_name: String,
 }
 
@@ -33,6 +34,7 @@ pub struct GeneratedStruct {
     pub comment: Option<String>,
 
     /// the original data name
+    /// for insert the impl block of gen_data
     data_name: String,
 }
 
@@ -56,6 +58,8 @@ impl GeneratedStruct {
     pub fn insert_template(&self, ctx: &mut Context) {
         ctx.insert("name", &self.name);
         ctx.insert("fields", &self.fields);
+
+        ctx.insert("data_name", &self.data_name)
     }
 }
 
@@ -87,6 +91,7 @@ mod tests {
 
         context.insert("name", &s.name);
         context.insert("fields", &s.fields);
+        context.insert("data_name", &s.data_name);
         //dbg!(tera.render("test", &context).unwrap());
         assert_eq!(
             tera.render("test", &context).unwrap(),
@@ -94,6 +99,16 @@ mod tests {
 pub struct name {
     a: String,
     a: i64,
+}
+
+impl ToRPCData for name {
+    fn to_rpc(&self) -> String {
+        format!(
+            "(name :a {} :a {})",
+            self.a.to_rpc(),
+            self.a.to_rpc()
+        )
+    }
 }"#
         );
     }
