@@ -158,24 +158,41 @@ impl DefMsg {
             }
         }
 
-        res.push(GeneratedStruct::new(&self.msg_name, None, fields, None));
+        res.push(GeneratedStruct::new(
+            &self.msg_name,
+            None,
+            fields,
+            None,
+            RPCDataType::Data,
+        ));
 
         Ok(res)
     }
 
-    fn gen_code_with_file(
+    fn gen_code_with_files(
         &self,
-        temp_file_path: impl AsRef<Path>,
+        template_files: &[impl AsRef<Path>],
     ) -> Result<String, Box<dyn Error>> {
         let mut tera = Tera::default();
         let mut context = Context::new();
 
-        tera.add_template_file(temp_file_path, Some("rpc_struct_template"))?;
+        let mut all_temps = vec![];
+        for p in template_files {
+            match p.as_ref().file_stem().map(|n| n.to_str()) {
+                Some(n) => {
+                    all_temps.push((p, n));
+                }
+                None => (),
+            }
+        }
+
+        tera.add_template_files(all_temps)?;
 
         let mut bucket = vec![];
         for s in self.create_gen_structs()? {
             s.insert_template(&mut context);
-            bucket.push(tera.render("rpc_struct_template", &context)?);
+            bucket.push(tera.render("def_struct.rs", &context)?);
+            bucket.push(tera.render("rpc_impl", &context)?);
         }
 
         Ok(bucket.join("\n\n"))
@@ -183,8 +200,8 @@ impl DefMsg {
 }
 
 impl RPCSpec for DefMsg {
-    fn gen_code_with_file(&self, temp_file_path: &str) -> Result<String, Box<dyn Error>> {
-        self.gen_code_with_file(temp_file_path)
+    fn gen_code_with_files(&self, temp_file_paths: &[&str]) -> Result<String, Box<dyn Error>> {
+        self.gen_code_with_files(temp_file_paths)
     }
 }
 
@@ -264,7 +281,8 @@ mod tests {
                     GeneratedField::new("version", "string", None),
                     GeneratedField::new("id", "string", None),
                 ],
-                None
+                None,
+                RPCDataType::Data,
             ),],
         );
 
@@ -287,7 +305,8 @@ mod tests {
                         GeneratedField::new("a", "string", None),
                         GeneratedField::new("b", "number", None),
                     ],
-                    None
+                    None,
+                    RPCDataType::Data,
                 ),
                 GeneratedStruct::new(
                     "book-info",
@@ -298,7 +317,8 @@ mod tests {
                         GeneratedField::new("version", "string", None),
                         GeneratedField::new("id", "string", None),
                     ],
-                    None
+                    None,
+                    RPCDataType::Data,
                 ),
             ],
         );
@@ -307,14 +327,17 @@ mod tests {
     #[test]
     fn test_gen_code() {
         let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let template_file_path = project_root.join("templates/def_struct.rs.template");
+        let template_file_path = vec![
+            project_root.join("templates/def_struct.rs.template"),
+            project_root.join("templates/rpc_impl.template"),
+        ];
 
         let case = r#"(def-msg language-perfer :lang 'string)"#;
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
-        dbg!(dm.gen_code_with_file(&template_file_path).unwrap());
+        dbg!(dm.gen_code_with_files(&template_file_path).unwrap());
 
         assert_eq!(
-            dm.gen_code_with_file(&template_file_path).unwrap(),
+            dm.gen_code_with_files(&template_file_path).unwrap(),
             r#"#[derive(Debug)]
 pub struct LanguagePerfer {
     lang: String,
@@ -334,7 +357,7 @@ impl ToRPCData for LanguagePerfer {
         let case = r#"(def-msg language-perfer :lang 'string :version 'number)"#;
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
         assert_eq!(
-            dm.gen_code_with_file(&template_file_path).unwrap(),
+            dm.gen_code_with_files(&template_file_path).unwrap(),
             r#"#[derive(Debug)]
 pub struct LanguagePerfer {
     lang: String,
@@ -360,9 +383,9 @@ impl ToRPCData for LanguagePerfer {
     :id 'string)"#;
 
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
-        dbg!(dm.gen_code_with_file(&template_file_path).unwrap());
+        dbg!(dm.gen_code_with_files(&template_file_path).unwrap());
         assert_eq!(
-            dm.gen_code_with_file(&template_file_path).unwrap(),
+            dm.gen_code_with_files(&template_file_path).unwrap(),
             r#"#[derive(Debug)]
 pub struct BookInfoLang {
     a: String,

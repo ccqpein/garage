@@ -36,7 +36,7 @@ impl std::fmt::Display for SpecError {
 impl Error for SpecError {}
 
 pub trait RPCSpec {
-    fn gen_code_with_file(&self, temp_file_path: &str) -> Result<String, Box<dyn Error>>;
+    fn gen_code_with_files(&self, temp_file_paths: &[&str]) -> Result<String, Box<dyn Error>>;
 }
 
 pub fn kebab_to_pascal_case(s: &str) -> String {

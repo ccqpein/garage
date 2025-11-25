@@ -65,7 +65,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         write!(
             file,
             "{}",
-            s.gen_code_with_file("templates/def_struct.rs.template")?
+            s.gen_code_with_files(&[
+                "templates/def_struct.rs.template",
+                "templates/rpc_impl.template"
+            ])?
         )?;
         writeln!(file)?;
     }

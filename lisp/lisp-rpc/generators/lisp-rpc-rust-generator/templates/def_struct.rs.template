@@ -5,14 +5,3 @@ pub struct {{ name }} {
     {{ field.comment | indent(width=4, indent_first_line=true) }}
 {% endif %}    {{ field.name }}: {{ field.field_type }},{%- endfor %}
 }
-
-impl ToRPCData for {{ name }} {
-    fn to_rpc(&self) -> String {
-        format!(
-            "({{data_name}}{%- for field in fields %} :{{ field.key_name }} {}{%- endfor %})",
-{%- for field in fields %}
-            self.{{ field.name }}.to_rpc(){% if not loop.last %},{% endif %}
-{%- endfor %}
-        )
-    }
-}

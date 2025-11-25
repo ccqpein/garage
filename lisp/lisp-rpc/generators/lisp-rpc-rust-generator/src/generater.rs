@@ -3,6 +3,13 @@ use serde::Serialize;
 use tera::Context;
 
 #[derive(Debug, Serialize, PartialEq, Eq)]
+pub enum RPCDataType {
+    Map,
+    List,
+    Data,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct GeneratedField {
     pub name: String,
     pub field_type: String,
@@ -36,6 +43,10 @@ pub struct GeneratedStruct {
     /// the original data name
     /// for insert the impl block of gen_data
     data_name: String,
+
+    /// different types have different data format
+    /// this for detect which is which
+    rpc_type: RPCDataType,
 }
 
 impl GeneratedStruct {
@@ -44,6 +55,7 @@ impl GeneratedStruct {
         derived_traits: Option<Vec<String>>,
         fields: Vec<GeneratedField>,
         comment: Option<String>,
+        ty: RPCDataType,
     ) -> Self {
         Self {
             name: kebab_to_pascal_case(data_name),
@@ -52,6 +64,8 @@ impl GeneratedStruct {
             comment,
 
             data_name: data_name.to_string(),
+
+            rpc_type: ty,
         }
     }
 
@@ -59,7 +73,18 @@ impl GeneratedStruct {
         ctx.insert("name", &self.name);
         ctx.insert("fields", &self.fields);
 
-        ctx.insert("data_name", &self.data_name)
+        match self.rpc_type {
+            RPCDataType::Map => {
+                ctx.insert("ty", "map");
+            }
+            RPCDataType::List => {
+                ctx.insert("ty", "list");
+            }
+            RPCDataType::Data => {
+                ctx.insert("data_name", &self.data_name);
+                ctx.insert("ty", "data");
+            }
+        }
     }
 }
 
@@ -87,6 +112,7 @@ mod tests {
             ],
             comment: None,
             data_name: "name".to_string(),
+            rpc_type: RPCDataType::Data,
         };
 
         context.insert("name", &s.name);
@@ -99,12 +125,60 @@ mod tests {
 pub struct name {
     a: String,
     a: i64,
-}
+}"#
+        );
+    }
 
-impl ToRPCData for name {
+    #[test]
+    fn test_generate_trait() {
+        let temp = include_str!("../templates/rpc_impl.template");
+        let mut tera = Tera::default();
+        let mut context = Context::new();
+
+        //dbg!(temp);
+        tera.add_raw_template("test", temp).unwrap();
+
+        let s = GeneratedStruct {
+            name: "name".to_string(),
+            derived_traits: None,
+            fields: vec![
+                GeneratedField::new("a", "string", None),
+                GeneratedField::new("a", "number", None),
+            ],
+            comment: None,
+            data_name: "name".to_string(),
+            rpc_type: RPCDataType::Data,
+        };
+
+        context.insert("name", &s.name);
+        context.insert("fields", &s.fields);
+        context.insert("data_name", &s.data_name);
+        context.insert("ty", "data");
+        //dbg!(tera.render("test", &context).unwrap());
+        assert_eq!(
+            tera.render("test", &context).unwrap(),
+            r#"impl ToRPCData for name {
     fn to_rpc(&self) -> String {
         format!(
             "(name :a {} :a {})",
+            self.a.to_rpc(),
+            self.a.to_rpc()
+        )
+    }
+}"#
+        );
+
+        //
+        let mut context = Context::new();
+        context.insert("name", &s.name);
+        context.insert("fields", &s.fields);
+        context.insert("ty", "map");
+        assert_eq!(
+            tera.render("test", &context).unwrap(),
+            r#"impl ToRPCData for name {
+    fn to_rpc(&self) -> String {
+        format!(
+            "'(:a {} :a {})",
             self.a.to_rpc(),
             self.a.to_rpc()
         )
