@@ -35,10 +35,17 @@ pub struct DefMsg {
 
     /// the keywords and their types pairs
     rest_expr: Vec<Expr>,
+
+    /// anonymous msg can be the map
+    msg_ty: RPCDataType,
 }
 
 impl DefMsg {
-    pub fn new(msg_name: &str, rest_expr: &[Expr]) -> Result<Self, Box<dyn Error>> {
+    pub fn new(
+        msg_name: &str,
+        rest_expr: &[Expr],
+        ty: RPCDataType,
+    ) -> Result<Self, Box<dyn Error>> {
         if rest_expr.iter().array_chunks().all(|[k, _]| {
             matches!(
                 k,
@@ -50,6 +57,7 @@ impl DefMsg {
             Ok(Self {
                 msg_name: msg_name.to_string(),
                 rest_expr: rest_expr.to_vec(),
+                msg_ty: ty,
             })
         } else {
             Err(Box::new(DefMsgError {
@@ -118,7 +126,7 @@ impl DefMsg {
             }
         };
 
-        Self::new(name, &rest_expr[1..])
+        Self::new(name, &rest_expr[1..], RPCDataType::Data)
     }
 
     /// convet this spec to GeneratedStructs (self and the anonymity type)
@@ -143,8 +151,12 @@ impl DefMsg {
                     }),
                     Expr::Quote(box Expr::List(inner_exprs)),
                 ) => {
+                    // anonymity msg type
                     let new_msg_name = self.msg_name.to_string() + "-" + f;
-                    res.append(&mut Self::new(&new_msg_name, inner_exprs)?.create_gen_structs()?);
+                    res.append(
+                        &mut Self::new(&new_msg_name, inner_exprs, RPCDataType::Map)?
+                            .create_gen_structs()?,
+                    );
                     fields.push(GeneratedField::new(f, &new_msg_name, None));
                 }
                 _ => {
@@ -163,7 +175,7 @@ impl DefMsg {
             None,
             fields,
             None,
-            RPCDataType::Data,
+            self.msg_ty.clone(),
         ));
 
         Ok(res)
@@ -225,6 +237,7 @@ mod tests {
                     Expr::Atom(Atom::read_keyword("lang")),
                     Expr::Quote(Box::new(Expr::Atom(Atom::read("string"))))
                 ],
+                msg_ty: RPCDataType::Data,
             }
         );
 
@@ -240,6 +253,7 @@ mod tests {
                     Expr::Atom(Atom::read_keyword("lang")),
                     Expr::Quote(Box::new(Expr::Atom(Atom::read("string"))))
                 ],
+                msg_ty: RPCDataType::Data,
             }
         );
 
@@ -257,6 +271,7 @@ mod tests {
                     Expr::Atom(Atom::read_keyword("version")),
                     Expr::Quote(Box::new(Expr::Atom(Atom::read("number"))))
                 ],
+                msg_ty: RPCDataType::Data,
             }
         );
     }
@@ -306,7 +321,7 @@ mod tests {
                         GeneratedField::new("b", "number", None),
                     ],
                     None,
-                    RPCDataType::Data,
+                    RPCDataType::Map,
                 ),
                 GeneratedStruct::new(
                     "book-info",
@@ -395,7 +410,7 @@ pub struct BookInfoLang {
 impl ToRPCData for BookInfoLang {
     fn to_rpc(&self) -> String {
         format!(
-            "(book-info-lang :a {} :b {})",
+            "'(:a {} :b {})",
             self.a.to_rpc(),
             self.b.to_rpc()
         )

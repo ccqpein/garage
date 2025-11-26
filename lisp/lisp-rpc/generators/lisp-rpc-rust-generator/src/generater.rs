@@ -2,7 +2,7 @@ use super::*;
 use serde::Serialize;
 use tera::Context;
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
 pub enum RPCDataType {
     Map,
     List,

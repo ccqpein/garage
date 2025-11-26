@@ -159,7 +159,10 @@ impl DefRPC {
                 ) => {
                     // anonymity msg type
                     let new_msg_name = self.rpc_name.to_string() + "-" + f;
-                    res.append(&mut DefMsg::new(&new_msg_name, inner_exprs)?.create_gen_structs()?);
+                    res.append(
+                        &mut DefMsg::new(&new_msg_name, inner_exprs, RPCDataType::Map)?
+                            .create_gen_structs()?,
+                    );
 
                     fields.push(GeneratedField::new(f, &new_msg_name, None));
                 }
@@ -316,7 +319,7 @@ mod tests {
                         GeneratedField::new("encoding", "number", None),
                     ],
                     None,
-                    RPCDataType::Data,
+                    RPCDataType::Map,
                 ),
                 GeneratedStruct::new(
                     "get-book",
@@ -359,7 +362,7 @@ pub struct GetBookLang {
 impl ToRPCData for GetBookLang {
     fn to_rpc(&self) -> String {
         format!(
-            "(get-book-lang :lang {} :encoding {})",
+            "'(:lang {} :encoding {})",
             self.lang.to_rpc(),
             self.encoding.to_rpc()
         )
