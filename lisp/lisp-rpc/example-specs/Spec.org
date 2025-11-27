@@ -80,3 +80,37 @@ return the response ~book-info~
 #+end_src
 
 server side also can use the data struct but parse the data to the languages' struct
+
+for define the list type, it should be. The first element should be un-quoted list
+
+#+begin_src lisp
+  (def-msg language-perfers :langs '(list 'string))
+#+end_src
+
+** Types
+
+In [[*Nest data][Nest data]], it shows the all data types lisp rpc support:
+
++ data
+  ex: (data-name :keyword-1 value1 :keyword-2 value2)
++ list
+  ex: '(1 2 3 4)
++ map
+  ex: '(:first 1 :second 2 :third 3)
+
+primary types:
+
++ string
++ number
+
+  
+*** Define the type
+
+in root level, we can only define the `data` and `rpc` type with `def-rpc` and `def-msg`.
+
+list and map type can only be define anonymously. Ex.
+
+#+begin_src lisp
+  (def-msg language-perfers :langs '(list 'string)) ;; list type define for :langs
+  (def-msg user :name '(:first 'string :second 'string)) ;; map type define for :name
+#+end_src

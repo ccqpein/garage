@@ -1,5 +1,10 @@
 (ql:quickload '("str" "alexandria"))
 
+(defpackage lisp-rpc-checker
+  (:use #:cl))
+
+(in-package :lisp-rpc-checker)
+
 (defparameter *example* "  (def-msg language-perfer :lang 'string)
 
   (def-msg book-info
@@ -10,7 +15,9 @@
 
   (def-rpc get-book
       '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
-    'book-info)")
+    'book-info)
+
+  (def-msg language-perfers :langs '(list 'string))")
 
 (defparameter *checker-map*
   (mapcar #'cons
@@ -20,27 +27,51 @@
 (defun spec-check-one (expr)
   "get one expr, check it roughly and try to eval real checker it"
   (if (< (length expr) 2)
-      (return-from
-       spec-check-one
-        (error "spec expr at least have two elements inside")))
+      (error "spec expr at least have two elements inside"))
   (let ((x (first expr))        
         checker)
     (loop for (sx . c) in *checker-map*
           when (or (string= x sx) (string= x (str:upcase sx)))
-               do (setf checker c)
-               and return nil
+            do (setf checker c)
+            and return nil
           finally
-             (return-from spec-check-one
-               (error (format nil
-                              "spec expr only support the ~{~a~^, ~}"
-                              (mapcar #'car *checker-map*)))))
+             (error (format nil
+                            "spec expr only support the ~{~a~^, ~}"
+                            (mapcar #'car *checker-map*))))
     (apply checker (cdr expr))))
 
 (defun def-msg-checker (name &rest args)
+  (declare (ignore name))
+  (loop for (k v) on args by #'cddr
+        unless (and (typep k 'keyword)
+                    (type-checker v))
+          do (error (format nil
+                            "def-msg arguments types wrong ~a and ~a"
+                            k v))
+        finally (return t)))
+
+(defun type-checker (ty)
+  "check the type defination"
+  (ctypecase ty
+    (symbol (unless (not ty) t))
+    (cons (or (map-data-type-checker ty)
+              (list-type-checker ty)))))
+
+(defun map-data-type-checker (&rest args)
+  "check map data format. 
+can be used to check the data and the type defination"
+  (if (zerop (length args)) (return-from map-data-type-checker nil))
+  (loop for (k v) on args by #'cddr
+        unless (and (typep k 'keyword)
+                    (type-checker v))
+          return nil))
+
+(defun list-type-checker (&rest args)
+  "check list type defination. 
+list type defination should be '(list 'other-type)"
+  (if (/= (length args) 2) (return-from list-type-checker nil))
+  (and (eq (first args) 'list)
+       (type-checker (second args))))
+
+(defun def-rpc-checker (name &rest args)
   (print name))
-
-
-;; (let ((s (make-string-input-stream *example*)))
-;;   (print (read s))
-;;   (print (read s))
-;;   (print (read s)))
