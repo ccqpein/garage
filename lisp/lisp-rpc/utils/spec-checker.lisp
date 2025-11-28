@@ -5,7 +5,7 @@
 
 (in-package :lisp-rpc-checker)
 
-(defparameter *example* "  (def-msg language-perfer :lang 'string)
+(defparameter *example* "(def-msg language-perfer :lang 'string)
 
   (def-msg book-info
     :lang 'language-perfer
@@ -42,36 +42,50 @@
 
 (defun def-msg-checker (name &rest args)
   (declare (ignore name))
-  (loop for (k v) on args by #'cddr
-        unless (and (typep k 'keyword)
-                    (type-checker v))
-          do (error (format nil
-                            "def-msg arguments types wrong ~a and ~a"
-                            k v))
-        finally (return t)))
+  (if (zerop (length args))
+      ;; it can be the empty definations
+      t
+      ;; the rest should be some map data format
+      (map-data-type-checker args)))
 
 (defun type-checker (ty)
   "check the type defination"
   (ctypecase ty
     (symbol (unless (not ty) t))
-    (cons (or (map-data-type-checker ty)
-              (list-type-checker ty)))))
+    (cons (or
+           ;; for ''string, because quoted type inside
+           (if (equal 'quote (first ty))
+               (type-checker (second ty)))
+           (map-data-type-checker ty)
+           (apply #'list-type-checker ty)))))
 
-(defun map-data-type-checker (&rest args)
+(defun map-data-type-checker (eles)
   "check map data format. 
 can be used to check the data and the type defination"
-  (if (zerop (length args)) (return-from map-data-type-checker nil))
-  (loop for (k v) on args by #'cddr
+  (if (zerop (length eles)) (return-from map-data-type-checker nil))
+  (loop for (k v) on eles by #'cddr
         unless (and (typep k 'keyword)
                     (type-checker v))
-          return nil))
+          return nil
+        finally (return t)))
 
 (defun list-type-checker (&rest args)
-  "check list type defination. 
+  "check list type *defination*. 
 list type defination should be '(list 'other-type)"
   (if (/= (length args) 2) (return-from list-type-checker nil))
   (and (eq (first args) 'list)
        (type-checker (second args))))
 
+(defun list-data-type-checker (eles)
+  "this one check the list data. list type defination should use the list-type-checker"
+  (every (lambda (e) (eq (type-of (first eles))
+                         (type-of e)))
+         eles))
+
 (defun def-rpc-checker (name &rest args)
-  (print name))
+  (declare (ignore name))
+  (if (zerop (length args))
+      ;; it can be the empty definations
+      t
+      ;; the rest should be some map data format
+      (map-data-type-checker args)))
