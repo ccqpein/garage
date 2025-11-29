@@ -127,6 +127,27 @@ pub struct name {
     a: i64,
 }"#
         );
+
+        // empty fields
+        let s = GeneratedStruct {
+            name: "name".to_string(),
+            derived_traits: None,
+            fields: vec![],
+            comment: None,
+            data_name: "name".to_string(),
+            rpc_type: RPCDataType::Data,
+        };
+
+        context.insert("name", &s.name);
+        context.insert("fields", &s.fields);
+        context.insert("data_name", &s.data_name);
+        //dbg!(tera.render("test", &context).unwrap());
+        assert_eq!(
+            tera.render("test", &context).unwrap(),
+            r#"#[derive(Debug)]
+pub struct name {
+}"#
+        );
     }
 
     #[test]

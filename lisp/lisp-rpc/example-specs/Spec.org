@@ -106,7 +106,7 @@ primary types:
   
 *** Define the type
 
-in root level, we can only define the `data` and `rpc` type with `def-rpc` and `def-msg`.
+in root level, we can only define the ~data~ and ~rpc~ type with ~def-rpc~ and ~def-msg~.
 
 list and map type can only be define anonymously. Ex.
 

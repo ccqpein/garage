@@ -44,6 +44,18 @@ impl ToRPCData for i64 {
     }
 }
 
+impl<T: ToRPCData> ToRPCData for Vec<T> {
+    fn to_rpc(&self) -> String {
+        "'(".to_string()
+            + &self
+                .iter()
+                .map(|e| e.to_rpc())
+                .collect::<Vec<_>>()
+                .join(" ")
+            + ")"
+    }
+}
+
 trait FromRPCData {
     fn from_rpc(&self) -> String;
 }

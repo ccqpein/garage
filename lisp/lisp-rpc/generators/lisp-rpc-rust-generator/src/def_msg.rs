@@ -1,6 +1,6 @@
 //! the mod that handle def-msg expr
 
-use std::{error::Error, fs::File, io::Cursor, path::Path};
+use std::{error::Error, fmt::format, fs::File, io::Cursor, os::unix::fs::FileTypeExt, path::Path};
 
 use lisp_rpc_rust_parser::{Atom, Expr, Parser, TypeValue, data::MapData};
 use tera::{Context, Tera};
@@ -152,12 +152,36 @@ impl DefMsg {
                     Expr::Quote(box Expr::List(inner_exprs)),
                 ) => {
                     // anonymity msg type
-                    let new_msg_name = self.msg_name.to_string() + "-" + f;
-                    res.append(
-                        &mut Self::new(&new_msg_name, inner_exprs, RPCDataType::Map)?
-                            .create_gen_structs()?,
-                    );
-                    fields.push(GeneratedField::new(f, &new_msg_name, None));
+                    // the map lisp-rpc defination can generate the other msg
+                    // the list lisp-rpc defination can directly generated to Vec<T>
+                    match (&inner_exprs[0],&inner_exprs[1]) {
+                        // map type, the first ele is keyword
+                        (Expr::Atom(Atom { value:TypeValue::Keyword(_)}),
+                        _) => {
+                            let new_msg_name = self.msg_name.to_string() + "-" + f;
+                            res.append(
+                                &mut Self::new(&new_msg_name, inner_exprs, RPCDataType::Map)?
+                                    .create_gen_structs()?,
+                            );
+                            fields.push(GeneratedField::new(f, &new_msg_name, None));
+                        },
+                        // list type, the first ele is "list"
+                        (Expr::Atom(Atom { value:TypeValue::Symbol(l)}),
+                         Expr::Quote(box Expr::Atom(Atom { value:TypeValue::Symbol(t)})),
+                        ) if l == "list"=> {
+                            let new_type_name = format!("Vec<{}>", type_translate(t));
+                            fields.push(GeneratedField::new(f, &new_type_name, None));
+                        },
+                        _ => {
+                            return Err(Box::new(DefMsgError {
+                                msg:
+                                "create gen structs failed, anonymity type can only be the map or list"
+                                    .to_string(),
+                              err_type: DefMsgErrorType::InvalidInput,
+                            }))
+                        }
+                       
+                    }
                 }
                 _ => {
                     return Err(Box::new(DefMsgError {
@@ -331,6 +355,28 @@ mod tests {
                         GeneratedField::new("title", "string", None),
                         GeneratedField::new("version", "string", None),
                         GeneratedField::new("id", "string", None),
+                    ],
+                    None,
+                    RPCDataType::Data,
+                ),
+            ],
+        );
+
+                let spec = r#"(def-msg book-info
+    :langs '(list 'string)
+    :version 'string)"#;
+
+        let x = DefMsg::from_str(spec, None).unwrap();
+        assert_eq!(
+            x.create_gen_structs().unwrap(),
+            vec![
+                
+                GeneratedStruct::new(
+                    "book-info",
+                    None,
+                    vec![
+                        GeneratedField::new("langs", "Vec<String>", None),
+                        GeneratedField::new("version", "string", None),
                     ],
                     None,
                     RPCDataType::Data,
