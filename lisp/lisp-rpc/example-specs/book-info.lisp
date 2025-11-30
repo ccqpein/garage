@@ -9,8 +9,10 @@
   :lang 'language-perfer
   :title 'string
   :version 'string
-  :id 'number)
+  :id 'string)
 
 (def-rpc get-book
-    '(:title 'string :vesion 'string :lang 'language-perfer)
+    '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
   'book-info)
+
+(def-msg language-perfers :langs '(list 'string))

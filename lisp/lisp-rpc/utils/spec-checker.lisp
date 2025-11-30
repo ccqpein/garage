@@ -21,8 +21,22 @@
 
 (defparameter *checker-map*
   (mapcar #'cons
-       '("def-msg" "def-rpc")
-       '(def-msg-checker def-rpc-checker)))
+       '("def-msg" "def-rpc" "def-rpc-package")
+       '(def-msg-checker def-rpc-checker def-rpc-package-check)))
+
+(defun spec-check-file (spec-file)
+  (with-open-file (stream spec-file :direction :input)
+    (loop for expr = (read stream nil :eof)
+          ;;for count from 0
+          until (eq expr :eof)
+          ;;do (format t "expr: ~a check result: ~a~%" expr (spec-check-one expr))
+          unless (handler-case (spec-check-one expr)
+                   (error (e)
+                     (format t "expr: ~a check failed with error" expr)
+                     (return-from spec-check-file e)))
+            do (format t "expr: ~a check failed" expr)
+            and return nil
+          finally (return t))))
 
 (defun spec-check-one (expr)
   "get one expr, check it roughly and try to eval real checker it"
@@ -38,9 +52,9 @@
              (error (format nil
                             "spec expr only support the ~{~a~^, ~}"
                             (mapcar #'car *checker-map*))))
-    (apply checker (cdr expr))))
+    (funcall checker (second expr) (cddr expr))))
 
-(defun def-msg-checker (name &rest args)
+(defun def-msg-checker (name args)
   (declare (ignore name))
   (if (zerop (length args))
       ;; it can be the empty definations
@@ -51,6 +65,7 @@
 (defun type-checker (ty)
   "check the type defination"
   (ctypecase ty
+    (keyword nil)
     (symbol (unless (not ty) t))
     (cons (or
            ;; for ''string, because quoted type inside
@@ -64,7 +79,7 @@
 can be used to check the data and the type defination"
   (if (zerop (length eles)) (return-from map-data-type-checker nil))
   (loop for (k v) on eles by #'cddr
-        unless (and (typep k 'keyword)
+        unless (and (keywordp k)
                     (type-checker v))
           return nil
         finally (return t)))
@@ -82,10 +97,14 @@ list type defination should be '(list 'other-type)"
                          (type-of e)))
          eles))
 
-(defun def-rpc-checker (name &rest args)
+(defun def-rpc-checker (name args)
+  "args has to be the ('(map-data) symbol), the first args will be eval"
   (declare (ignore name))
   (if (zerop (length args))
       ;; it can be the empty definations
-      t
-      ;; the rest should be some map data format
-      (map-data-type-checker args)))
+      (return-from def-rpc-checker t))
+  (and (funcall #'map-data-type-checker (eval (first args)))
+       (if (second args) (type-checker (second args)) t)))
+
+(defun def-rpc-package-check (name &rest args)
+  t)
