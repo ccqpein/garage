@@ -15,4 +15,4 @@
     '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
   'book-info)
 
-(def-msg language-perfers :langs '(list 'string))
+(def-msg authors :names '(list 'string))

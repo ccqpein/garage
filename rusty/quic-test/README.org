@@ -1,0 +1,6 @@
+* README
+:LOGBOOK:
+- Note taken on [2025-12-07 Sun 15:21]
+:END:
+
+this demo test repo is totally outdate
