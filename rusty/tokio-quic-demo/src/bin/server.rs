@@ -86,8 +86,10 @@ async fn handle_connection(mut controller: ServerH3Controller) {
 
                 println!("<- Server sent 'Hello' response.");
             }
-            // Ignore other events for this simple demo
-            _ => {}
+
+            _ => {
+                println!("event catch: {:?}", event);
+            }
         }
     }
     println!("Connection handler finished.");
@@ -96,6 +98,5 @@ async fn handle_connection(mut controller: ServerH3Controller) {
 // --- Run the server first ---
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    simple_logger::init_with_level(log::Level::Info).unwrap();
     run_server().await
 }
