@@ -16,3 +16,11 @@ this demo trying to run some quic demo
 <2025-12-13 Sat>
 
 first demo run. 
+
+<2025-12-14 Sun>
+
+it a little bit weird and I just use the example from [[https://github.com/cloudflare/quiche/blob/master/tokio-quiche/README.md][README]]
+
+<2025-12-16 Tue>
+
+weird issue, client keep get the reset stream.

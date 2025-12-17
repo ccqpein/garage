@@ -1,6 +1,21 @@
 * README
-:LOGBOOK:
-- Note taken on [2025-12-07 Sun 15:21]
-:END:
 
-this demo test repo is totally outdate
+* Quic itself
+
+** Run the repo example app
+
+git clone the [[https://github.com/cloudflare/quiche/blob/master/tokio-quiche/README.md][repo]]
+
+Run the server
+
+#+begin_src shell
+  RUST_LOG=debug cargo run --bin quiche-server -- --cert apps/src/bin/cert.crt --key apps/src/bin/cert.key
+#+end_src
+
+Run the client
+
+#+begin_src shell
+  RUST_LOG=debug cargo run --bin quiche-client -- http://127.0.0.1:4433
+#+end_src
+
+

@@ -7,5 +7,6 @@ edition = "2024"
 tokio-quiche = { version = "0" }
 tokio = { version = "1", features = ["full"] }
 futures = "0"
-quiche = "0"
+#quiche = "0"
 log = { version = "0", features = ["kv"] }
+env_logger = "0"
