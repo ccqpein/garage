@@ -41,7 +41,10 @@
   
   (is (lisp-rpc-checker::spec-check-one (read (make-string-input-stream "(def-msg language-perfer :lang 'string)"))))
   (is (lisp-rpc-checker::spec-check-one (read (make-string-input-stream "(def-msg language-perfers :langs '(list 'string))"))))
-  (is (lisp-rpc-checker::spec-check-one (read (make-string-input-stream "(def-msg user :name '(:first 'string :second 'string))")))))
+  (is (lisp-rpc-checker::spec-check-one (read (make-string-input-stream "(def-msg user :name '(:first 'string :second 'string))"))))
+
+  ;; for def, list doesn't need to be quoted
+  (is (lisp-rpc-checker::spec-check-one (read (make-string-input-stream "(def-msg user :name (:first 'string :second 'string))")))))
 
 (test def-rpc-format-checker-test
   (is (lisp-rpc-checker::def-rpc-checker "get-book"
@@ -53,4 +56,8 @@
   'book-info)"))))
   (signals error (lisp-rpc-checker::spec-check-one (read (make-string-input-stream "(def-rpc get-book
     '(:title 'string :vesion 'string :lang '(:lang 'string :encoding 'number))
-  1)")))))
+  1)"))))
+
+  (is (lisp-rpc-checker::spec-check-one (read (make-string-input-stream "(def-rpc get-book
+    (:title 'string :vesion 'string :lang (:lang 'string :encoding 'number))
+  'book-info)")))))

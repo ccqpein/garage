@@ -66,13 +66,12 @@
   "check the type defination"
   (ctypecase ty
     (keyword nil)
-    (symbol (unless (not ty) t))
-    (cons (or
-           ;; for ''string, because quoted type inside
-           (if (equal 'quote (first ty))
-               (type-checker (second ty)))
-           (map-data-type-checker ty)
-           (apply #'list-type-checker ty)))))
+    (symbol (unless (not ty) 1)) ;; symbol is 0
+    (cons (if (equal 'quote (first ty))
+              (type-checker (second ty))
+              (cond ((map-data-type-checker ty) 1) ;; map is 1
+                    ((apply #'list-type-checker ty) 2) ;; list is 2
+                    )))))
 
 (defun map-data-type-checker (eles)
   "check map data format. 
@@ -103,7 +102,7 @@ list type defination should be '(list 'other-type)"
   (if (zerop (length args))
       ;; it can be the empty definations
       (return-from def-rpc-checker t))
-  (and (funcall #'map-data-type-checker (eval (first args)))
+  (and (= 1 (funcall #'type-checker (first args)))
        (if (second args) (type-checker (second args)) t)))
 
 (defun def-rpc-package-check (name &rest args)
