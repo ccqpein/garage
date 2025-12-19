@@ -24,3 +24,5 @@ it a little bit weird and I just use the example from [[https://github.com/cloud
 <2025-12-16 Tue>
 
 weird issue, client keep get the reset stream.
+
+keep giving me the weird issue. will back to normal quic demo to figure out what's going on

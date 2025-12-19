@@ -1,0 +1,15 @@
+[package]
+name = "h3-demo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+quiche = { version = "0", features = [
+  "qlog",
+  "default",
+  "fuzzing",
+  "boringssl-boring-crate",
+  "sfv",
+] }
+
+env_logger = "0"

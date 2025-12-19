@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-tokio-quiche = { version = "0" }
+#tokio-quiche = { version = "0" }
+tokio-quiche = { git = "https://github.com/cloudflare/quiche" }
 tokio = { version = "1", features = ["full"] }
 futures = "0"
-#quiche = "0"
+quiche = "0"
 log = { version = "0", features = ["kv"] }
 env_logger = "0"

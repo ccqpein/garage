@@ -169,18 +169,24 @@ async fn run_client() -> Result<(), Box<dyn Error>> {
     let socket = tokio::net::UdpSocket::bind("0.0.0.0:0").await?;
     socket.connect("127.0.0.1:4043").await?;
     log::info!("socket connected");
-    let (_, mut controller) = tokio_quiche::quic::connect(socket, None).await.unwrap();
+    let (_, mut controller) = tokio_quiche::quic::connect(socket, Some("127.0.0.1"))
+        .await
+        .unwrap();
     log::info!("quic connected");
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    let headers = vec![
+        h3::Header::new(b":method", b"GET"),   // Value can be uppercase
+        h3::Header::new(b":scheme", b"https"), // Value MUST be lowercase "https" or "http"
+        h3::Header::new(b":authority", b"127.0.0.1:4043"), // No "https://", just host:port
+        h3::Header::new(b":path", b"/"),       // Must start with "/"
+    ];
+
     controller
         .request_sender()
         .send(tokio_quiche::http3::driver::NewClientRequest {
             request_id: 0,
-            headers: vec![
-                h3::Header::new(b":method", b"GET"),
-                h3::Header::new(b":scheme", b"https"),
-                h3::Header::new(b":authority", b"127.0.0.1:4043"),
-                h3::Header::new(b":path", b"/"),
-            ],
+            headers: headers,
             body_writer: None,
         })
         .unwrap();
@@ -222,6 +228,16 @@ async fn run_client() -> Result<(), Box<dyn Error>> {
                 log::info!("fin received");
                 break;
             }
+            // ClientH3Event::Core(H3Event::ResetStream {
+            //     stream_id,
+            //     error_code,
+            // }) => {
+            //     log::error!(
+            //         "Stream {} reset by server. Error Code: {:?}",
+            //         stream_id,
+            //         error_code
+            //     );
+            // }
             ClientH3Event::Core(event) => log::info!("received event: {event:?}"),
             ClientH3Event::NewOutboundRequest {
                 stream_id,

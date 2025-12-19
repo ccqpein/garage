@@ -19,3 +19,8 @@ Run the client
 #+end_src
 
 
+** Let's start from h3 application first
+
+#+begin_src shell
+  cd ./h3-demo
+#+end_src

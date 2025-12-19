@@ -103,9 +103,11 @@
 
 // ================================================ new one
 
+use std::default;
 use std::error::Error;
 
 use futures::{SinkExt as _, StreamExt as _};
+use quiche::Config;
 use tokio_quiche::buf_factory::BufFactory;
 use tokio_quiche::http3::driver::{H3Event, IncomingH3Headers, OutboundFrame, ServerH3Event};
 use tokio_quiche::http3::settings::Http3Settings;
@@ -113,6 +115,7 @@ use tokio_quiche::listen;
 use tokio_quiche::metrics::DefaultMetrics;
 use tokio_quiche::quic::SimpleConnectionIdGenerator;
 use tokio_quiche::quiche::h3;
+use tokio_quiche::settings::QuicSettings;
 use tokio_quiche::{ConnectionParams, ServerH3Controller, ServerH3Driver};
 
 async fn run_server() -> Result<(), Box<dyn Error>> {
@@ -120,10 +123,26 @@ async fn run_server() -> Result<(), Box<dyn Error>> {
     let socket = tokio::net::UdpSocket::bind("0.0.0.0:4043").await?;
     log::info!("after binding Udp socket");
 
+    let mut settings = QuicSettings::default();
+    // settings.initial_max_streams_bidi = 100; // Allow client to open streams
+    // settings.initial_max_streams_uni = 100;
+    // settings.initial_max_data = 10_000_000; // Allow total connection data
+    // settings.initial_max_stream_data_bidi_local = 1_000_000;
+    // settings.initial_max_stream_data_bidi_remote = 1_000_000;
+    // settings.initial_max_stream_data_uni = 1_000_000;
+    // settings.alpn = vec![b"h3".to_vec()];
+
+    log::info!(
+        "DEBUG SETTINGS: Max Streams Bidi: {}, Max Data: {}",
+        settings.initial_max_streams_bidi,
+        settings.initial_max_data
+    );
+
     let mut listeners = listen(
         [socket],
         ConnectionParams::new_server(
-            Default::default(),
+            //Default::default(),
+            settings,
             tokio_quiche::settings::TlsCertificatePaths {
                 cert: "./vault/cert.pem",
                 private_key: "./vault/key.pem",
