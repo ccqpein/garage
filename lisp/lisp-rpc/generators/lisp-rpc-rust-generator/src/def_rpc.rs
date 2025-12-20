@@ -96,8 +96,8 @@ impl DefRPC {
         };
 
         //dbg!(&rest_expr);
-        let arguments = match &rest_expr[1] {
-            Expr::Quote(box Expr::List(exprs)) => exprs,
+        let arguments = match de_quoted(&rest_expr[1]) {
+            Expr::List(exprs) => exprs,
             _ => {
                 return Err(Box::new(DefRPCError {
                     msg: "parsing failed, second arguments has to be list of keyword-value pairs"
@@ -155,7 +155,7 @@ impl DefRPC {
                     Expr::Atom(Atom {
                         value: TypeValue::Keyword(f),
                     }),
-                    Expr::Quote(box Expr::List(inner_exprs)),
+                    Expr::Quote(box Expr::List(inner_exprs)) | Expr::List(inner_exprs),
                 ) => {
                     // anonymity msg type
                     let new_msg_name = self.rpc_name.to_string() + "-" + f;
@@ -222,6 +222,14 @@ impl DefRPC {
 impl RPCSpec for DefRPC {
     fn gen_code_with_files(&self, temp_file_paths: &[&str]) -> Result<String, Box<dyn Error>> {
         self.gen_code_with_files(temp_file_paths)
+    }
+}
+
+fn de_quoted(e: &Expr) -> &Expr {
+    match e {
+        Expr::Atom(_) => e,
+        Expr::List(_) => e,
+        Expr::Quote(box expr) => de_quoted(expr),
     }
 }
 
@@ -303,8 +311,59 @@ mod tests {
             ),]
         );
 
+        let case = r#"(def-rpc get-book
+      (:title 'string :version 'string :lang 'language-perfer)
+    'book-info)"#;
+        let dr = DefRPC::from_str(case, Default::default()).unwrap();
+        assert_eq!(
+            dr.create_gen_structs().unwrap(),
+            vec![GeneratedStruct::new(
+                "get-book",
+                None,
+                vec![
+                    GeneratedField::new("title", "string", None),
+                    GeneratedField::new("version", "string", None),
+                    GeneratedField::new("lang", "language-perfer", None),
+                ],
+                None,
+                RPCDataType::Data,
+            ),]
+        );
+
         let spec = r#"(def-rpc get-book
       '(:title 'string :version 'string :lang '(:lang 'string :encoding 'number))
+    'book-info)"#;
+
+        let dr = DefRPC::from_str(spec, None).unwrap();
+        assert_eq!(
+            dr.create_gen_structs().unwrap(),
+            vec![
+                GeneratedStruct::new(
+                    "get-book-lang",
+                    None,
+                    vec![
+                        GeneratedField::new("lang", "string", None),
+                        GeneratedField::new("encoding", "number", None),
+                    ],
+                    None,
+                    RPCDataType::Map,
+                ),
+                GeneratedStruct::new(
+                    "get-book",
+                    None,
+                    vec![
+                        GeneratedField::new("title", "string", None),
+                        GeneratedField::new("version", "string", None),
+                        GeneratedField::new("lang", "get-book-lang", None),
+                    ],
+                    None,
+                    RPCDataType::Data,
+                ),
+            ]
+        );
+
+        let spec = r#"(def-rpc get-book
+      (:title 'string :version 'string :lang (:lang 'string :encoding 'number))
     'book-info)"#;
 
         let dr = DefRPC::from_str(spec, None).unwrap();

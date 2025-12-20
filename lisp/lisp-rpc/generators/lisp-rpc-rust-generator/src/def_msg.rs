@@ -149,7 +149,7 @@ impl DefMsg {
                     Expr::Atom(Atom {
                         value: TypeValue::Keyword(f),
                     }),
-                    Expr::Quote(box Expr::List(inner_exprs)),
+                    Expr::Quote(box Expr::List(inner_exprs)) | Expr::List(inner_exprs),
                 ) => {
                     // anonymity msg type
                     // the map lisp-rpc defination can generate the other msg
@@ -362,6 +362,43 @@ mod tests {
             ],
         );
 
+        // anonymous fields without the nest quoted
+        
+        let spec = r#"(def-msg book-info
+    :lang (:a 'string :b 'number)
+    :title 'string
+    :version 'string
+    :id 'string)"#;
+
+        let x = DefMsg::from_str(spec, None).unwrap();
+        assert_eq!(
+            x.create_gen_structs().unwrap(),
+            vec![
+                GeneratedStruct::new(
+                    "book-info-lang",
+                    None,
+                    vec![
+                        GeneratedField::new("a", "string", None),
+                        GeneratedField::new("b", "number", None),
+                    ],
+                    None,
+                    RPCDataType::Map,
+                ),
+                GeneratedStruct::new(
+                    "book-info",
+                    None,
+                    vec![
+                        GeneratedField::new("lang", "book-info-lang", None),
+                        GeneratedField::new("title", "string", None),
+                        GeneratedField::new("version", "string", None),
+                        GeneratedField::new("id", "string", None),
+                    ],
+                    None,
+                    RPCDataType::Data,
+                ),
+            ],
+        );
+
                 let spec = r#"(def-msg book-info
     :langs '(list 'string)
     :version 'string)"#;
@@ -395,7 +432,7 @@ mod tests {
 
         let case = r#"(def-msg language-perfer :lang 'string)"#;
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
-        dbg!(dm.gen_code_with_files(&template_file_path).unwrap());
+        //dbg!(dm.gen_code_with_files(&template_file_path).unwrap());
 
         assert_eq!(
             dm.gen_code_with_files(&template_file_path).unwrap(),
@@ -444,7 +481,7 @@ impl ToRPCData for LanguagePerfer {
     :id 'string)"#;
 
         let dm = DefMsg::from_str(case, Default::default()).unwrap();
-        dbg!(dm.gen_code_with_files(&template_file_path).unwrap());
+        //dbg!(dm.gen_code_with_files(&template_file_path).unwrap());
         assert_eq!(
             dm.gen_code_with_files(&template_file_path).unwrap(),
             r#"#[derive(Debug)]
