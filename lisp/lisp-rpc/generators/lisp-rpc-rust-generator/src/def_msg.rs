@@ -400,7 +400,7 @@ mod tests {
         );
 
                 let spec = r#"(def-msg book-info
-    :langs '(list 'string)
+    :langs (list 'string)
     :version 'string)"#;
 
         let x = DefMsg::from_str(spec, None).unwrap();

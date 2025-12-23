@@ -13,3 +13,5 @@ quiche = { version = "0", features = [
 ] }
 
 env_logger = "0"
+
+ring = "0"
