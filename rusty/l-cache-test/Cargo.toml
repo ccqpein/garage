@@ -1,0 +1,15 @@
+[package]
+name = "l-cache-test"
+version = "0.1.0"
+edition = "2024"
+
+build = "build.rs"
+
+[dev-dependencies]
+criterion = "0"
+
+[[bench]]
+name = "cache_benchmark"
+harness = false
+
+[dependencies]
