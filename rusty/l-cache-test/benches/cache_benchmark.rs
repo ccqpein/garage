@@ -1,24 +1,18 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
-// Import functions from your library (assuming package name is 'cache_bench_demo')
-use l_cache_test::{L1_CACHE_SIZE, create_data, fast_sequential_access, slow_strided_access};
+use criterion::{Criterion, criterion_group, criterion_main};
+use l_cache_test::*;
+use std::hint::black_box;
 
-fn benchmark_cache_access(c: &mut Criterion) {
-    let data = create_data();
-
+fn sequential_access(c: &mut Criterion) {
     let mut group = c.benchmark_group("Memory Access");
 
-    // Test 1: Fast
-    group.bench_function("sequential_access", |b| {
-        b.iter(|| fast_sequential_access(black_box(&data)))
+    let mut data = create_data();
+    group.bench_function("sequential_access_step_by_4", |b| {
+        b.iter(|| sequential_access_step4(black_box(&mut data)))
     });
 
-    // Test 2: Slow (We purposefully access fewer elements, but jumping)
-    // Note: Comparing strict time here is tricky because the stride function does
-    // less total work (fewer additions).
-    // To prove cache slowness strictly, we normally check "latency per access",
-    // but for this demo, let's just run them to see the raw speed difference.
-    group.bench_function("strided_access_misses", |b| {
-        b.iter(|| slow_strided_access(black_box(&data)))
+    let mut data = create_data();
+    group.bench_function("sequential_access_step_by_16", |b| {
+        b.iter(|| sequential_access_step16(black_box(&mut data)))
     });
 
     println!(
@@ -26,8 +20,14 @@ fn benchmark_cache_access(c: &mut Criterion) {
         L1_CACHE_SIZE
     );
 
+    println!(
+        "Benchmarking with detected Cache Line Size: {} bytes",
+        CACHE_LINE_SIZE
+    );
+
     group.finish();
 }
 
-criterion_group!(benches, benchmark_cache_access);
-criterion_main!(benches);
+criterion_group!(memory_access_long_array_with_diff_steps, sequential_access);
+
+criterion_main!(memory_access_long_array_with_diff_steps);
