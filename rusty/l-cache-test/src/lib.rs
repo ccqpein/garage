@@ -4,6 +4,10 @@ include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 // A large dataset size, 64M
 const DATA_SIZE: usize = 64 * 1024 * 1024;
 
+// i32 is 4 byte, cpu load per cache line size which is 128 bytes.
+// 128 / 4 = 32, so cpu load 32 elements per time
+// so the next two functions runtime not different a lot.
+
 pub fn sequential_access_step4(data: &mut [i32]) {
     for i in (0..data.len()).step_by(4) {
         data[i] = 1;
@@ -13,6 +17,15 @@ pub fn sequential_access_step4(data: &mut [i32]) {
 pub fn sequential_access_step16(data: &mut [i32]) {
     for i in (0..data.len()).step_by(16) {
         data[i] = 1;
+    }
+}
+
+pub fn cache_line_hit_with_increment(count: usize, increment: usize) {
+    let size = count * increment;
+    let mut data: Vec<i32> = vec![0; size];
+
+    for j in (0..size).step_by(increment) {
+        data[j] += 1;
     }
 }
 
