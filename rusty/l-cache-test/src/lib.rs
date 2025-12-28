@@ -29,6 +29,34 @@ pub fn cache_line_hit_with_increment(count: usize, increment: usize) {
     }
 }
 
+pub fn matrix_iter_row() -> i32 {
+    let col_num = 512;
+    let row_num = 1024;
+    let matrix = vec![vec![0i32; col_num]; row_num];
+
+    let mut sum: i32 = 0;
+    for r in 0..row_num {
+        for c in 0..col_num {
+            sum = sum.wrapping_add(matrix[r][c]);
+        }
+    }
+    sum
+}
+
+pub fn matrix_iter_col() -> i32 {
+    let col_num = 512;
+    let row_num = 1024;
+    let matrix = vec![vec![0i32; col_num]; row_num];
+
+    let mut sum: i32 = 0;
+    for c in 0..col_num {
+        for r in 0..row_num {
+            sum = sum.wrapping_add(matrix[r][c]);
+        }
+    }
+    sum
+}
+
 // Helper to create data for the benchmark
 pub fn create_data() -> Vec<i32> {
     vec![0; DATA_SIZE]

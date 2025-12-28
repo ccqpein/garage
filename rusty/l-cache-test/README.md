@@ -66,3 +66,11 @@ check 9 * 1024 (1024 * 4 * 9= 36kb) and 17 * 512 (512 * 4 * 17 = 34 KB)
 |     16     | 21.363 ns | 30.754 ns | 397.97 ns | 1471.9 ns |
 |     17     | 21.654 ns | 37.488 ns | **1322.7 ns** | 1589.9 ns |
 |     18     | 21.879 ns | 37.473 ns | 1503.8 ns | 1709.9 ns |
+
+
+**matrix_hit**
+
+```
+Matrix Hit/matrix_iter_row => 194.06 µs
+Matrix Hit/matrix_iter_col => 437.18 µs
+```

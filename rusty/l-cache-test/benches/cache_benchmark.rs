@@ -52,10 +52,20 @@ fn cache_hit_with_increments(c: &mut Criterion) {
     group.finish();
 }
 
+fn matrix_hit(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Matrix Hit");
+    group.bench_function("matrix_iter_row", |b| b.iter(|| matrix_iter_row()));
+    group.bench_function("matrix_iter_col", |b| b.iter(|| matrix_iter_col()));
+
+    group.finish();
+}
+
 criterion_group!(memory_access_long_array_with_diff_steps, sequential_access);
 criterion_group!(memory_access_with_increments, cache_hit_with_increments);
+criterion_group!(matrix_hit_benches, matrix_hit);
 
 criterion_main!(
     memory_access_long_array_with_diff_steps,
-    memory_access_with_increments
+    memory_access_with_increments,
+    matrix_hit_benches
 );
