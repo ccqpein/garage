@@ -50,7 +50,8 @@ def create_ics_file(event_data):
     safe_summary = (
         re.sub(r"[^\w\s-]", "", event_data["summary"]).strip().replace(" ", "_")
     )
-    filename = f"{safe_summary}.ics"
+    desktop_path = os.path.expanduser("~/Desktop")
+    filename = os.path.join(desktop_path, f"{safe_summary}.ics")
 
     timezone = event_data.get("timezone", "America/New_York")
     location = event_data.get("location", "")
@@ -75,7 +76,7 @@ END:VCALENDAR"""
 def main():
     # Start a chat session with the new SDK
     chat = client.chats.create(
-        model="gemini-3-flash",
+        model="gemini-3-flash-preview",
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             temperature=0.7,

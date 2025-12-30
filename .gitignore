@@ -7,3 +7,5 @@ GRTAGS
 GTAGS
 *.log
 *.pem
+.agent-shell/
+__pycache__
