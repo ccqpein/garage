@@ -1,3 +1,0 @@
-* README
-
-this is the playgroud the project for testing the code the ~lisp-rpc-rust-generator~ generated

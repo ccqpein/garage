@@ -1,5 +1,0 @@
-* README
-
-The example that using plain mode of lisp rpc
-
-Check the main.rs file for getting more information

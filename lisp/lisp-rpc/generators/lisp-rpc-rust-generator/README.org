@@ -1,3 +1,0 @@
-* README
-
-The generater for generating the rust code with the lisp-rpc protocol files
