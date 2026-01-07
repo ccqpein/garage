@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-anyhow = "1.0.100"
-clap = { version = "4.5.53", features = ["derive"] }
-html2md = "0.2.15"
-readability = "0.3.0"
-reqwest = { version = "0.13.1", features = ["blocking"] }
-url = "2.5.7"
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+html2md = "0"
+readability = "0"
+reqwest = { version = "0", features = ["blocking"] }
+url = "2"
