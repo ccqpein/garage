@@ -1,0 +1,14 @@
+[project]
+name = "gemma-3-demo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "accelerate>=1.12.0",
+    "mlx-lm>=0.29.1",
+    "pillow>=12.1.0",
+    "sentencepiece>=0.2.1",
+    "torch>=2.9.1",
+    "transformers>=4.57.6",
+]
