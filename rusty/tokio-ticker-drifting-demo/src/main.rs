@@ -57,29 +57,28 @@ async fn main() {
     //     }
     // }
 
-    let start_time = Instant::now();
     let mut interval = interval(Duration::from_millis(1000));
 
-    // 1. We skip the first tick because it's always "0" drift
+    // First tick happens immediately, so we consume it to "start the clock"
     interval.tick().await;
-    println!("Ticker started...");
+
+    println!("Ticker started... (Waiting for the first 1s tick)");
 
     for i in 1..=5 {
-        // 2. Simulate the program doing some "work" that takes 200ms
-        // This should not affect the ticker because 200ms < 1000ms
-        sleep(Duration::from_millis(200)).await;
+        // 1. Wait for the tick
+        let scheduled_time = interval.tick().await;
 
-        let tt = interval.tick().await;
+        // 2. IMMEDIATELY check the real world time
+        let actual_time = Instant::now();
 
-        // Calculate drift from the start_time + (i * 1 second)
-        let ideal_time = start_time + Duration::from_secs(i);
+        // 3. The "Jitter" is the difference between Reality and the Schedule
+        let jitter = actual_time.duration_since(scheduled_time);
 
-        let drift = if tt > ideal_time {
-            tt.duration_since(ideal_time)
-        } else {
-            ideal_time.duration_since(tt)
-        };
-
-        println!("Tick #{} | Drift: {} ns", i, drift.as_nanos());
+        println!(
+            "Tick #{}: Scheduled for {:?}, Woke up {:?} late (Jitter)",
+            i,
+            scheduled_time,    // This stays perfect on the grid
+            jitter.as_nanos()  // This is the "shaking" you are looking for
+        );
     }
 }
