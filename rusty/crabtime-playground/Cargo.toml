@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-#crabtime = "1"
-
+crabtime = "1"
 #crabtime = { git = "https://github.com/wdanilo/crabtime" }
-crabtime = { git = "https://github.com/Nekomaru-PKU/crabtime" }
+#crabtime = { git = "https://github.com/Nekomaru-PKU/crabtime" }

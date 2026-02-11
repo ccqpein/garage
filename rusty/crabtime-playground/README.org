@@ -1,0 +1,9 @@
+Path '\/Users/me/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/crabtime-1.1.4/src/lib/project_50eff5ddd414f79e' does not have parent 'target' directory.
+
+output_dir1: "/Users/me/Code/garage/rusty/crabtime-playground/target/debug/build/crabtime/project_50eff5ddd414f79e"
+
+output_dir2: "/Users/me/Code/garage/rusty/crabtime-playground/target/debug/build/crabtime/project_50eff5ddd414f79e"
+
+output_dir0: "/Users/me/Code/garage/rusty/crabtime-playground/target/debug/build/crabtime/un-time-machine/crabtime/lib/src/lib/project_50eff5ddd414f79e"
+
+call_site_path: "un-time-machine/crabtime/lib/src/lib"
