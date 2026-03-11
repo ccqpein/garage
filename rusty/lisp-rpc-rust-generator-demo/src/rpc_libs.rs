@@ -15,10 +15,10 @@ impl ToRPCType for LanguagePerfer {
 
 #[derive(Debug, RPCData)]
 pub struct BookInfo {
-    id: String,
+    lang: LanguagePerfer,
     title: String,
     version: String,
-    lang: LanguagePerfer,
+    id: String,
 }
 
 impl ToRPCType for BookInfo {
@@ -27,8 +27,7 @@ impl ToRPCType for BookInfo {
     }
 }
 
-// rpc + keyword name
-#[derive(RPCData)]
+#[derive(Debug, RPCData)]
 pub struct GetBookLang {
     lang: String,
     encoding: i64,
@@ -40,16 +39,28 @@ impl ToRPCType for GetBookLang {
     }
 }
 
-#[derive(RPCData)]
+#[derive(Debug, RPCData)]
 pub struct GetBook {
     title: String,
     version: String,
     lang: GetBookLang,
+    authors: Authors,
 }
 
 impl ToRPCType for GetBook {
     fn to_rpc_type(&self) -> RPCType {
         RPCType::RPC("get-book".to_string())
+    }
+}
+
+#[derive(Debug, RPCData)]
+pub struct Authors {
+    names: Vec<String>,
+}
+
+impl ToRPCType for Authors {
+    fn to_rpc_type(&self) -> RPCType {
+        RPCType::Msg("authors".to_string())
     }
 }
 
@@ -67,11 +78,14 @@ mod tests {
                 lang: "english".to_string(),
                 encoding: 11,
             },
+            authors: Authors {
+                names: vec!["a".to_string()],
+            },
         };
 
         assert_eq!(
             gb.rpc_data(),
-            r#"(get-book :title "hello world" :version "1984" :lang '(:lang "english" :encoding 11))"#
+            r#"(get-book :title "hello world" :version "1984" :lang '(:lang "english" :encoding 11) :authors (authors :names '("a")))"#
         )
     }
 
