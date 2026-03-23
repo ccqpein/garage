@@ -20,8 +20,10 @@ impl Serialize for Test {
         S: Serializer,
     {
         let mut ss = serializer.serialize_struct("test", 2)?;
-        let a = ss.serialize_field("a", &self.a)?;
-        let b = ss.serialize_field("b", &self.b)?;
+        //ss.serialize_field("a", &self.a)?; // method 1
+        // or other way method 2
+        serde::ser::SerializeStruct::serialize_field(&mut ss, "a", &self.a)?;
+        ss.serialize_field("b", &self.b)?;
         ss.end()
     }
 }
