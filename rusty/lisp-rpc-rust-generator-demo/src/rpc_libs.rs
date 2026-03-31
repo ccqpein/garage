@@ -1,37 +1,36 @@
 // let me assume I have this struct have been generate by generater
-use super::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct LanguagePerfer {
-    lang: String,
+    pub lang: String,
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct BookInfo {
-    lang: LanguagePerfer,
-    title: String,
-    version: String,
-    id: String,
+    pub lang: LanguagePerfer,
+    pub title: String,
+    pub version: String,
+    pub id: String,
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GetBookLang {
-    lang: String,
-    encoding: i64,
+    pub lang: String,
+    pub encoding: i64,
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GetBook {
-    title: String,
-    version: String,
-    lang: GetBookLang,
-    authors: Authors,
+    pub title: String,
+    pub version: String,
+    pub lang: GetBookLang,
+    pub authors: Authors,
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Authors {
-    names: Vec<String>,
+    pub names: Vec<String>,
 }
 
 // test below for making sure
