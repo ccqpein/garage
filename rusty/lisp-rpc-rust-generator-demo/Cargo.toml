@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+actix-web = "4"
 anyhow = "1"
 #lisp-rpc-rust-generator-macro = { git = "https://github.com/ccQpein/lisp-rpc" }
 lisp-rpc-rust-serializer = { git = "https://github.com/ccQpein/lisp-rpc" }

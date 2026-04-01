@@ -1,9 +1,16 @@
 // let me assume I have this struct have been generate by generater
+use super::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct LanguagePerfer {
     pub lang: String,
+}
+
+impl ToRPCType for LanguagePerfer {
+    fn to_rpc_type() -> RPCType {
+        RPCType::Msg("language-perfer".to_string())
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -14,10 +21,22 @@ pub struct BookInfo {
     pub id: String,
 }
 
+impl ToRPCType for BookInfo {
+    fn to_rpc_type() -> RPCType {
+        RPCType::Msg("book-info".to_string())
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GetBookLang {
     pub lang: String,
     pub encoding: i64,
+}
+
+impl ToRPCType for GetBookLang {
+    fn to_rpc_type() -> RPCType {
+        RPCType::Map
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -28,9 +47,21 @@ pub struct GetBook {
     pub authors: Authors,
 }
 
+impl ToRPCType for GetBook {
+    fn to_rpc_type() -> RPCType {
+        RPCType::RPC("get-book".to_string())
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Authors {
     pub names: Vec<String>,
+}
+
+impl ToRPCType for Authors {
+    fn to_rpc_type() -> RPCType {
+        RPCType::Msg("authors".to_string())
+    }
 }
 
 // test below for making sure

@@ -14,7 +14,7 @@ pub enum RPCType {
 
 /// need impl for struct
 pub trait ToRPCType {
-    fn to_rpc_type(&self) -> RPCType {
+    fn to_rpc_type() -> RPCType {
         RPCType::V
     }
 }
