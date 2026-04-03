@@ -90,14 +90,15 @@ pub fn extract_command_name(raw: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rpc_libs::BookInfo;
+    use crate::rpc_libs::*;
 
     #[test]
     fn test_dispatch() {
         let server = RPCServer::new()
-            .register::<BookInfo, _>("book-info", |info| Ok(format!("Processed {}", info.title)));
+            .register::<GetBook, _>(|info| Ok(format!("Processed {}", info.title)))
+            .unwrap();
 
-        let raw_data = r#"(book-info :lang (language-perfer :lang "english") :title "hello world" :version "1984" :id "123")"#;
+        let raw_data = r#"(get-book :title "hello world" :version "1984" :lang (get-book-lang :lang "english" :encoding 11) :authors (authors :names '("a")))"#;
         let res = server.dispatch(raw_data).unwrap();
         assert_eq!(res, "Processed hello world");
     }

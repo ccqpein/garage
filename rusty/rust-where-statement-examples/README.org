@@ -1,0 +1,15 @@
+* README
+
+this is the showcase for a lot where statement of rust. for debugging the rust-ts-mode 
+
+this is the new rule
+
+#+begin_src lisp
+  (with-eval-after-load 'rust-ts-mode
+    (let ((current-rules (alist-get 'rust rust-ts-mode--indent-rules)))
+      (setq rust-ts-mode--indent-rules
+            `((rust . ,(append '(((node-is "where_clause") parent-bol 0)
+                                 ((node-is "where") parent-bol 0)
+                                 ((parent-is "where_clause") parent-bol rust-ts-indent-offset))
+                               current-rules))))))
+#+end_src
