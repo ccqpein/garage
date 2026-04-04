@@ -31,6 +31,7 @@ where
 }
 
 /// RPCServer manages a registry of handlers and dispatches incoming raw Lisp RPC strings
+#[derive(Clone)]
 pub struct RPCServer {
     pub handlers: Arc<HashMap<String, Box<dyn RpcHandler>>>,
 }

@@ -1,3 +1,15 @@
 * README
 
 this is the playgroud the project for showing that the code the ~lisp-rpc-rust-generator~ should generated
+
+
+** Run the server
+
+#+begin_src shell
+  curl -X POST http://127.0.0.1:8080/rpc \
+       -H "Content-Type: text/plain" \
+       -d '(get-book :title "hello world" :version "1984" :lang (get-book-lang :lang "english" :encoding 11) :authors (authors :names \'("a")))'
+#+end_src
+
+#+RESULTS:
+: Requested application data is not configured correctly. View/enable debug logs for more details.
