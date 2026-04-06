@@ -8,8 +8,10 @@ from mlx_vlm import generate, load
 def main():
     # Use the MLX-optimized model ID
     # model_id = "mlx-community/gemma-3-27b-it-8bit"
-
-    model_id = "mlx-community/gemma-4-26b-a4b-it-4bit"
+    # model_id = "mlx-community/gemma-4-26b-a4b-it-4bit"
+    # model_id = "mlx-community/gemma-4-31b-it-4bit"
+    model_id = "mlx-community/gemma-4-26b-a4b-it-8bit"
+    # model_id = "mlx-community/gemma-4-31b-it-6bit"
     print(f"Loading model: {model_id}...")
     print("Note: This uses the 'mlx-lm' library optimized for Apple Silicon.")
 
