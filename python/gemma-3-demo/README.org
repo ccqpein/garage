@@ -1,0 +1,27 @@
+* README
+
+** Gemma 3
+
+the demo code for using the *mlx-community/gemma-3-27b-it-8bit*. 
+
+it is gemini generate code, and find it cannot use the example code on huggingface with transformers
+
+can only use the py lib ~mlx_lm~
+
+#+begin_src shell
+  uv pip install -U mlx-lm
+#+end_src
+
+** Gemma 4
+
+*update 2026/4/5*
+
+try the gemma 4.
+
+#+begin_src shell
+  hf download mlx-community/gemma-4-26b-a4b-it-4bit
+#+end_src
+
+#+begin_src shell
+  uv pip install -U mlx-vlm
+#+end_src

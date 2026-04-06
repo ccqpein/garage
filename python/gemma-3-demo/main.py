@@ -1,13 +1,15 @@
 import sys
 
 # cannot use the transformers for this model for some reason
-from mlx_lm import generate, load
+# from mlx_lm import generate, load
+from mlx_vlm import generate, load
 
 
 def main():
     # Use the MLX-optimized model ID
-    model_id = "mlx-community/gemma-3-27b-it-8bit"
+    # model_id = "mlx-community/gemma-3-27b-it-8bit"
 
+    model_id = "mlx-community/gemma-4-26b-a4b-it-4bit"
     print(f"Loading model: {model_id}...")
     print("Note: This uses the 'mlx-lm' library optimized for Apple Silicon.")
 
@@ -19,7 +21,7 @@ def main():
         return
 
     messages = []
-    print("\n--- Gemma 3 Chat Demo (MLX) ---")
+    print("\n--- Gemma Chat Demo (MLX) ---")
     print("Type 'exit' or 'quit' to end the chat.")
 
     while True:
