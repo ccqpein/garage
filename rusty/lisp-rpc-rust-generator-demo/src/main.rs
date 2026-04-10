@@ -6,7 +6,7 @@ use std::io::{Error, ErrorKind};
 /// Standard Actix handler that uses our RPCServer dispatcher
 #[post("/rpc")]
 async fn rpc_handler(body: String, server: web::Data<RPCServer>) -> impl Responder {
-    match server.dispatch(&body) {
+    match server.handle(&body) {
         Ok(response) => HttpResponse::Ok().body(response),
         Err(e) => HttpResponse::BadRequest().body(format!("RPC Error: {}", e)),
     }
@@ -23,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     // 1. Setup the RPC Engine
     // RPCServer internal is already Arc-wrapped, so it's cheap to clone
     let server = RPCServer::new()
-        .register::<GetBook, _>(|gb| {
+        .register::<GetBook, _>(|gb: GetBook| {
             println!("Received BookInfo via Actix: {:?}", gb);
             Ok(format!("Processed book: {:?}", gb))
         })
