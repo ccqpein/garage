@@ -1,0 +1,11 @@
+* README
+
+this is the demo project of using lm-studio server
+
+first need to start the server first
+
+then:
+
+#+begin_src shell
+  python main.py
+#+end_src
