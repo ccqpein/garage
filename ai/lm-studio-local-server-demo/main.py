@@ -54,8 +54,29 @@ def main():
 
     model_id = None
     if models:
-        model_id = models[0]
-        print(f"Found loaded model: {model_id}")
+        print("\nAvailable loaded models:")
+        for i, m in enumerate(models):
+            print(f"{i}. {m}")
+
+        try:
+            choice = input(
+                f"\nSelect model index (0-{len(models)-1}, default 0): "
+            ).strip()
+            if not choice:
+                idx = 0
+            else:
+                idx = int(choice)
+
+            if 0 <= idx < len(models):
+                model_id = models[idx]
+            else:
+                print(f"Invalid index. Defaulting to index 0.")
+                model_id = models[0]
+        except ValueError:
+            print("Invalid input. Defaulting to index 0.")
+            model_id = models[0]
+
+        print(f"Using model: {model_id}")
     else:
         print("\n[!] No models detected as 'loaded' via the API.")
         print("In LM Studio, make sure you have:")
@@ -79,7 +100,7 @@ def main():
     while True:
         try:
             user_input = input("User: ").strip()
-        except KeyboardInterrupt, EOFError:
+        except (KeyboardInterrupt, EOFError):
             print("\nExiting...")
             break
 
