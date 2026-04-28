@@ -67,7 +67,7 @@ mod tests {
         assert_eq!(
             lisp_rpc_to_str(gb).unwrap(),
             r#"(get-book :title "hello world" :version "1984" :lang (get-book-lang :lang "english" :encoding 11) :authors (authors :names '("a")))"#
-        )
+        );
     }
 
     #[test]
@@ -100,6 +100,54 @@ mod tests {
         assert_eq!(
             lisp_rpc_from_str::<BookInfo>(&lisp_rpc_to_str(&bi).unwrap()).unwrap(),
             bi
+        );
+    }
+
+    #[test]
+    fn test_list_rpc_data_to_struct() {
+        let authors = r#"(authors :names '("a"))"#;
+        assert_eq!(
+            lisp_rpc_from_str::<Authors>(authors).unwrap(),
+            Authors {
+                names: vec!["a".to_string()],
+            }
+        );
+
+        let raw_list = r#"'(1 2 3 4)"#;
+        assert_eq!(
+            lisp_rpc_from_str::<Vec<i64>>(raw_list).unwrap(),
+            vec![1, 2, 3, 4]
+        )
+    }
+
+    #[test]
+    fn test_map_rpc_data_to_struct() {
+        let gbl = r#"(get-book-lang :lang "english" :encoding 11)"#;
+        assert_eq!(
+            lisp_rpc_from_str::<GetBookLang>(gbl).unwrap(),
+            GetBookLang {
+                lang: "english".to_string(),
+                encoding: 11,
+            }
+        );
+    }
+
+    #[test]
+    fn test_get_book_rpc_data_to_struct() {
+        let gb = r#"(get-book :title "hello world" :version "1984" :lang (get-book-lang :lang "english" :encoding 11) :authors (authors :names '("a")))"#;
+        assert_eq!(
+            lisp_rpc_from_str::<GetBook>(gb).unwrap(),
+            GetBook {
+                title: "hello world".to_string(),
+                version: "1984".to_string(),
+                lang: GetBookLang {
+                    lang: "english".to_string(),
+                    encoding: 11,
+                },
+                authors: Authors {
+                    names: vec!["a".to_string()],
+                },
+            }
         );
     }
 }

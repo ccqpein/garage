@@ -17,4 +17,4 @@
       :authors 'authors)
   'book-info)
 
-(def-msg authors :names '(list 'string))
+(def-msg authors :names (list 'string))
