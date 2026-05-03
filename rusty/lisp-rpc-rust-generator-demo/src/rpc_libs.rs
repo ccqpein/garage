@@ -1,5 +1,6 @@
 // let me assume I have this struct have been generate by generater
 use super::*;
+use lisp_rpc_rust_serializer::register_global_map_type;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -44,7 +45,10 @@ pub struct Authors {
 
 impl_to_rpc!(Authors, RPCType::Msg("authors".to_string()));
 
-// test below for making sure
+pub fn init() {
+    register_global_map_type("GetBookLang")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,6 +56,7 @@ mod tests {
 
     #[test]
     fn test_get_book_rpc_data() {
+        init();
         let gb = GetBook {
             title: "hello world".to_string(),
             version: "1984".to_string(),
@@ -64,9 +69,11 @@ mod tests {
             },
         };
 
+        //dbg!(&GLOBAL_MAP_TYPES);
+
         assert_eq!(
-            lisp_rpc_to_str(gb).unwrap(),
-            r#"(get-book :title "hello world" :version "1984" :lang (get-book-lang :lang "english" :encoding 11) :authors (authors :names '("a")))"#
+            gb.serialize_lisp().unwrap(),
+            r#"(get-book :title "hello world" :version "1984" :lang '(:lang "english" :encoding 11) :authors (authors :names '("a")))"#
         );
     }
 
@@ -81,7 +88,7 @@ mod tests {
             },
         };
         assert_eq!(
-            lisp_rpc_to_str(bi).unwrap(),
+            bi.serialize_lisp().unwrap(),
             r#"(book-info :lang (language-perfer :lang "english") :title "hello world" :version "1984" :id "123")"#
         )
     }
@@ -97,10 +104,9 @@ mod tests {
             },
         };
 
-        assert_eq!(
-            lisp_rpc_from_str::<BookInfo>(&lisp_rpc_to_str(&bi).unwrap()).unwrap(),
-            bi
-        );
+        let s = bi.serialize_lisp().unwrap();
+
+        assert_eq!(lisp_rpc_from_str::<BookInfo>(&s).unwrap(), bi);
     }
 
     #[test]

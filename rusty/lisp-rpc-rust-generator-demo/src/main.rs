@@ -1,6 +1,6 @@
 use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
-use lisp_rpc_rust_generator_demo::rpc_libs::*;
 use lisp_rpc_rust_generator_demo::rpc_server::RPCServer;
+use lisp_rpc_rust_generator_demo::{ToRPCType, rpc_libs::*};
 use std::io::{Error, ErrorKind};
 
 /// Standard Actix handler that uses our RPCServer dispatcher
@@ -20,12 +20,16 @@ async fn hello() -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
+
+    // call the init for register the right map type
+    init();
+
     // 1. Setup the RPC Engine
     // RPCServer internal is already Arc-wrapped, so it's cheap to clone
     let server = RPCServer::new()
         .register::<GetBook, _>(|gb: GetBook| {
             println!("Received BookInfo via Actix: {:?}", gb);
-            Ok(format!("Processed book: {:?}", gb))
+            Ok(format!("Processed book: {:?}", gb.serialize_lisp()))
         })
         .map_err(|e| Error::new(ErrorKind::Other, e))?;
 
