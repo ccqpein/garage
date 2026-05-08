@@ -1,0 +1,75 @@
+* Go Generics: Practical Architecture and Interface Constraints
+
+** Type Constraints and Union Types
+Generics allow interfaces to act as Type Constraints. By using the pipe symbol (|), you can define an interface that restricts a generic parameter to a specific set of concrete types.
+
+#+begin_src go
+type MyModels interface {
+    A | B
+}
+#+end_src
+
+Constraint vs. Type: While MyModels can be used as a constraint in a generic function [T MyModels], it cannot be used as a standalone variable type (e.g., var m MyModels is invalid).
+
+** The Core Limitation: Generic Methods
+   
+A common misconception is that interfaces can have methods with their own generic parameters. Go does not support this.
+
++ Invalid: type Storage interface { Save[T any](data T) }
++ Reason: Go's compiler cannot determine the number of entries needed in the interface's virtual function table (itab) because the caller could potentially provide an infinite variety of types for T.
+  
+** The Generic Repository Pattern
+To use generics with a database (or any storage), the generic parameter must be defined at the struct level or the function level, rather than the method level.
+
+#+begin_src go
+type Repository[T MyModels] struct {
+    db *sql.DB
+}
+
+func (r *Repository[T]) Save(data T) error {
+    // Logic for saving A or B
+    return nil
+}
+#+end_src
+
+In this pattern, the type T is fixed when the repository is instantiated (e.g., repo := Repository[A]{...}), allowing the Save method to be a standard, non-generic method that satisfies specific interfaces.
+
+** Designing for Mockability
+
+When you need to mock a storage implementation that uses generics, you must lift the generic parameter to the interface level. This allows the interface to be concrete once the type is specified.
+
+| Component               | Definition                     | Role                                                |
+|-------------------------+--------------------------------+-----------------------------------------------------|
+| Generic Interface       | type Storage[T any] interface  | Defines the contract for a specific type T.         |
+| Concrete Implementation | type DBStorage[T any] struct   | Implements the database logic.                      |
+| Mock Object             | type MockStorage[T any] struct | Allows for easy unit testing of the business logic. |
+
+
+Implementation Example
+
+#+begin_src go
+// 1. Define the interface with a generic parameter
+type Storage[T any] interface {
+    Save(data T) error
+}
+
+// 2. Use it in your business logic
+type Service[T any] struct {
+    Store Storage[T]
+}
+
+// 3. Mocking becomes straightforward
+type MockStorage[T any] struct {
+    OnSave func(data T) error
+}
+
+func (m *MockStorage[T]) Save(data T) error {
+    return m.OnSave(data)
+}
+#+end_src
+
+** Summary of Approaches
+
++ Scenario A: Strict Type Safety. Use Storage[T] and Repository[T]. This is the most modern approach and avoids type assertions.
++ Scenario B: Unified Interface. Use any (interface{}) and switch data.(type). This is more flexible if one object must handle multiple types, but it trades off compile-time safety.
++ Scenario C: Shared Behavior. Define a traditional interface (e.g., Tabler { TableName() string }). If all models share the same methods, this remains the simplest and most "idiomatic" Go approach.
