@@ -1,0 +1,23 @@
+#+Title: Run mlx-vlm server
+
+Using the mlx-community/gemma-4-26b-a4b-it-8bit with MTP
+
+* Prepare
+
+#+begin_src shell
+  uv pip install -U mlx-vlm
+#+end_src
+
+[[https://huggingface.co/collections/mlx-community/gemma-4-assistant-mtp][Here]] is the MTP modes. So I should use the ~mlx-community/gemma-4-26b-a4b-it-bf16~
+
+#+begin_src shell
+  mlx_vlm.generate --model mlx-community/gemma-4-26b-a4b-it-bf16 \
+                   --draft-model mlx-community/gemma-4-26B-A4B-it-assistant-bf16 \
+                   --draft-kind mtp --draft-block-size 4 \
+                   --prompt "Explain speculative decoding in 3 sentences." \
+                   --max-tokens 256 --temperature 0
+#+end_src
+
+* Log
+
+Cost too much memory on my M2 max. And the ~mlx-community~ doesn't have the ~gemma-4-26b-a4b-it-assistant-8bit~, so I cannot use the ~gemma-4-26b-a4b-it-8bit~ with MTP
