@@ -1,6 +1,8 @@
 use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
-use lisp_rpc_rust_generator_demo::rpc_server::RPCServer;
-use lisp_rpc_rust_generator_demo::{ToRPCType, rpc_libs::*};
+//use lisp_rpc_rust_generator_demo::rpc_server::RPCServer;
+//use lisp_rpc_rust_generator_demo::{ToRPCType, rpc_libs::*};
+use lisp_rpc_rust_generator_demo::*;
+use lisp_rpc_rust_server::*;
 use std::io::{Error, ErrorKind};
 
 /// Standard Actix handler that uses our RPCServer dispatcher

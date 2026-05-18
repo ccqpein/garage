@@ -1,6 +1,6 @@
 // let me assume I have this struct have been generate by generater
-use super::*;
-use lisp_rpc_rust_serializer::register_global_map_type;
+use lisp_rpc_rust_serializer::*;
+use lisp_rpc_rust_server::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
