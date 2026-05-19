@@ -1,0 +1,7 @@
+#+Title: Assembly playground
+
+This folder contains some random code demo of Rust and assembly
+
+* Rust code compiling to assembly code
+
+[[file:rust-to-assembly/][rust-to-assembly]] folder.

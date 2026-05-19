@@ -1,0 +1,67 @@
+#+Title: Rust code to assembly
+
+* Compiling code to assembly
+
+
+** Compiling single file
+
+#+begin_src shell
+  rustc --emit asm -C opt-level=3 --crate-type lib src/main.rs
+#+end_src
+
+#+RESULTS:
+
+Get the ~s~ file ~main.s~. The whole assembly file
+
+** otool on macos
+
+#+begin_src shell
+  cargo build --release
+#+end_src
+
+#+begin_src shell
+  otool -tV target/release/rust-to-assembly
+#+end_src
+
+Too many codes
+
+** Use cargo-show-asm
+
+#+begin_src shell
+  cargo install cargo-show-asm
+#+end_src
+
+#+begin_src shell
+  cargo asm --bin rust-to-assembly peak_index_in_mountain_array
+#+end_src
+
+If I don't use the ~#[unsafe(no_mangle)]~, ~peak_index_in_mountain_array~ cannot be found
+
+Then I tried
+
+#+begin_src shell
+  cargo asm --bin rust-to-assembly main
+#+end_src
+
+It will let me choose two main:
+
+#+begin_quote
+Try one of those by name or a sequence number
+0 "main" [28]
+1 "rust_to_assembly::main" [267]
+#+end_quote
+
+- 0 main, entry of my app
+- 1 rust_to_assembly::main, my main in src/main
+
+after ~#[unsafe(no_mangle)]~ some other args I can use:
+
+#+begin_src shell
+  cargo asm --bin rust-to-assembly peak_index_in_mountain_array --rust # source code
+#+end_src
+
+I add the result to ~peak_index_in_mountain_array.s~
+
+
+* Debug in Emacs
+
