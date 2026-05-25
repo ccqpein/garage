@@ -1,0 +1,54 @@
+#+Title: ARM development
+
+The development exercise for Coursera [[https://www.coursera.org/learn/armv8-m-architecture-fundamentals/home/welcome][Armv8-M Architecture Fundamentals]]
+
+* Preparing
+
+#+begin_src shell
+  brew install --cask gcc-arm-embedded
+#+end_src
+
+download the [[https://github.com/ARM-software/CMSIS_5/releases][CMSIS]]. Since Arm DS (IDE) doesnt have macos version. I should do development without ide (some help [[https://developer.arm.com/community/arm-community-blogs/b/tools-software-ides-blog/posts/using-cmsis-with-arm-compiler-6-without-an-ide][doc]])
+
+link the ~CMSIS~ and ~Device~ in my ~./my_arm_project/cmsis~
+
+install qemu for ~qemu-system-arm~
+
+#+begin_src shell
+  brew install qemu
+#+end_src
+
+* Run
+
+build the demo in ~my_arm_project~
+
+#+begin_src shell
+  make
+#+end_src
+
+Then I get the ~image.elf~
+
+#+begin_src shell
+  qemu-system-arm -cpu cortex-m4 -machine netduinoplus2 -nographic -semihosting -kernel image.elf
+#+end_src
+
+** Try to use gdb for debugging
+
+#+begin_src shell
+  qemu-system-arm -cpu cortex-m4 -machine netduinoplus2 -nographic -semihosting -gdb tcp::5555 -S -kernel image.elf
+#+end_src
+
+emacs should run ~gdb~ with ~M-x gdb~
+
+#+begin_quote
+set non-stop off
+target remote localhost:5555
+file image.elf
+#+end_quote
+
+#+begin_quote
+1.	Run M-x gdb.
+2.	Once the buffer is open, run M-x gdb-many-windows.
+3.	Type b main to set a breakpoint.
+4.	Type c (continue).
+#+end_quote
