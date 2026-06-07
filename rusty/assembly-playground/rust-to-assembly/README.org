@@ -1,7 +1,7 @@
 #+Title: Rust code to assembly
+#+TODO: NEXT(n) TODO(t) PROCESSING(p) WAITING(w) MAYBE(m) | DONE(d) CANCELLED(c)
 
 * Compiling code to assembly
-
 
 ** Compiling single file
 
@@ -62,6 +62,140 @@ after ~#[unsafe(no_mangle)]~ some other args I can use:
 
 I add the result to ~peak_index_in_mountain_array.s~
 
-
 * Debug in Emacs
 
+It is different than ~ARM CMSIS development~, for macos, no need the ~arm-none-eabi-gcc~ cross compiling. So there is no elf file here.
+
+#+begin_src
+  M-x lldb
+#+end_src
+
+then use this link command
+#+begin_src
+  rust-lldb target/debug/rust-to-assembly
+#+end_src
+
+give the breakpoint in lldb
+
+#+begin_src
+  b peak_index_in_mountain_array
+#+end_src
+
+then run it
+
+#+begin_src
+  r
+#+end_src
+
+get the assembly and source code
+
+#+begin_src
+  disassemble --frame --mixed
+#+end_src
+
+#+begin_quote
+\** 5   	pub fn peak_index_in_mountain_array(arr: Vec<i32>) -> i32 {
+
+rust-to-assembly`peak_index_in_mountain_array:
+    0x100000f68 <+0>:   sub    sp, sp, #0x50
+    0x100000f6c <+4>:   stp    x29, x30, [sp, #0x40]
+    0x100000f70 <+8>:   add    x29, sp, #0x40
+    0x100000f74 <+12>:  str    x0, [sp, #0x18]
+
+-> 6   	    helper(&arr) as i32
+
+->  0x100000f78 <+16>:  bl     0x100000888               ; <alloc::vec::Vec<i32> as core::ops::deref::Deref>::deref at mod.rs:3793
+    0x100000f7c <+20>:  str    x0, [sp, #0x20]
+    0x100000f80 <+24>:  stur   x1, [x29, #-0x18]
+    0x100000f84 <+28>:  b      0x100000fa4               ; <+60> at main.rs
+    0x100000f88 <+32>:  ldr    x0, [sp, #0x18]
+
+\** 7   	}
+   8   	
+   9   	fn helper(arr: &[i32]) -> usize {
+
+    0x100000f8c <+36>:  bl     0x100001010               ; core::ptr::drop_glue::<alloc::vec::Vec<i32>> at mod.rs:825
+    0x100000f90 <+40>:  b      0x100000fdc               ; <+116> at main.rs:5:1
+    0x100000f94 <+44>:  stur   x0, [x29, #-0x10]
+    0x100000f98 <+48>:  mov    x8, x1
+    0x100000f9c <+52>:  stur   w8, [x29, #-0x8]
+    0x100000fa0 <+56>:  b      0x100000f88               ; <+32> at main.rs
+    0x100000fa4 <+60>:  ldur   x1, [x29, #-0x18]
+    0x100000fa8 <+64>:  ldr    x0, [sp, #0x20]
+
+\** 6   	    helper(&arr) as i32
+
+    0x100000fac <+68>:  bl     0x100000d20               ; rust_to_assembly::helper at main.rs:9
+    0x100000fb0 <+72>:  str    x0, [sp, #0x10]
+    0x100000fb4 <+76>:  b      0x100000fb8               ; <+80> at main.rs
+    0x100000fb8 <+80>:  ldr    x0, [sp, #0x18]
+    0x100000fbc <+84>:  ldr    x8, [sp, #0x10]
+    0x100000fc0 <+88>:  str    w8, [sp, #0xc]
+
+\** 7   	}
+
+    0x100000fc4 <+92>:  bl     0x100001010               ; core::ptr::drop_glue::<alloc::vec::Vec<i32>> at mod.rs:825
+    0x100000fc8 <+96>:  ldr    w0, [sp, #0xc]
+    0x100000fcc <+100>: ldp    x29, x30, [sp, #0x40]
+    0x100000fd0 <+104>: add    sp, sp, #0x50
+    0x100000fd4 <+108>: ret    
+
+   3   	/// for assembly name unchange
+   4   	#[unsafe(no_mangle)]
+\** 5   	pub fn peak_index_in_mountain_array(arr: Vec<i32>) -> i32 {
+
+    0x100000fd8 <+112>: bl     0x100034cd8               ; core::panicking::panic_in_cleanup at panicking.rs:351
+    0x100000fdc <+116>: ldur   x0, [x29, #-0x10]
+    0x100000fe0 <+120>: bl     0x100035074               ; symbol stub for: _Unwind_Resume
+#+end_quote
+
+check all registers
+
+#+begin_src
+  register read
+#+end_src
+
+#+begin_quote
+General Purpose Registers:
+        x0 = 0x000000016fdfdf58
+        x1 = 0x0000000100044028  
+        x2 = 0x0000000100044010  
+        x3 = 0x0000000000000002
+        x4 = 0x0000000000000000
+        x5 = 0x0000000000000004
+        x6 = 0x0000000000000000
+        x7 = 0x0000000000000000
+        x8 = 0x0000000000000003
+        x9 = 0x0000000100645270
+       x10 = 0x0000000000000003
+       x11 = 0x001fe46fffffffff
+       x12 = 0x0000000000000003
+       x13 = 0x000000000000000e
+       x14 = 0x0000000000000000
+       x15 = 0x00000000ffffffa9
+       x16 = 0x92b1000100634030
+       x17 = 0x0000000000001128
+       x18 = 0x0000000000000000
+       x19 = 0x000000016fdfe248
+       x20 = 0x0000000100044160  
+       x21 = 0x0000000000004000
+       x22 = 0x000000016f470000
+       x23 = 0x0000000000000000
+       x24 = 0x0000000000000001
+       x25 = 0x000000016fdfe480
+       x26 = 0x00000001fc4ab770  dyld`mach_task_self_
+       x27 = 0x0000000000000000
+       x28 = 0x0000000000000000
+        fp = 0x000000016fdfdee0
+        lr = 0x00000001000009c4  rust-to-assembly`rust_to_assembly::main + 284 at main.rs:34:16
+        sp = 0x000000016fdfdea0
+        pc = 0x0000000100000f78  rust-to-assembly`peak_index_in_mountain_array + 16 at main.rs:6:12
+      cpsr = 0x60001000
+#+end_quote
+
+
+** Explain the assembly code
+
+
+
+* NEXT Compare C version with Rust version
