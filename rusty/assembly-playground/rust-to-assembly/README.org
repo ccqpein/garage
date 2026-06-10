@@ -196,6 +196,44 @@ General Purpose Registers:
 
 ** Explain the assembly code
 
+*** Q1: What does the syntax `[x29, #-0x18]` mean? What happens to the `x29` register here?
 
+A: This syntax is called "Base plus Offset Addressing". The CPU calculates a temporary physical memory address by subtracting ~0x18~ (24 bytes) from the value stored in the ~x29~ register, and fetches the data from that resulting address. The value inside the ~x29~ register itself **remains completely unchanged.
 
-* NEXT Compare C version with Rust version
+*** Q2: Regarding ~sub sp, sp, #0x50~, isn't ~sub~ subtraction? Does the stack grow downwards from high memory addresses to low memory addresses?
+
+A: Yes, exactly! In most modern architectures (including ARM64 and x86), the stack is Full Descending, meaning it grows downwards. Subtracting from the Stack Pointer (~sp~) effectively allocates memory space for the current function's local variables (the stack frame).
+
+*** Q3: What do these specific assembly instructions mean: ~ldur~, ~ldr~, ~ldp~, ~str~, ~stur~?
+
+A: In ARM architecture, all memory access must go through Load/Store instructions:
+
+~ldr~ (Load Register): Copies data from memory into a register.
+~str~ (Store Register):Writes data from a register back into memory.
+~ldp~ (Load Pair):Loads two consecutive data items from memory into two distinct registers simultaneously (highly efficient).
+~ldur~ / ~stur~ (Load/Store Unscaled Register):Functionally similar to ~ldr~/~str~, but hardware mandates the use of the 'Unscaled' (~u~) variant when the memory offset is negative (e.g., ~#-0x18~) or unaligned.
+
+*** Q4: What exactly does the ~ret~ (return) instruction do?
+
+What physical action occurs inside the CPU?:When the CPU executes ~ret~, it essentially assigns the value of the Link Register (~x30~) to the Program Counter (~PC~). It reads the "return address" (where the function was originally called from) stored in ~x30~ and forcefully redirects the CPU's instruction fetch unit back to the caller function, physically changing the execution path.
+
+*** Q5: Does the instruction ~stp x29, x30, [sp, #0x40]~ mean storing ~x29~ at ~sp + 0x40~, and ~x30~ at the very next address: ~sp + 0x48~?
+
+100% correct. Since ~x~ registers in AArch64 are 64-bit (8 bytes), ~x29~ occupies the 8 bytes starting at ~sp + 0x40~, and ~x30~ neatly occupies the subsequent 8 bytes starting at ~sp + 0x48~. This atomic operation safely backs up the caller's Frame Pointer and Link Register.
+
+*** Q6: In a recursive function, without Tail Call Optimization (TCO), does every ~bl~ (branch) cause a ~sub sp, sp, #0x50~ until the ~sp~ ultimately collides with the upward-growing heap?
+
+Yes, your spatial intuition is spot on! Technically, it's the function prologue (the first few instructions after branching) that performs the ~sub sp~, not the ~bl~ instruction itself. Without a base case or TCO, the downward-growing stack will eventually crash into the boundary or the upward-growing heap, resulting in a literal tack Overflow
+
+*** Q7: Regarding ~add x29, sp, #0x40~—wasn't ~x29~ already at that position due to the previous ~stp~ instruction? Why update it again?
+
+This is a common illusion. The previous ~stp~ instruction stored the old value of ~x29~ into the memory address ~sp + 0x40~. However, the ~x29~ register itself still held the old value. The ~add~ instruction calculates the new anchor address (~sp + 0x40~) and formally overwrites the ~x29~ register with it, making it the new Frame Pointer for the current function.
+
+*** Q8: Why do ~x0~ and ~x1~ seem to be separated in memory (one relative to ~sp~, the other relative to ~x29~)? Are they different lengths? And why use a negative offset (~stur~) to search backwards?
+
+They are actually perfectly adjacent in memory! Since we established that ~x29 = sp + 0x40~, the address ~[x29, #-0x18]~ mathematically evaluates to ~sp + 0x28~. Meanwhile, ~x0~ is at ~sp + 0x20~. The difference is exactly 8 bytes. They form a contiguous 16-byte "Fat Pointer" (representing a slice's pointer and length). The compiler generates this seemingly fragmented addressing logic simply because it's unoptimized Debug code; a Release build would elegantly use a single ~stp~ instruction.
+
+*** Q9: If ~x30~ ultimately dictates the ~PC~ (Program Counter), what exactly is the purpose of ~x29~? What is a "Base Address"?
+
+~x29~ acts as the rame Pointer (FP) which serves as the ase Addressa fixed, absolute anchor point for the current function's stack frame.
+While the Stack Pointer (~sp~) might fluctuate dynamically during execution (e.g., dynamically pushing arguments or allocating temporary arrays), ~x29~ remains rock-solid. This ensures local variables can always be reliably accessed using fixed offsets. Furthermore, because each stack frame's ~x29~ points to the previous frame's ~x29~, it creates a linked list in memory, allowing debuggers to trace back the entire call stack (Stack Backtrace).
