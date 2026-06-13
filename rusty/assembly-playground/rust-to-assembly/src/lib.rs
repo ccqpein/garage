@@ -42,7 +42,7 @@ pub fn add_arrays_mve(a: &[i32], b: &[i32], out: &mut [i32]) {
 
 // this one for VPT Predication
 #[unsafe(no_mangle)]
-#[cfg(target_os = "none")]
+// #[cfg(target_os = "none")]
 pub fn relu_mve(data: &mut [f32]) {
     for x in data.iter_mut() {
         if *x < 0.0 {

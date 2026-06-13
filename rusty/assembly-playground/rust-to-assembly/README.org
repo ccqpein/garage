@@ -265,9 +265,9 @@ General Purpose Registers:
 
 ** Explain the assembly code
 
-*** Q1: What does the syntax `[x29, #-0x18]` mean? What happens to the `x29` register here?
+*** Q1: What does the syntax ~[x29, #-0x18]~ mean? What happens to the `x29` register here?
 
-A: This syntax is called "Base plus Offset Addressing". The CPU calculates a temporary physical memory address by subtracting ~0x18~ (24 bytes) from the value stored in the ~x29~ register, and fetches the data from that resulting address. The value inside the ~x29~ register itself **remains completely unchanged.
+A: This syntax is called "Base plus Offset Addressing". The CPU calculates a temporary physical memory address by subtracting ~0x18~ (24 bytes) from the value stored in the ~x29~ register, and fetches the data from that resulting address. The value inside the ~x29~ register itself remains completely unchanged.
 
 *** Q2: Regarding ~sub sp, sp, #0x50~, isn't ~sub~ subtraction? Does the stack grow downwards from high memory addresses to low memory addresses?
 
@@ -927,3 +927,427 @@ relu_mve:
 		}
 	bx lr
 #+end_quote
+
+Wanna check if M2 has the optimization: remove the ~#[cfg(target_os = "none")]~ of ~relu_mve~
+
+#+begin_src shell
+  cargo asm --lib relu_mve --rust
+#+end_src
+
+#+begin_quote
+.section __TEXT,__text,regular,pure_instructions
+	.globl	_relu_mve
+	.p2align	2
+_relu_mve:
+Lfunc_begin2:
+	.cfi_startproc
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cbz x1, LBB2_51
+	lsl x8, x1, #2
+		// src/lib.rs:48
+		if *x < 0.0 {
+	sub x10, x8, #4
+	mov x11, x0
+	cmp x10, #12
+	b.lo LBB2_53
+	lsr x9, x10, #2
+	add x9, x9, #1
+	cmp x10, #60
+	b.hs LBB2_4
+	mov x10, #0
+	b LBB2_40
+LBB2_4:
+	and x11, x9, #0xc
+	and x10, x9, #0x7ffffffffffffff0
+	add x12, x0, #32
+	and x13, x9, #0x7ffffffffffffff0
+	b LBB2_6
+LBB2_5:
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	add x12, x12, #64
+	subs x13, x13, #16
+	b.eq LBB2_38
+LBB2_6:
+		// src/lib.rs:48
+		if *x < 0.0 {
+	ldur q0, [x12, #-32]
+	fcmp s0, #0.0
+	b.mi LBB2_22
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.mi LBB2_23
+LBB2_8:
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.mi LBB2_24
+LBB2_9:
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.mi LBB2_25
+LBB2_10:
+	ldur q0, [x12, #-16]
+	fcmp s0, #0.0
+	b.mi LBB2_26
+LBB2_11:
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.mi LBB2_27
+LBB2_12:
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.mi LBB2_28
+LBB2_13:
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.mi LBB2_29
+LBB2_14:
+	ldr q1, [x12]
+	fcmp s1, #0.0
+	b.mi LBB2_30
+LBB2_15:
+	mov s0, v1[1]
+	fcmp s0, #0.0
+	b.mi LBB2_31
+LBB2_16:
+	ldr q0, [x12, #16]
+	mov s2, v1[2]
+	fcmp s2, #0.0
+	b.mi LBB2_32
+LBB2_17:
+	mov s1, v1[3]
+	fcmp s1, #0.0
+	b.mi LBB2_33
+LBB2_18:
+	fcmp s0, #0.0
+	b.mi LBB2_34
+LBB2_19:
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.mi LBB2_35
+LBB2_20:
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.mi LBB2_36
+LBB2_21:
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.pl LBB2_5
+	b LBB2_37
+LBB2_22:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-32]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.pl LBB2_8
+LBB2_23:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-28]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.pl LBB2_9
+LBB2_24:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-24]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.pl LBB2_10
+LBB2_25:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-20]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	ldur q0, [x12, #-16]
+	fcmp s0, #0.0
+	b.pl LBB2_11
+LBB2_26:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-16]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.pl LBB2_12
+LBB2_27:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-12]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.pl LBB2_13
+LBB2_28:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-8]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.pl LBB2_14
+LBB2_29:
+		// src/lib.rs:49
+		*x = 0.0;
+	stur wzr, [x12, #-4]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	ldr q1, [x12]
+	fcmp s1, #0.0
+	b.pl LBB2_15
+LBB2_30:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s0, v1[1]
+	fcmp s0, #0.0
+	b.pl LBB2_16
+LBB2_31:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12, #4]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	ldr q0, [x12, #16]
+	mov s2, v1[2]
+	fcmp s2, #0.0
+	b.pl LBB2_17
+LBB2_32:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12, #8]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v1[3]
+	fcmp s1, #0.0
+	b.pl LBB2_18
+LBB2_33:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12, #12]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	fcmp s0, #0.0
+	b.pl LBB2_19
+LBB2_34:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12, #16]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.pl LBB2_20
+LBB2_35:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12, #20]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.pl LBB2_21
+LBB2_36:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12, #24]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.pl LBB2_5
+LBB2_37:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x12, #28]
+	b LBB2_5
+LBB2_38:
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cmp x9, x10
+	b.eq LBB2_51
+	cbz x11, LBB2_52
+LBB2_40:
+	and x12, x9, #0x7ffffffffffffffc
+	add x11, x0, x12, lsl #2
+	sub x13, x10, x12
+	add x10, x0, x10, lsl #2
+	b LBB2_42
+LBB2_41:
+	add x10, x10, #16
+	adds x13, x13, #4
+	b.eq LBB2_50
+LBB2_42:
+		// src/lib.rs:48
+		if *x < 0.0 {
+	ldr q0, [x10]
+	fcmp s0, #0.0
+	b.mi LBB2_46
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.mi LBB2_47
+LBB2_44:
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.mi LBB2_48
+LBB2_45:
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.pl LBB2_41
+	b LBB2_49
+LBB2_46:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x10]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[1]
+	fcmp s1, #0.0
+	b.pl LBB2_44
+LBB2_47:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x10, #4]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s1, v0[2]
+	fcmp s1, #0.0
+	b.pl LBB2_45
+LBB2_48:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x10, #8]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov s0, v0[3]
+	fcmp s0, #0.0
+	b.pl LBB2_41
+LBB2_49:
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x10, #12]
+	b LBB2_41
+LBB2_50:
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cmp x9, x12
+	b.ne LBB2_53
+LBB2_51:
+		// src/lib.rs:52
+		}
+	ret
+LBB2_52:
+	add x11, x0, x10, lsl #2
+LBB2_53:
+	add x8, x0, x8
+		// src/lib.rs:48
+		if *x < 0.0 {
+	mov x9, x11
+	b LBB2_55
+LBB2_54:
+	mov x11, x9
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cmp x9, x8
+	b.eq LBB2_51
+LBB2_55:
+		// src/lib.rs:48
+		if *x < 0.0 {
+	ldr s0, [x9], #4
+	fcmp s0, #0.0
+	b.pl LBB2_54
+		// src/lib.rs:49
+		*x = 0.0;
+	str wzr, [x11]
+	b LBB2_54
+#+end_quote
+
+** ARM MVE Architecture & Predication Q&A
+
+*** Q1: What are the main pain points in traditional SIMD architectures (like ARM NEON) that MVE aims to solve?
+
+A: Traditional SIMD struggles with two major issues:
+
+1. *Conditional Branching*: If a loop contains an ~if/else~ statement, traditional SIMD cannot easily execute the ~if~ logic on some lanes and the ~else~ logic on others simultaneously.
+2. *Tail-Handling Overhead*: If an array's length is not a perfect multiple of the vector width (e.g., 11 elements processed 4 at a time), SIMD can only process the first 8 elements in parallel. The remaining 3 "tail" elements require writing completely separate, redundant scalar loop code to finish the job.
+
+*** Q2: What is VPT Predication (Vector Predicate Then) and how does it eliminate branches?
+
+A: VPT Predication is a hardware mechanism in MVE (Helium) that removes the need for conditional branches (like ~b.mi~ or ~b.ne~) inside loops. It works by:
+
+1. Running a vector comparison instruction (e.g., ~VCMP.F32~) that checks a condition across all lanes.
+2. Storing the boolean results (e.g., True, False, True, False) into a dedicated *Vector Predicate Register (VPR)* as a mask.
+3. Using subsequent instructions with a ~T~ (Then) suffix (e.g., ~VSTRWT.32~). The hardware will only execute the memory store on the lanes where the VPR mask is True, leaving the False lanes completely untouched.
+
+*** Q3: How does Loop Tail Predication (LETP) solve the SIMD tail-handling problem?
+
+A: Loop Tail Predication allows the hardware to automatically handle the leftover elements at the end of an array without needing a separate scalar cleanup loop.
+Using instructions like ~WLTP~ (While Loop Tail Predicate) at the start and ~LETP~ (Loop End Tail Predicate) at the bottom, the CPU tracks the remaining total element count. On the final iteration, the hardware automatically generates a predicate mask that disables the inactive lanes (e.g., processing only 3 out of 4 lanes), preventing out-of-bounds memory access natively.
+
+*** Q4: Why does a powerful chip like the Apple M2 (NEON) generate hundreds of lines of assembly for a SIMD loop, while Cortex-M (MVE) does it in just a few lines?
+
+A: The Apple M2 lacks hardware-level features like VPT and LETP. To handle conditional logic and loop tails, the LLVM compiler is forced to use "Scalar Lane Extraction". It loads a full vector (~ldur q0~), extracts each lane into a scalar register (~mov s1, v0[1]~), and runs traditional scalar ~if~ comparisons and branches (~fcmp~ and ~b.mi~). Furthermore, LLVM performs massive "Loop Unrolling" to hide latencies, resulting in a mountain of assembly code compared to MVE's elegant, compact instruction stream.
+
+*** Q5: If the Apple M2 relies on so many branch instructions (~b.mi~), shouldn't pipeline flushes ruin its performance? Why is it still so fast?
+
+A: The M2 relies on a completely different architectural philosophy: a massive Reorder Buffer (ROB) and an exceptionally accurate Branch Predictor (using complex Pattern History Tables and TAGE predictors).
+Because the M2 can guess the outcome of those branches correctly >95% of the time, the pipeline rarely flushes. Its Out-of-Order execution engine then swallows hundreds of these extracted scalar instructions and processes them in parallel across multiple execution ports. It achieves vector-like throughput via brute-force prediction and massive superscalar execution.
+
+*** Q6: What is the notorious ~vmrs~ pipeline bottleneck in traditional ARM, and how does MVE bypass it?
+
+A: In traditional ARM without MVE, evaluating a floating-point condition requires the ~vmrs APSR_nzcv, fpscr~ instruction. This forces the Floating-Point Unit (FPU) to sync its status flags over to the main CPU's integer ALU so the CPU can perform a branch. Syncing two independent hardware blocks causes a severe pipeline stall.
+MVE completely bypasses this by keeping the comparison results inside the vector unit (storing them in the VPR) and executing the predicated instructions locally, entirely avoiding the main CPU's branch execution unit.
+
+* Assembly Instructions Cheat Sheet
+
+** 1. Apple M2 (AArch64 Architecture)
+Primarily used for macOS native development. Key features include thirty-one 64-bit general-purpose registers (~x0~-~x30~), a immensely powerful NEON SIMD engine, and world-class branch prediction capabilities.
+
+| Instruction | Feature | Description | Example & Analysis |
+|-------------+---------+-------------+--------------------|
+| ~add~ / ~sub~ | Base | Arithmetic Add / Subtract | ~sub sp, sp, #0x50~ (Allocates 80 bytes of stack space) |
+| ~cmp~ | Base | Compare and update flags | ~cmp x10, #12~ (Uses subtraction under the hood but discards the result) |
+| ~b.<cond>~ | Base | Conditional Branch | ~b.mi~ (Branch on Minus), ~b.pl~ (Branch on Plus), ~b.eq~ (Branch on Equal) |
+| ~cbz~ / ~cbnz~| Base | Compare and Branch on Zero | ~cbz x1, LBB2_51~ (Branch if x1 == 0. An optimized combo of cmp+b) |
+| ~ldr~ / ~str~ | Base | Load / Store Register | ~ldr x0, [sp, #0x10]~ (Reads data from memory into x0) |
+| ~ldp~ / ~stp~ | Base | Load / Store Pair | ~stp x29, x30, [sp, #0x40]~ (Two-for-one memory access. Crucial for saving FP and LR) |
+| ~ldur~ / ~stur~| Base | Unscaled Load / Store | ~stur wzr, [x12, #-32]~ ('U' stands for Unscaled, allowing negative byte offsets) |
+| ~csel~ | Base (Armv8)| Condition Select | ~csel x8, x3, x1, lo~ (Branchless ternary operator. Eliminates pipeline stalls) |
+| ~ret~ | Base | Return from Subroutine | Sets the PC (Program Counter) back to the address stored in ~x30~ (LR) |
+| ~fcmp~ | NEON/FPU| Floating-point Compare | ~fcmp s0, #0.0~ |
+| ~add.4s~ | NEON (SIMD)| Vector Addition | ~add.4s v0, v4, v0~ (Adds four 32-bit single-precision floats in parallel) |
+| ~mov~ (Lane) | NEON (SIMD)| Vector Lane Extraction | ~mov s1, v0[1]~ (M2's trick for SIMD tails: extract vector lanes into scalars for branching) |
+| ~wzr~ / ~xzr~ | Base (HW) | Physical Zero Register | Hardwired to 0. M2 writes ~wzr~ to memory to fake a float ~0.0~, bypassing the FPU |
+
+
+** 2. ARM Cortex-M (Thumb-2 Architecture)
+Primarily used for bare-metal microcontroller development. Features traditional scalar processing, standard Floating-Point Units (FPU), and the modern Vector Extension (MVE / Helium).
+
+| Instruction | Feature | Description | Example & Analysis |
+|-------------+---------+-------------+--------------------|
+| ~push~ / ~pop~ | Base (Thumb)| Push / Pop Registers | ~push {r4, r5, r6, lr}~ (Saves multiple registers to the stack simultaneously) |
+| ~bl~ | Base (Thumb)| Branch with Link | ~bl helper~ (Calls a function. Hardware automatically saves the return address into LR) |
+| ~ldrd~ | Base (Thumb)| Load Register Dual | ~ldrd r6, r3, [r5, #4]~ (Loads 64 bits at once, often seen in software loop unrolling) |
+| ~stm~ | Base (Thumb)| Store Multiple | ~stm r6!, {r1, r3, r5}~ (Highly code-density-efficient bulk memory write) |
+| ~it~ / ~itt~ | Thumb-2 | If-Then Condition Block | ~itt mi~ (Declares that the next two instructions execute ONLY if the 'mi' flag is set) |
+| ~movlo~ / ~strmi~| Thumb-2 | Conditional Execution | ~strmi r3, [r0]~ (The 'mi' suffix makes it execute conditionally without branching) |
+| ~vmrs~ | FPU (No MVE)| Move from State Register| ~vmrs APSR_nzcv, fpscr~ (The notorious bottleneck: forcing FPU flags to sync with the main CPU) |
+| ~vldrw.u32~ | MVE (+mve)| Vector Load Word | ~vldrw.u32 q0, [r3], #16~ (Instantly loads four 32-bit values and auto-increments the pointer by 16) |
+| ~vadd.i32~ | MVE (+mve)| Vector Integer Add | ~vadd.i32 q0, q1, q0~ (Adds 4 lanes simultaneously with zero looping overhead) |
+| ~vpt.f32~ | MVE (+mve.fp)| Vector Predicate Then | ~vpt.f32 lt, q1, zr~ (Core MVE magic: compares vector lanes and generates a VPR hardware mask) |
+| ~vstrwt.32~ | MVE (+mve)| Conditional Vector Store| ~vstrwt.32 q0, [r3]~ ('T' stands for Then. Overwrites memory ONLY for lanes where the VPR mask is True) |
+| ~WLTP~ / ~LETP~| MVE (+mve)| Loop Tail Predication | (Hardware natively truncates the active lane mask for array tails, eliminating scalar cleanup loops) |
