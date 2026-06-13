@@ -40,7 +40,7 @@ pub fn add_arrays_mve(a: &[i32], b: &[i32], out: &mut [i32]) {
     }
 }
 
-#[no_mangle]
+// this one for VPT Predication
 #[unsafe(no_mangle)]
 #[cfg(target_os = "none")]
 pub fn relu_mve(data: &mut [f32]) {
@@ -64,7 +64,6 @@ use core::panic::PanicInfo;
 #[cfg(target_os = "none")]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
-    // 在裸机上，崩溃了无处可去，只能死循环卡住 CPU
     loop {}
 }
 

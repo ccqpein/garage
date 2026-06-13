@@ -688,3 +688,242 @@ add_arrays_mve:
 
 
 * VPT Predication
+
+Check the assembly code that without the target-feature
+
+#+begin_src shell
+  cargo asm --lib relu_mve --target thumbv8m.main-none-eabihf --rust
+#+end_src
+
+#+begin_quote
+.section .text.relu_mve,"ax",%progbits
+	.globl	relu_mve
+	.p2align	1
+	.type	relu_mve,%function
+	.code	16
+	.thumb_func
+relu_mve:
+	.fnstart
+	.cfi_startproc
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cmp r1, #0
+		// src/lib.rs:52
+		}
+	it eq
+	bxeq lr
+	.save	{r7, lr}
+	push {r7, lr}
+	.cfi_def_cfa_offset 8
+	.cfi_offset lr, -4
+	.cfi_offset r7, -8
+	.setfp	r7, sp
+	mov r7, sp
+	.cfi_def_cfa_register r7
+	lsls r2, r1, #2
+		// src/lib.rs:48
+		if *x < 0.0 {
+	sub.w lr, r2, #4
+	mvn.w r2, lr
+	tst.w r2, #12
+	mov r2, r0
+	beq .LBB2_5
+	vldr s0, [r0]
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:614
+		unsafe { transmute(intrinsics::offset(self.as_ptr(), count)) }
+	adds r2, r0, #4
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+	itt mi
+	movmi r3, #0
+		// src/lib.rs:49
+		*x = 0.0;
+	strmi r3, [r0]
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	tst.w lr, #12
+	beq .LBB2_5
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vldr s0, [r0, #4]
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:614
+		unsafe { transmute(intrinsics::offset(self.as_ptr(), count)) }
+	add.w r12, r0, #8
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+	itt mi
+	movmi r3, #0
+		// src/lib.rs:49
+		*x = 0.0;
+	strmi r3, [r2]
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	and r2, lr, #12
+	cmp r2, #4
+	bne .LBB2_9
+	mov r2, r12
+.LBB2_5:
+		// src/lib.rs:48
+		if *x < 0.0 {
+	cmp.w lr, #12
+	blo .LBB2_8
+.LBB2_6:
+	add.w r0, r0, r1, lsl #2
+	movs r1, #0
+.LBB2_7:
+	vldr s0, [r2]
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+		// src/lib.rs:49
+		*x = 0.0;
+	it mi
+	strmi r1, [r2]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vldr s0, [r2, #4]
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+		// src/lib.rs:49
+		*x = 0.0;
+	it mi
+	strmi r1, [r2, #4]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vldr s0, [r2, #8]
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+		// src/lib.rs:49
+		*x = 0.0;
+	it mi
+	strmi r1, [r2, #8]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vldr s0, [r2, #12]
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+		// src/lib.rs:49
+		*x = 0.0;
+	it mi
+	strmi r1, [r2, #12]
+	adds r2, #16
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cmp r2, r0
+	bne .LBB2_7
+.LBB2_8:
+	pop.w {r7, lr}
+		// src/lib.rs:52
+		}
+	bx lr
+.LBB2_9:
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vldr s0, [r0, #8]
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ptr/non_null.rs:614
+		unsafe { transmute(intrinsics::offset(self.as_ptr(), count)) }
+	add.w r2, r0, #12
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+	itt mi
+	movmi r3, #0
+		// src/lib.rs:49
+		*x = 0.0;
+	strmi.w r3, [r12]
+		// src/lib.rs:48
+		if *x < 0.0 {
+	cmp.w lr, #12
+	bhs .LBB2_6
+	b .LBB2_8
+#+end_quote
+
+#+begin_src shell
+  cargo asm --lib relu_mve --target thumbv8m.main-none-eabihf --rust -C target-feature=+mve.fp
+#+end_src
+
+Get the assembly code
+
+#+begin_quote
+.section .text.relu_mve,"ax",%progbits
+	.globl	relu_mve
+	.p2align	1
+	.type	relu_mve,%function
+	.code	16
+	.thumb_func
+relu_mve:
+	.fnstart
+	.cfi_startproc
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cmp r1, #0
+		// src/lib.rs:52
+		}
+	it eq
+	bxeq lr
+	.save	{r4, r6, r7, lr}
+	push {r4, r6, r7, lr}
+	.cfi_def_cfa_offset 16
+	.cfi_offset lr, -4
+	.cfi_offset r7, -8
+	.cfi_offset r6, -12
+	.cfi_offset r4, -16
+	.setfp	r7, sp, #8
+	add r7, sp, #8
+	.cfi_def_cfa r7, 8
+	lsls r2, r1, #2
+		// src/lib.rs:48
+		if *x < 0.0 {
+	subs r3, r2, #4
+	mov r2, r0
+	cmp r3, #12
+	blo .LBB2_5
+	movs r2, #1
+	add.w r12, r2, r3, lsr #2
+	bic lr, r12, #3
+	vmov.i32 q0, #0x0
+	mov r3, r0
+	add.w r2, r0, lr, lsl #2
+	mov r4, lr
+.LBB2_3:
+	vldrw.u32 q1, [r3]
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	subs r4, #4
+		// src/lib.rs:49
+		*x = 0.0;
+	vpt.f32 lt, q1, zr
+	vstrwt.32 q0, [r3], #16
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	bne .LBB2_3
+	cmp r12, lr
+	beq .LBB2_7
+.LBB2_5:
+	add.w r0, r0, r1, lsl #2
+	movs r1, #0
+.LBB2_6:
+		// src/lib.rs:48
+		if *x < 0.0 {
+	vldr s0, [r2]
+	vcmp.f32 s0, #0
+	vmrs APSR_nzcv, fpscr
+		// src/lib.rs:49
+		*x = 0.0;
+	it mi
+	strmi r1, [r2]
+	adds r2, #4
+		// ~/.rustup/toolchains/nightly-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/slice/iter/macros.rs:180
+		if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
+	cmp r2, r0
+	bne .LBB2_6
+.LBB2_7:
+	pop.w {r4, r6, r7, lr}
+		// src/lib.rs:52
+		}
+	bx lr
+#+end_quote
