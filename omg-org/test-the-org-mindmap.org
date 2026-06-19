@@ -1,0 +1,12 @@
+#+Title: Try the new org-mindmap
+
+Trying the new mindmap lib. [[https://github.com/krvkir/org-mindmap][Source]]
+
+* Playaround
+
+#+begin_mindmap :layout centered
+         ╭─ a
+« root » ┼─ b
+         ├─ c
+         ╰─ d
+#+end_mindmap
