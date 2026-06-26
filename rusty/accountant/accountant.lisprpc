@@ -1,0 +1,9 @@
+(def-rpc-package accountant-rpc)
+
+(def-rpc transaction
+    '(:date 'string
+      :account 'string
+      :tx-type 'string
+      :amount 'number
+      :category (list 'string))
+  'string)
