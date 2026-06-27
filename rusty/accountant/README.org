@@ -1,6 +1,20 @@
 #+Title: Accountant App 
 
 My personal accountant app for recording my daily costs
+* Generate the lisp rpc code
+
+#+begin_src shell
+  lisp-rpc-rust-generator -i ./accountant.lisprpc -o .
+#+end_src
+* Test
+
+#+begin_src shell
+  cargo run
+#+end_src
 
 
-
+#+begin_src shell
+  curl -X POST http://127.0.0.1:8080/rpc \
+       -H "Content-Type: text/plain" \
+       -d '(transaction :date "aa" :account "vv" :tx-type "cc" :amount 1 :category \'("a" "b"))'
+#+end_src

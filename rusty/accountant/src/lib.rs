@@ -6,11 +6,7 @@ use std::path::PathBuf;
 /// Appends a string to the end of a file inside the specified directory.
 ///
 /// Returns an error if the directory does not exist or is not a folder.
-pub fn append_string_to_file(
-    content: &str,
-    folder: PathBuf,
-    filename: &str,
-) -> anyhow::Result<()> {
+pub fn append_string_to_file(content: &str, folder: PathBuf, filename: &str) -> anyhow::Result<()> {
     if !folder.is_dir() {
         anyhow::bail!("Path '{:?}' is not a directory or does not exist", folder);
     }
@@ -64,7 +60,10 @@ mod tests {
 
     #[test]
     fn test_append_string_to_file_success() {
-        let test_dir = std::env::current_dir().unwrap().join("target").join("test_append_dir");
+        let test_dir = std::env::current_dir()
+            .unwrap()
+            .join("target")
+            .join("test_append_dir");
         fs::create_dir_all(&test_dir).unwrap();
 
         let filename = "test_file.txt";
@@ -87,7 +86,10 @@ mod tests {
 
     #[test]
     fn test_append_string_to_file_not_dir() {
-        let test_file = std::env::current_dir().unwrap().join("target").join("not_a_dir_file.txt");
+        let test_file = std::env::current_dir()
+            .unwrap()
+            .join("target")
+            .join("not_a_dir_file.txt");
         fs::write(&test_file, "temp").unwrap();
 
         // Should return error because `test_file` is a file, not a directory

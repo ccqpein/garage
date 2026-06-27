@@ -4,13 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-accountant-rpc = {path = "./accountant-rpc"}
-anyhow = "1.0.102"
-config = "0.15.24"
-env_logger = "0.11.11"
-serde = { version = "1.0.228", features = ["derive"] }
-tokio = { version = "1.52.3", features = ["full"] }
-lisp-rpc-rust-server = { git = "https://github.com/ccQpein/lisp-rpc" }
-lisp-rpc-rust-serializer = { git = "https://github.com/ccQpein/lisp-rpc" }
-actix-web = "4.14.0"
-
+accountant-rpc = { path = "./accountant-rpc" }
+anyhow = "1"
+config = "0"
+env_logger = "0"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+lisp-rpc-rust-server = "0"
+lisp-rpc-rust-serializer = "0"
+actix-web = "4"
