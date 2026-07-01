@@ -1,6 +1,18 @@
 use accountant_rpc::Transaction;
-use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
+use clap::Parser;
+use lisp_rpc_rust_parser::data::GetAbleData;
 use lisp_rpc_rust_server::*;
+use std::fs::File;
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Folder containing the configuration file
+    #[arg(short, long)]
+    folder: Option<PathBuf>,
+}
 
 #[post("/rpc")]
 async fn rpc_handler(body: String, server: web::Data<RPCServer>) -> impl Responder {
@@ -18,9 +30,22 @@ async fn hello() -> impl Responder {
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    // Load configuration from accountant.toml
-    let config = accountant::Config::load()?;
+    // Parse CLI arguments
+    let args = Args::parse();
+    let folder = args.folder.unwrap_or_else(|| PathBuf::from("."));
+
+    // Open accountant-config.lisprpc in the specified folder
+    let config_path = folder.join("accountant-config.lisprpc");
+    let file = File::open(&config_path)
+        .map_err(|e| anyhow::anyhow!("Failed to open config file at {:?}: {}", config_path, e))?;
+    println!("Successfully opened config file: {:?}", config_path);
+
+    let mut parser: lisp_rpc_rust_parser::Parser = Default::default();
+    let config = parser.parse_root(file).map_err(|e| anyhow::anyhow!(e))?;
+
     println!("Successfully loaded config: {:?}", config);
+    let data = lisp_rpc_rust_parser::data::Data::from_expr(&config[0]).unwrap();
+    println!("Loading config data-folder: {:?}", data.get("data-folder"));
 
     // 1. Setup the RPC Engine
     let server = RPCServer::new()

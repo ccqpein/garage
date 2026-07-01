@@ -6,10 +6,16 @@ edition = "2024"
 [dependencies]
 accountant-rpc = { path = "./accountant-rpc" }
 anyhow = "1"
-config = "0"
 env_logger = "0"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 lisp-rpc-rust-server = "0"
 lisp-rpc-rust-serializer = "0"
+lisp-rpc-rust-parser = "0"
 actix-web = "4"
+clap = { version = "4", features = ["derive"] }
+log = "0.4.33"
+jiff = "0.2.29"
+
+[dev-dependencies]
+serde_json = "1.0.150"

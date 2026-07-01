@@ -1,4 +1,0 @@
-# Accountant Application Configuration
-
-data_folder = "target/data"
-mode = "Dev"

@@ -1,7 +1,7 @@
 (def-rpc-package accountant-rpc)
 
 (def-rpc transaction
-    '(:date 'string
+    '(:timestamp 'string
       :account 'string
       :tx-type 'string
       :amount 'number
