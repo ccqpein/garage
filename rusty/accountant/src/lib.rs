@@ -1,4 +1,5 @@
 use accountant_rpc::Transaction;
+use lisp_rpc_rust_server::ToRPCType;
 use std::path::PathBuf;
 
 pub mod fs;
@@ -17,7 +18,6 @@ pub fn entry(path: PathBuf, tx: &Transaction) -> anyhow::Result<()> {
     crate::fs::ensure_file_exists(&file_path)?;
 
     // 3. insert the tx.serialize_lisp() to file
-    use lisp_rpc_rust_server::ToRPCType;
     let lisp_str = tx.serialize_lisp()?;
     let content_to_append = format!("{}\n", lisp_str);
     crate::fs::append_string_to_file(&content_to_append, path, &filename)?;

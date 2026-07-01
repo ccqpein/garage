@@ -1,5 +1,6 @@
 use accountant_rpc::Transaction;
 use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
+use anyhow::Context;
 use clap::Parser;
 use lisp_rpc_rust_parser::data::GetAbleData;
 use lisp_rpc_rust_server::*;
@@ -9,9 +10,8 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Folder containing the configuration file
     #[arg(short, long)]
-    folder: Option<PathBuf>,
+    config_file: Option<PathBuf>,
 }
 
 #[post("/rpc")]
@@ -32,25 +32,36 @@ async fn main() -> anyhow::Result<()> {
 
     // Parse CLI arguments
     let args = Args::parse();
-    let folder = args.folder.unwrap_or_else(|| PathBuf::from("."));
+    let config_file = args
+        .config_file
+        .unwrap_or_else(|| PathBuf::from("./accountant-config.lisprpc"));
 
     // Open accountant-config.lisprpc in the specified folder
-    let config_path = folder.join("accountant-config.lisprpc");
-    let file = File::open(&config_path)
-        .map_err(|e| anyhow::anyhow!("Failed to open config file at {:?}: {}", config_path, e))?;
-    println!("Successfully opened config file: {:?}", config_path);
+    let file = File::open(&config_file)
+        .map_err(|e| anyhow::anyhow!("Failed to open config file at {:?}: {}", config_file, e))?;
+    println!("Successfully opened config file: {:?}", config_file);
 
+    // Read the config
     let mut parser: lisp_rpc_rust_parser::Parser = Default::default();
     let config = parser.parse_root(file).map_err(|e| anyhow::anyhow!(e))?;
 
     println!("Successfully loaded config: {:?}", config);
-    let data = lisp_rpc_rust_parser::data::Data::from_expr(&config[0]).unwrap();
-    println!("Loading config data-folder: {:?}", data.get("data-folder"));
+    let data = lisp_rpc_rust_parser::data::Data::from_expr(&config[0])?;
+    let data_folder = data
+        .get("data-folder")
+        .context("cannot find the data-folder value")?
+        .to_string();
+
+    println!(
+        "Loading config full_path {:?}",
+        data_folder.trim_matches('"')
+    );
 
     // 1. Setup the RPC Engine
     let server = RPCServer::new()
         .register::<Transaction, _>(|tx: Transaction| {
             println!("Received Transaction via Actix: {:?}", tx);
+            //:= will call the entry function here
             Ok(format!("Processed transaction: {:?}", tx.serialize_lisp()))
         })
         .map_err(|e| anyhow::anyhow!("RPC Registration Error: {}", e))?;

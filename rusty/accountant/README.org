@@ -16,5 +16,5 @@ My personal accountant app for recording my daily costs
 #+begin_src shell
   curl -X POST http://127.0.0.1:8080/rpc \
        -H "Content-Type: text/plain" \
-       -d '(transaction :date "aa" :account "vv" :tx-type "cc" :amount 1 :category \'("a" "b"))'
+       -d '(transaction :timestamp "2026-07-15T21:27:00+00:00[UTC]" :account "vv" :tx-type "cc" :amount 1 :category \'("a" "b"))'
 #+end_src
