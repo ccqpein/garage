@@ -35,5 +35,42 @@ fn test_integration_entry() -> anyhow::Result<()> {
 
     // Clean up
     fs::remove_file(lisp_file)?;
+    fs::remove_dir(temp_dir)?;
     Ok(())
 }
+
+#[test]
+fn test_integration_entry_offset_only() -> anyhow::Result<()> {
+    let temp_dir = PathBuf::from("tests").join("temp_offset");
+
+    // Clean up from any previous failed runs
+    if !temp_dir.exists() {
+        fs::create_dir_all(&temp_dir).unwrap();
+    }
+
+    let tx = r#"(transaction
+                  :timestamp "2026-07-06T15:00:00-04:00"
+                  :account "vv"
+                  :tx-type "cc"
+                  :amount 1
+                  :category '("a" "b"))"#;
+    let tx: Transaction = lisp_rpc_rust_serializer::lisp_rpc_from_str(tx).unwrap();
+
+    // Call the entry function
+    entry(temp_dir.clone(), &tx).unwrap();
+
+    // Verify file creation and content
+    let lisp_file = temp_dir.join("2026.lisp");
+    assert!(lisp_file.is_file());
+
+    let content = fs::read_to_string(&lisp_file).unwrap();
+
+    let tx1 = lisp_rpc_rust_serializer::lisp_rpc_from_str(&content)?;
+    assert_eq!(tx, tx1);
+
+    // Clean up
+    fs::remove_file(lisp_file)?;
+    fs::remove_dir(temp_dir)?;
+    Ok(())
+}
+

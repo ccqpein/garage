@@ -1,3 +1,4 @@
+use accountant::entry;
 use accountant_rpc::Transaction;
 use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
 use anyhow::Context;
@@ -57,16 +58,18 @@ async fn main() -> anyhow::Result<()> {
         data_folder.trim_matches('"')
     );
 
+    let data_folder_path: PathBuf = data_folder.trim_matches('"').into();
+
     // 1. Setup the RPC Engine
     let server = RPCServer::new()
-        .register::<Transaction, _>(|tx: Transaction| {
+        .register::<Transaction, _>(move |tx: Transaction| {
             println!("Received Transaction via Actix: {:?}", tx);
-            //:= will call the entry function here
+            entry(data_folder_path.clone(), &tx)?;
             Ok(format!("Processed transaction: {:?}", tx.serialize_lisp()))
         })
         .map_err(|e| anyhow::anyhow!("RPC Registration Error: {}", e))?;
 
-    println!("Starting Actix-web RPC Server on http://127.0.0.1:8080");
+    println!("Starting Actix-web RPC Server on http://127.0.0.1:3388");
 
     // 2. Setup Actix-web Server
     HttpServer::new(move || {
@@ -75,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
             .route("/", web::get().to(hello))
             .service(rpc_handler)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("127.0.0.1", 3388))?
     .run()
     .await?;
 

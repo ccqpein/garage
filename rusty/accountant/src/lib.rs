@@ -8,8 +8,8 @@ pub mod fs;
 /// Write the content to file
 pub fn entry(path: PathBuf, tx: &Transaction) -> anyhow::Result<()> {
     // 1. check the transaction timestamp and pick the year out
-    let parsed_zdt = tx.timestamp.parse::<jiff::Zoned>()?;
-    let year = parsed_zdt.year();
+    let parsed_dt = tx.timestamp.parse::<jiff::civil::DateTime>()?;
+    let year = parsed_dt.year();
 
     // 2. find the {year}.lisp file in path folder, using ensure_directory_exists and ensure_file_exists
     crate::fs::ensure_directory_exists(&path)?;
@@ -97,5 +97,18 @@ mod tests {
         assert!(content.contains("Assets:Checking"));
 
         std::fs::remove_dir_all(&test_dir).unwrap();
+    }
+
+    #[test]
+    fn test_parse_offset_only() {
+        let ts1 = "2026-07-06T15:00:00-04:00";
+        let parsed1 = ts1.parse::<jiff::civil::DateTime>();
+        assert!(parsed1.is_ok(), "Failed to parse ts1: {:?}", parsed1.err());
+        assert_eq!(parsed1.unwrap().year(), 2026);
+
+        let ts2 = "2025-12-31T21:00:00-05:00[America/New_York]";
+        let parsed2 = ts2.parse::<jiff::civil::DateTime>();
+        assert!(parsed2.is_ok(), "Failed to parse ts2: {:?}", parsed2.err());
+        assert_eq!(parsed2.unwrap().year(), 2025);
     }
 }
