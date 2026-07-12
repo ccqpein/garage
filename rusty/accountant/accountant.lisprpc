@@ -4,6 +4,6 @@
     '(:timestamp 'string
       :account 'string
       :tx-type 'string
-      :amount 'number
+      :amount 'float
       :category (list 'string))
   'string)

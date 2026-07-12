@@ -82,7 +82,7 @@ mod tests {
             "timestamp": "2024-07-15T21:27:00-04:00[America/New_York]",
             "account": "Assets:Checking",
             "tx_type": "debit",
-            "amount": 1000,
+            "amount": 100.0,
             "category": ["Food", "Groceries"]
         }"#;
         let tx: Transaction = serde_json::from_str(tx_json).unwrap();
