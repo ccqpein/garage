@@ -1,12 +1,30 @@
+#![feature(once_cell_get_mut)]
+
 use accountant_rpc::Transaction;
-use lisp_rpc_rust_server::ToRPCType;
-use std::path::PathBuf;
+use lisp_rpc_rust_server::{ToRPCType, lisp_rpc_to_str};
+use std::{
+    path::PathBuf,
+    sync::{Mutex, OnceLock},
+};
+
+pub mod account;
+use account::*;
 
 pub mod fs;
 
+static ACCOUNTS: OnceLock<Mutex<Vec<Account>>> = OnceLock::new();
+
 /// Entry function that receives a PathBuf and string.
 /// Write the content to file
-pub fn entry(path: PathBuf, tx: &Transaction) -> anyhow::Result<()> {
+pub fn entry(path: PathBuf, tx: &mut Transaction) -> anyhow::Result<()> {
+    let accs = match ACCOUNTS.get() {
+        Some(x) => x,
+        None => {
+            let accounts = load_accounts(path.clone())?;
+            ACCOUNTS.get_or_init(|| Mutex::new(accounts))
+        }
+    };
+
     // 1. check the transaction timestamp and pick the year out
     let parsed_dt = tx.timestamp.parse::<jiff::civil::DateTime>()?;
     let year = parsed_dt.year();
@@ -17,10 +35,22 @@ pub fn entry(path: PathBuf, tx: &Transaction) -> anyhow::Result<()> {
     let file_path = path.join(&filename);
     crate::fs::ensure_file_exists(&file_path)?;
 
-    // 3. insert the tx.serialize_lisp() to file
+    // lock accounts here
+    let mut a = accs.lock();
+    let mut accs_ = a.as_mut().unwrap();
+
+    tx.tx_id = Some(uuid::Uuid::new_v4().to_string());
     let lisp_str = tx.serialize_lisp()?;
+    cal_transaction(&mut accs_, &tx)?; // update accounts
+    // maybe I need some reverse operation. If the below writing failed, actually some data lost. The acc have updated, but not record
+
+    // 3. store the new accounts/transaction
     let content_to_append = format!("{}\n", lisp_str);
-    crate::fs::append_string_to_file(&content_to_append, path, &filename)?;
+    crate::fs::append_string_to_file(&content_to_append, path.clone(), &filename)?;
+    let new_record = Record {
+        accounts: accs_.iter().map(|a| a.clone()).collect(),
+    };
+    crate::fs::append_string_to_file(lisp_rpc_to_str(new_record)?.as_str(), path, "accounts.lisp")?;
 
     Ok(())
 }
@@ -77,6 +107,13 @@ mod tests {
         if test_dir.exists() {
             std::fs::remove_dir_all(&test_dir).unwrap();
         }
+        std::fs::create_dir_all(&test_dir).unwrap();
+
+        let accounts_content = r#"(record :accounts
+        '((account :name "Assets:Checking"
+                   :balance 1000.0
+                   :positive-op "expense")))"#;
+        std::fs::write(test_dir.join("accounts.lisp"), accounts_content).unwrap();
 
         let tx_json = r#"{
             "timestamp": "2024-07-15T21:27:00-04:00[America/New_York]",
@@ -85,9 +122,9 @@ mod tests {
             "amount": 100.0,
             "category": ["Food", "Groceries"]
         }"#;
-        let tx: Transaction = serde_json::from_str(tx_json).unwrap();
+        let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
 
-        entry(test_dir.clone(), &tx).unwrap();
+        entry(test_dir.clone(), &mut tx).unwrap();
 
         let lisp_file = test_dir.join("2024.lisp");
         assert!(lisp_file.is_file());

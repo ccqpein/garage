@@ -12,10 +12,12 @@ tokio = { version = "1", features = ["full"] }
 lisp-rpc-rust-server = "0"
 lisp-rpc-rust-serializer = "0"
 lisp-rpc-rust-parser = "0"
+lisp-rpc-rust-raw-data = "0"
 actix-web = "4"
 clap = { version = "4", features = ["derive"] }
 log = "0"
 jiff = "0"
+uuid = { version = "1", features = ["v4"] }
 
 [dev-dependencies]
 serde_json = "1"

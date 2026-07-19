@@ -3,9 +3,8 @@ use accountant_rpc::Transaction;
 use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
 use anyhow::Context;
 use clap::Parser;
-use lisp_rpc_rust_parser::data::GetAbleData;
+use lisp_rpc_rust_raw_data::files::DataFile;
 use lisp_rpc_rust_server::*;
-use std::fs::File;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -37,20 +36,13 @@ async fn main() -> anyhow::Result<()> {
         .config_file
         .unwrap_or_else(|| PathBuf::from("./accountant-config.lisprpc"));
 
-    // Open accountant-config.lisprpc in the specified folder
-    let file = File::open(&config_file)
-        .map_err(|e| anyhow::anyhow!("Failed to open config file at {:?}: {}", config_file, e))?;
-    println!("Successfully opened config file: {:?}", config_file);
-
-    // Read the config
-    let mut parser: lisp_rpc_rust_parser::Parser = Default::default();
-    let config = parser.parse_root(file).map_err(|e| anyhow::anyhow!(e))?;
-
-    println!("Successfully loaded config: {:?}", config);
-    let data = lisp_rpc_rust_parser::data::Data::from_expr(&config[0])?;
-    let data_folder = data
+    let config_file = DataFile::new(config_file)?;
+    let data_folder = config_file
+        .gen_table() // generate the whole table
+        .get("config")
+        .context("Cannot get expr data")?
         .get("data-folder")
-        .context("cannot find the data-folder value")?
+        .context("Cannot get data-folder")?
         .to_string();
 
     println!(
@@ -62,9 +54,9 @@ async fn main() -> anyhow::Result<()> {
 
     // 1. Setup the RPC Engine
     let server = RPCServer::new()
-        .register::<Transaction, _>(move |tx: Transaction| {
+        .register::<Transaction, _>(move |mut tx: Transaction| {
             println!("Received Transaction via Actix: {:?}", tx);
-            entry(data_folder_path.clone(), &tx)?;
+            entry(data_folder_path.clone(), &mut tx)?;
             Ok(format!("Processed transaction: {:?}", tx.serialize_lisp()))
         })
         .map_err(|e| anyhow::anyhow!("RPC Registration Error: {}", e))?;
