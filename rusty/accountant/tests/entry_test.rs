@@ -86,3 +86,44 @@ fn test_integration_entry_offset_only() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn test_integration_entry_zulu() -> anyhow::Result<()> {
+    let temp_dir = PathBuf::from("tests").join("temp_zulu");
+
+    if temp_dir.exists() {
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+    fs::create_dir_all(&temp_dir).unwrap();
+
+    let accounts_content = r#"(record :accounts
+    '((account :name "vv"
+               :balance 1000.0
+               :positive-op "expense")))"#;
+    fs::write(temp_dir.join("accounts.lisp"), accounts_content).unwrap();
+
+    let tx = r#"(transaction
+                  :timestamp "2026-07-22T03:55:01Z"
+                  :account "vv"
+                  :tx-type "cc"
+                  :amount 1
+                  :category '("a" "b"))"#;
+    let mut tx: Transaction = lisp_rpc_rust_serializer::lisp_rpc_from_str(tx).unwrap();
+
+    // Call the entry function
+    entry(temp_dir.clone(), &mut tx).unwrap();
+
+    // Verify file creation and content
+    let lisp_file = temp_dir.join("2026.lisp");
+    assert!(lisp_file.is_file());
+
+    let content = fs::read_to_string(&lisp_file).unwrap();
+
+    let tx1: Transaction = lisp_rpc_rust_serializer::lisp_rpc_from_str(&content)?;
+    assert_eq!(tx, tx1);
+
+    // Clean up
+    fs::remove_dir_all(&temp_dir)?;
+    Ok(())
+}
+
+

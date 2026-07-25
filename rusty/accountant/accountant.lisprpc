@@ -6,5 +6,6 @@
       :tx-type 'string
       :amount 'float
       :category (list 'string)
+      :target-account (optional 'string)
       :tx-id (optional 'string))
   'string)

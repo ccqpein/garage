@@ -67,6 +67,14 @@ pub fn cal_transaction(accs: &mut [Account], tx: &Transaction) -> anyhow::Result
         anyhow::bail!("transaction id is nil")
     }
 
+    if tx.tx_type == "transfer" {
+        match tx.target_account.as_ref() {
+            Some(target_a) => return handle_transfer(accs, target_a, tx),
+            None => anyhow::bail!("transfer type has to have the target account"),
+        }
+    }
+
+    // if it is not transfer, handle expense or income below
     let a = accs
         .iter_mut()
         .filter(|a| a.name == tx.account)
@@ -74,6 +82,62 @@ pub fn cal_transaction(accs: &mut [Account], tx: &Transaction) -> anyhow::Result
         .ok_or(anyhow::anyhow!("cannot get the account {}", tx.account))?;
 
     a.last_transaction = tx.tx_id.clone();
+
+    if a.positive_op == "expense" {
+        a.balance += tx.amount
+    } else {
+        a.balance -= tx.amount
+    }
+
+    Ok(())
+}
+
+/// the function handle the transfer
+pub fn handle_transfer(
+    accs: &mut [Account],
+    target_account: &str,
+    tx: &Transaction,
+) -> anyhow::Result<()> {
+    let mut from_acc: Option<&mut Account> = None;
+    let mut target_acc: Option<&mut Account> = None;
+
+    for a in accs {
+        if a.name == tx.account {
+            from_acc = Some(a);
+        } else if a.name == target_account {
+            target_acc = Some(a);
+        }
+    }
+
+    if from_acc.is_none() && target_acc.is_none() {
+        anyhow::bail!("from/target accounts have to be found all of them");
+    }
+
+    let from_acc: &mut Account = from_acc.unwrap();
+    let target_acc: &mut Account = target_acc.unwrap();
+
+    match (
+        from_acc.positive_op.as_str(),
+        target_acc.positive_op.as_str(),
+    ) {
+        ("expense", "incoming") => {
+            from_acc.balance += tx.amount;
+            target_acc.balance += tx.amount;
+        }
+        ("incoming", "expense") => {
+            from_acc.balance -= tx.amount;
+            target_acc.balance -= tx.amount;
+        }
+        ("expense", "expense") => {
+            from_acc.balance += tx.amount;
+            target_acc.balance -= tx.amount;
+        }
+        ("incoming", "incoming") => {
+            from_acc.balance -= tx.amount;
+            target_acc.balance += tx.amount;
+        }
+        (a, b) => anyhow::bail!("some unsupport position_op {} and {}", a, b),
+    }
 
     Ok(())
 }
