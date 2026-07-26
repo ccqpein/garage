@@ -1,0 +1,17 @@
+[package]
+name = "blog-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.38", features = ["full"] }
+axum = { version = "0.7", features = ["macros"] }
+tower-http = { version = "0.5", features = ["fs", "trace"] }
+minijinja = { version = "2.0", features = ["loader", "speedups"] }
+pulldown-cmark = "0.11"
+notify = "6.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

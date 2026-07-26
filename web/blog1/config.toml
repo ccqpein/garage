@@ -1,0 +1,8 @@
+[server]
+host = "127.0.0.1"
+port = 5938
+
+[blog]
+title = "ccQpein's Blog"
+description = ""
+author = "ccQpein"

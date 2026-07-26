@@ -1,0 +1,37 @@
+{% if posts %}
+    <div class="grid gap-4 sm:gap-6">
+        {% for post in posts %}
+        <article class="glass-card p-6 rounded-xl flex flex-col justify-between group">
+            <div>
+                <div class="flex items-center justify-between text-xs text-slate-400 font-mono mb-2">
+                    <time datetime="{{ post.meta.date }}">{{ post.meta.date }}</time>
+                    <div class="flex gap-2">
+                        {% for tag in post.meta.tags %}
+                        <span class="px-2 py-0.5 rounded-md bg-indigo-950/80 border border-indigo-800/50 text-indigo-300 font-mono text-[11px]">
+                            #{{ tag }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <h3 class="text-xl font-bold text-slate-100 group-hover:text-indigo-400 transition-colors mb-2">
+                    <a href="/posts/{{ post.meta.slug }}" class="hover:underline">
+                        {{ post.meta.title }}
+                    </a>
+                </h3>
+                {% if post.meta.summary %}
+                <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                    {{ post.meta.summary }}
+                </p>
+                {% endif %}
+            </div>
+            <div class="flex items-center text-xs font-semibold text-indigo-400 group-hover:translate-x-1 transition-transform">
+                Read Article &rarr;
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="glass-card p-12 rounded-xl text-center">
+        <p class="text-slate-400 text-base">No matching articles found{% if query %} for "<span class="text-slate-200 font-medium">{{ query }}</span>"{% endif %}.</p>
+    </div>
+{% endif %}
