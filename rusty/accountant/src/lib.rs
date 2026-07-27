@@ -63,7 +63,9 @@ pub fn entry(path: PathBuf, tx: &mut Transaction) -> anyhow::Result<()> {
     let new_record = Record {
         accounts: accs_.iter().map(|a| a.clone()).collect(),
     };
-    crate::fs::append_string_to_file(lisp_rpc_to_str(new_record)?.as_str(), path, "accounts.lisp")?;
+
+    let new_record = lisp_rpc_to_str(new_record)? + "\n";
+    crate::fs::append_string_to_file(new_record.as_str(), path, "accounts.lisp")?;
 
     Ok(())
 }
