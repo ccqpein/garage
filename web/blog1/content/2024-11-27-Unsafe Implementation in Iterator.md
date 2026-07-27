@@ -5,7 +5,7 @@ slug: "unsafe-implementation-in-iterator"
 tags: ["rust", "performance"]
 ---
 
-A few days ago, I encountered a [performance issue with `Vec<Vec<T>>`](https://ccqpein.me/Why-the-Vec-grid-of-my-tool-is-that-slow-in-Rust/). After resolving that problem, I stumbled upon another challenge, and I think it's worth writing down because I couldn't find a direct answer on Google.
+A few days ago, I encountered a [performance issue with `Vec<Vec<T>>`](https://ccqpein.me/posts/why-the-vec-grid-of-my-tool-is-that-slow-in-rust). After resolving that problem, I stumbled upon another challenge, and I think it's worth writing down because I couldn't find a direct answer on Google.
 
 ## IterMut for My Map ##
 

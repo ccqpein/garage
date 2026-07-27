@@ -5,7 +5,7 @@ slug: "some-thoughts-of-pairing-with-llms-1"
 tags: ["llm"]
 ---
 
-Months ago, I wrote [an article](https://ccqpein.me/Some-thoughts-of-pairing-with-LLMs/) about how I pair my daily tasks with LLMs.
+Months ago, I wrote [an article](https://ccqpein.me/posts/some-thoughts-of-pairing-with-llms) about how I pair my daily tasks with LLMs.
 
 Since then, LLMs have been evolving so fast. It feels like every few weeks, new models, new tools, new ideas, and new terms are released. I didn't use agents for a while, but then I tried `gemini-cli` (now `antigravity-cli`), and it was pretty helpful.
 

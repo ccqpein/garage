@@ -5,7 +5,7 @@ slug: "l-cache-performance-experiments"
 tags: ["rust", "lisp", "aoc", "performance"]
 ---
 
-A few days ago, I read `Thoughts on Performance Hints from Jeff` and wrote a [blog post](https://ccqpein.me/Thoughts-of-Performance-Hints-from-Jeff/) about it.
+A few days ago, I read `Thoughts on Performance Hints from Jeff` and wrote a [blog post](https://ccqpein.me/posts/thoughts-of-performance-hints-from-jeff) about it.
 
 One specific tip from those hints that I wanted to play around with is L-Cache performance.
 
@@ -116,7 +116,7 @@ The timing increases significantly at `9 * 1024` (1024 * 4 * 9 = 36 KB) and `17 
 
 **Matrix Hit**
 
-Since I have done a lot of Advent of Code (AOC) this year, this matrix test case was quite fun. I actually found performance issues with matrices [previously](https://ccqpein.me/Why-the-Vec-grid-of-my-tool-is-that-slow-in-Rust/). That post was about memory allocation performance; this time, it's about memory access performance.
+Since I have done a lot of Advent of Code (AOC) this year, this matrix test case was quite fun. I actually found performance issues with matrices [previously](https://ccqpein.me/posts/why-the-vec-grid-of-my-tool-is-that-slow-in-rust). That post was about memory allocation performance; this time, it's about memory access performance.
 
 ```rust
 pub fn matrix_iter_row() -> i32 {

@@ -5,7 +5,7 @@ slug: "some-control-flow-macros-in-common-lisp-alexandria-libs"
 tags: ["lisp", "mac"]
 ---
 
-[Previous post](https://ccqpein.me/if-let-Macro-in-Common-Lisp/) recorded my curiosity about the `if-let` macro in `alexandria`.
+[Previous post](https://ccqpein.me/posts/if-let-macro-in-common-lisp) recorded my curiosity about the `if-let` macro in `alexandria`.
 
 Recently, I stumbled upon another file, `control-flow.lisp`, and became curious about what’s inside. Once again, I played around with it a bit to explore its potential for future use.
 

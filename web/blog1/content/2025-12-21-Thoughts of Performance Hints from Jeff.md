@@ -29,7 +29,7 @@ I bet follow these hints results in better performance than other approaches.
 
 ## Algorithm
 
-This section reminds me of the [union-find algorithm](https://ccqpein.me/Advent-of-Code-2025-Journey/) I just learned for this year's AOC Day 8. When I implemented the union-find algorithm for my AOC library, I actually [inserted it directly](https://github.com/ccqpein/AdventOfCode/blob/e5aaa26d55cf060713a01ce0815981e6fed6f990/tools/tools.lisp#L595).
+This section reminds me of the [union-find algorithm](https://ccqpein.me/posts/advent-of-code-2025-journey) I just learned for this year's AOC Day 8. When I implemented the union-find algorithm for my AOC library, I actually [inserted it directly](https://github.com/ccqpein/AdventOfCode/blob/e5aaa26d55cf060713a01ce0815981e6fed6f990/tools/tools.lisp#L595).
 
 Also, I learned about the need to strike a balance between general usage and specific usage. If we already see the whole picture, we can perform some fine-tuned optimizations.
 
@@ -47,7 +47,7 @@ I’ll just quote the article directly:
 >
 > Many people will say “let’s write down the code in as simple a way as possible and deal with performance later when we can profile”. However, this approach is often wrong...
 
-It reminds me of what I learned years ago [from AOC](https://ccqpein.me/Advent-of-Code-2022-journey/):
+It reminds me of what I learned years ago [from AOC](https://ccqpein.me/posts/advent-of-code-2022-journey):
 
 > Even a tiny optimization can lead to a huge improvement, even if the Big O complexity doesn’t change.
 

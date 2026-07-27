@@ -5,7 +5,7 @@ slug: "re-make-my-raspberry-pi-system-again"
 tags: ["mac", "raspberry-pi", "database"]
 ---
 
-Last year, I wrote a post titled [Re-make my Raspberry Pi after a stupid mistake](https://ccqpein.me/Re-make-my-Raspberry-Pi-after-a-stupid-mistake/). A few days ago, my Raspberry Pi screwed up again, and I had to re-make the system once more.
+Last year, I wrote a post titled [Re-make my Raspberry Pi after a stupid mistake](https://ccqpein.me/posts/re-make-my-raspberry-pi-after-a-stupid-mistake). A few days ago, my Raspberry Pi screwed up again, and I had to re-make the system once more.
 
 I mentioned in my last post that a great tutorial ([HackerShackOfficial/Raspberry-Pi-VNC-Mac](https://github.com/HackerShackOfficial/Raspberry-Pi-VNC-Mac)) helped me a lot in setting up the Raspberry Pi to connect with my Mac. Unfortunately, I found that it is a bit outdated now. So, I am writing this post to record what I did and hopefully provide some tips to others.
 
