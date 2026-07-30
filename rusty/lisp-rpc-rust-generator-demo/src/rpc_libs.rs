@@ -3,14 +3,14 @@ use lisp_rpc_rust_serializer::*;
 use lisp_rpc_rust_server::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct LanguagePerfer {
     pub lang: String,
 }
 
 impl_to_rpc!(LanguagePerfer, RPCType::Msg("language-perfer".to_string()));
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct BookInfo {
     pub lang: LanguagePerfer,
     pub title: String,
@@ -20,7 +20,7 @@ pub struct BookInfo {
 
 impl_to_rpc!(BookInfo, RPCType::Msg("book-info".to_string()));
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct GetBookLang {
     pub lang: String,
     pub encoding: i64,
@@ -28,7 +28,7 @@ pub struct GetBookLang {
 
 impl_to_rpc!(GetBookLang, RPCType::Map);
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct GetBook {
     pub title: String,
     pub version: String,
@@ -38,15 +38,26 @@ pub struct GetBook {
 
 impl_to_rpc!(GetBook, RPCType::RPC("get-book".to_string()));
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+impl_to_rpc_return!(GetBook, BookInfo);
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Authors {
     pub names: Vec<String>,
 }
 
 impl_to_rpc!(Authors, RPCType::Msg("authors".to_string()));
 
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct PingNoPong {
+    pub nothing: String,
+}
+
+impl_to_rpc!(PingNoPong, RPCType::RPC("ping-no-pong".to_string()));
+
+impl_to_rpc_return!(PingNoPong, ());
+
 pub fn init() {
-    register_global_map_type("GetBookLang")
+    register_global_map_type("GetBookLang");
 }
 
 #[cfg(test)]

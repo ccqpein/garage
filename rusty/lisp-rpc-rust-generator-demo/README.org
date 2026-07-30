@@ -12,4 +12,31 @@ this is the playgroud the project for showing that the code the ~lisp-rpc-rust-g
 #+end_src
 
 #+RESULTS:
-: Processed book: Ok("(get-book :title \"hello world\" :version \"1984\" :lang '(:lang \"english\" :encoding 11) :authors (authors :names '(\"a\")))")
+: (book-info :lang (language-perfer :lang "lp") :title "title" :version "version" :id "id")
+
+#+begin_src shell
+  curl -X POST http://127.0.0.1:8080/rpc \
+       -H "Content-Type: text/plain" \
+       -d '(ping-no-pong)'
+#+end_src
+
+#+RESULTS:
+: nil
+
+#+begin_src shell
+  curl -X POST http://127.0.0.1:8080/rpc \
+       -H "Content-Type: text/plain" \
+       -d '(ping-no-pong :nothing "")'
+#+end_src
+
+#+RESULTS:
+: nil
+
+#+begin_src shell
+  curl -X POST http://127.0.0.1:8080/rpc \
+       -H "Content-Type: text/plain" \
+       -d '(ping-no-pong :nothing 1)'
+#+end_src
+
+#+RESULTS:
+| RPC Error: Deserialization failed: expected " at start of string | found: 1) |

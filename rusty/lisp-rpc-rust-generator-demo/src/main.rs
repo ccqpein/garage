@@ -29,7 +29,20 @@ async fn main() -> std::io::Result<()> {
     let server = RPCServer::new()
         .register::<GetBook, _>(|gb: GetBook| {
             println!("Received BookInfo via Actix: {:?}", gb);
-            Ok(format!("Processed book: {:?}", gb.serialize_lisp()))
+            //Ok(format!("Processed book: {:?}", gb.serialize_lisp()))
+            Ok(BookInfo {
+                lang: LanguagePerfer {
+                    lang: "lp".to_string(),
+                },
+                title: "title".to_string(),
+                version: "version".to_string(),
+                id: "id".to_string(),
+            })
+        })
+        .map_err(|e| Error::new(ErrorKind::Other, e))?
+        .register::<PingNoPong, _>(|_pb: PingNoPong| {
+            println!("ping pong ping pong");
+            Ok(())
         })
         .map_err(|e| Error::new(ErrorKind::Other, e))?;
 
