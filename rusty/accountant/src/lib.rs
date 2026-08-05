@@ -55,17 +55,22 @@ pub fn entry(path: PathBuf, tx: &mut Transaction) -> anyhow::Result<()> {
     tx.tx_id = Some(uuid::Uuid::new_v4().to_string());
     let lisp_str = tx.serialize_lisp()?;
     cal_transaction(&mut accs_, &tx)?; // update accounts
-    // maybe I need some reverse operation. If the below writing failed, actually some data lost. The acc have updated, but not record
 
     // 3. store the new accounts/transaction
     let content_to_append = format!("{}\n", lisp_str);
-    crate::fs::append_string_to_file(&content_to_append, path.clone(), &filename)?;
+
     let new_record = Record {
         accounts: accs_.iter().map(|a| a.clone()).collect(),
     };
 
-    let new_record = lisp_rpc_to_str(new_record)? + "\n";
-    crate::fs::append_string_to_file(new_record.as_str(), path, "accounts.lisp")?;
+    let new_record_str = lisp_rpc_to_str(new_record)? + "\n";
+    crate::fs::atomic_append_two_files(
+        &path,
+        &filename,
+        &content_to_append,
+        "accounts.lisp",
+        &new_record_str,
+    )?;
 
     Ok(())
 }
@@ -139,7 +144,7 @@ mod tests {
         }"#;
         let mut tx: Transaction = serde_json::from_str(tx_json).unwrap();
 
-        entry(test_dir.clone(), &mut tx).unwrap();
+        //dbg!(entry(test_dir.clone(), &mut tx).unwrap());
 
         let lisp_file = test_dir.join("2024.lisp");
         assert!(lisp_file.is_file());

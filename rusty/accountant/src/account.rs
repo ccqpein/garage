@@ -49,12 +49,13 @@ pub fn load_accounts(path: PathBuf) -> anyhow::Result<Vec<Account>> {
             .into_iter()
             .filter_map(|d| if let Data::Data(e) = d { Some(e) } else { None })
             .map(|d| Account {
-                name: d.get("name").unwrap().to_string(),
+                name: d.get("name").unwrap().get_string().unwrap(),
                 balance: d.get("balance").unwrap().to_float().unwrap(),
-                positive_op: d.get("positive-op").unwrap().to_string(),
+                positive_op: d.get("positive-op").unwrap().get_string().unwrap(),
+
                 last_transaction: d
                     .get("last-transaction")
-                    .map_or(None, |d| Some(d.to_string())),
+                    .map_or(None, |d| Some(d.get_string().unwrap())),
             })
             .collect::<Vec<Account>>()),
         _ => anyhow::bail!("accounts has to be the list of account"),
@@ -147,7 +148,7 @@ mod tests {
     use super::*;
     use lisp_rpc_rust_serializer::*;
 
-    //#[test] // this test actually just for printing
+    #[test] // this test actually just for printing
     fn test_load_accounts() {
         let a = load_accounts("./data".into()).unwrap();
         dbg!(&a);
