@@ -1,0 +1,16 @@
+#+TITLE: Lisp RPC demo (lisp version)
+
+This is the demos of the [[https://github.com/ccqpein/lisp-rpc/tree/main/lisp][lisp-rpc (lisp version)]]
+
+* Homoiconic
+
+#+begin_quote
+Programs as Data, Data as Programs
+#+end_quote
+
+Lisp rpc data is legal lisp s-expression. So it can /run/ it directly.
+
+Check the [[file:homoiconic.lisp][code]]
+
+* Raw data mode
+* Spec mode
