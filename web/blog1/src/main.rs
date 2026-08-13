@@ -103,15 +103,121 @@ pub struct AppState {
     pub config: Config,
 }
 
+fn slugify(text: &str) -> String {
+    let mut slug = String::with_capacity(text.len());
+    let mut prev_is_dash = true; // avoid leading dash
+
+    for ch in text.chars() {
+        if ch.is_alphanumeric() {
+            for lower in ch.to_lowercase() {
+                slug.push(lower);
+            }
+            prev_is_dash = false;
+        } else if ch == '-' || ch == '_' || ch.is_whitespace() {
+            if !prev_is_dash {
+                slug.push('-');
+                prev_is_dash = true;
+            }
+        }
+    }
+
+    if slug.ends_with('-') {
+        slug.pop();
+    }
+
+    if slug.is_empty() {
+        "section".to_string()
+    } else {
+        slug
+    }
+}
+
 fn markdown_to_html(markdown: &str) -> String {
+    use pulldown_cmark::{Event, HeadingLevel, Tag, TagEnd};
+
     let mut options = Options::empty();
     options.insert(Options::ENABLE_TABLES);
     options.insert(Options::ENABLE_FOOTNOTES);
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TASKLISTS);
+    options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
+
     let parser = Parser::new_ext(markdown, options);
+    let mut events = parser.into_iter();
+    let mut transformed_events: Vec<Event> = Vec::new();
+    let mut slug_counts: HashMap<String, usize> = HashMap::new();
+
+    while let Some(event) = events.next() {
+        match event {
+            Event::Start(Tag::Heading {
+                level,
+                id,
+                classes: _,
+                attrs: _,
+            }) => {
+                let level_num = match level {
+                    HeadingLevel::H1 => 1,
+                    HeadingLevel::H2 => 2,
+                    HeadingLevel::H3 => 3,
+                    HeadingLevel::H4 => 4,
+                    HeadingLevel::H5 => 5,
+                    HeadingLevel::H6 => 6,
+                };
+
+                let mut inner_events = Vec::new();
+                let mut plain_text = String::new();
+
+                for inner_ev in events.by_ref() {
+                    if let Event::End(TagEnd::Heading(_)) = inner_ev {
+                        break;
+                    }
+                    match &inner_ev {
+                        Event::Text(t) => plain_text.push_str(t),
+                        Event::Code(c) => plain_text.push_str(c),
+                        _ => {}
+                    }
+                    inner_events.push(inner_ev);
+                }
+
+                let raw_slug = if let Some(explicit_id) = id {
+                    explicit_id.to_string()
+                } else {
+                    slugify(&plain_text)
+                };
+
+                let count = slug_counts.entry(raw_slug.clone()).or_insert(0);
+                let unique_slug = if *count == 0 {
+                    raw_slug.clone()
+                } else {
+                    format!("{}-{}", raw_slug, count)
+                };
+                *count += 1;
+
+                let mut inner_html = String::new();
+                html::push_html(&mut inner_html, inner_events.into_iter());
+
+                let heading_html = format!(
+                    "<h{lvl} id=\"{slug}\" class=\"group relative flex items-center\">\
+                        <a href=\"#{slug}\" class=\"heading-permalink no-underline text-inherit hover:text-indigo-300 transition-colors inline-flex items-center gap-2\">\
+                            <span>{inner}</span>\
+                            <span class=\"opacity-0 group-hover:opacity-100 text-indigo-400 font-mono text-sm transition-opacity select-none\" aria-hidden=\"true\">#</span>\
+                        </a>\
+                    </h{lvl}>\n",
+                    lvl = level_num,
+                    slug = unique_slug,
+                    inner = inner_html.trim()
+                );
+
+                transformed_events.push(Event::Html(heading_html.into()));
+            }
+            other => {
+                transformed_events.push(other);
+            }
+        }
+    }
+
     let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
+    html::push_html(&mut html_output, transformed_events.into_iter());
     html_output
 }
 
@@ -422,3 +528,43 @@ async fn search_handler(
 
     (StatusCode::OK, Html(rendered))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_slugify() {
+        assert_eq!(slugify("Design"), "design");
+        assert_eq!(slugify("What's Next?"), "whats-next");
+        assert_eq!(slugify("Day 1 & 2 & 3 & 4"), "day-1-2-3-4");
+        assert_eq!(
+            slugify("What did I do with lazy_static?"),
+            "what-did-i-do-with-lazy-static"
+        );
+        assert_eq!(slugify("   --- Hello   World! ---  "), "hello-world");
+        assert_eq!(slugify("!!!"), "section");
+    }
+
+    #[test]
+    fn test_markdown_to_html_headings() {
+        let md = "# Main Title\n\nSome text.\n\n## Section 1\n\nContent here.\n\n## Section 1\n\nDuplicate section.\n\n### Sub `Code` Heading";
+        let html = markdown_to_html(md);
+
+        assert!(html.contains("<h1 id=\"main-title\" class=\"group relative flex items-center\"><a href=\"#main-title\" class=\"heading-permalink no-underline text-inherit hover:text-indigo-300 transition-colors inline-flex items-center gap-2\"><span>Main Title</span><span class=\"opacity-0 group-hover:opacity-100 text-indigo-400 font-mono text-sm transition-opacity select-none\" aria-hidden=\"true\">#</span></a></h1>"));
+        assert!(html.contains("id=\"section-1\""));
+        assert!(html.contains("id=\"section-1-1\""));
+        assert!(html.contains("id=\"sub-code-heading\""));
+        assert!(html.contains("<code>Code</code>"));
+    }
+
+    #[test]
+    fn test_scan_all_content_posts() {
+        let posts = scan_posts_dir("./content");
+        assert!(!posts.is_empty(), "Posts index should not be empty");
+        for (slug, post) in posts {
+            assert!(!post.content_html.is_empty(), "Post {} html should not be empty", slug);
+        }
+    }
+}
+
