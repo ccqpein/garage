@@ -1,78 +1,78 @@
 ---
-title: ""
-date: "2026-08-19"
+title: "Some thoughts of pairing with LLMs (2) - I won LLM on the debugging.md"
+date: "2026-08-21"
 slug: ""
 tags: ["elisp", "llm", "antigravity"]
 ---
 
-My friend recommend me the `Jujutsu` (jj) recently. And I learn how to use it with gemini. TBH, I recommend everyone learn how to use it with gemini since it is google's project. I feel like google's doc doesnt care how to use it, it only show off how good design it is. 
+My friend recommended `Jujutsu` (jj) to me recently. And I learned how to use it with Gemini. TBH, I recommend everyone learn how to use it with Gemini since it is Google's project. I feel like Google's doc doesn't care about how to use it; it only shows off how good the design is. 
 
-jj is the interesting tool, and I have been using it for weeks. I need a lot mind/behavior changing. Especially jj doesnt have the branch term, it actually change the whole logic of how to do the version control. And it is very hard to change my muscle memory, not only in terminal, but also in my emacs. 
+jj is an interesting tool, and I have been using it for weeks. It took a lot of mindset/behavior changes. Especially since jj doesn't have the concept of branches, it actually changes the whole logic of how to do version control. And it was very hard to change my muscle memory, not only in the terminal, but also in Emacs. 
 
-In emacs, I use magit to do the git operation in emacs. Like after I make some changes of code, I check the diff, stage some of them, and commit. That's kind of the most frequent operations I need. Then I tried to find the same package of jj, I found the `jj-mode` but it cannot do the diff as magit does. 
+In Emacs, I use Magit to do Git operations. Like, after I make some code changes, I check the diff, stage some of them, and commit. That's kind of the most frequent operation I need. Then I tried to find an equivalent package for jj. I found `jj-mode`, but it cannot do diffs like Magit does. 
 
 # Let me vibe it
 
-Ok, after all those background. I had an idea that I can vibe one. I actually did it with two major steps. With same AI but with different apps, design in Gemini, and implement in antigravity (agy).
+Ok, with all that background, I had an idea that I could vibe one. I actually did it in two major steps, using the same AI but across different apps: design in Gemini, and implement in Antigravity (agy).
 
 ## Design
 
-The first step is I let the gemini know what I want to do. Especially the diff part. In magit, I pick the hunks of code and staged them. jj doesnt have the "stage", so I actually commit it directly. Then run the jj new to start a new commit (workplace). I didn't even know how pick the special hunk code to commit in jj at that time.
+The first step was letting Gemini know what I wanted to do, especially the diff part. In Magit, I pick hunks of code and stage them. jj doesn't have "staging", so I actually commit directly, then run `jj new` to start a new commit (working copy). I didn't even know how to pick specific code hunks to commit in jj at that time.
 
-When Gemini teach me how to do partial commit, it tell me there is a command called `split`. In the design of this mode, gemini also mentioned this command. Gemini provided me three method, split is the most jj native way. So this mode need to let jj split gives the diff to it. Then update the env var by giving which code I choose. jj just handle everything else. 
+When Gemini taught me how to do partial commits, it told me there is a command called `split`. In the design of this mode, Gemini also mentioned this command. Gemini provided me with three methods; `split` was the most jj-native way. So this mode needs to let `jj split` provide the diff to it, then update the env var with the code I choose. jj just handles everything else. 
 
-The second thing jumped out was how to handle those diff code. jj split only receive the change (the code I pick), but wont do the diff render for me. Gemini also gives me some options after I denied its first answer. I let it use emacs self rather than write some python script. Because I dont want to involed more other dependencies.
+The second question that popped up was how to handle the diff code. `jj split` only receives the changes (the code I pick), but won't render the diff for me. Gemini gave me some options after I rejected its first suggestion. I had it use Emacs itself rather than writing a Python script, because I didn't want to involve more dependencies.
 
-It would be easy to write the script in python before LLM, but now we have those strong helper, write a elisp function for handling the diff isn't that hard. 
+It would have been easier to write the script in Python before LLMs, but now that we have these strong helpers, writing an Elisp function to handle the diff isn't that hard. 
 
-After all ideas check; decision made; purpose aligning, I let gemini write a whole requirement document for me. 
+After checking all the ideas, making decisions, and aligning the scope, I had Gemini write a full requirements document for me. 
 
 ## Implement
 
-After I get the requirement txt file, I let agy to write it. And I load it and use it to commit the code change of jj-diff repo itself. 
+After I got the requirements txt file, I let agy write it. Then I loaded it and used it to commit code changes in the `jj-diff` repo itself. 
 
 ## Result
 
-It done pretty well, even I updated some features change after, agy can finished it as my expect.
+It turned out pretty well. Even when I added some feature changes later, agy finished them as expected.
 
-And this is the repo of [jj-diff](), my first 100% vibe repo (by now).
+And this is the repo for [jj-diff](https://github.com/ccqpein/jj-diff.el), my first 100% vibe repo (so far).
 
 # Then, where is the debugging contest?
 
-After I updated my emacs config in my work laptop with adding the `jj-diff`. Call the `jj-diff` will returns me some error. It is pretty weird that same config of emacs have different behaviors.
+After I updated my Emacs config on my work laptop by adding `jj-diff`, calling `jj-diff` returned an error. It was pretty weird that the same Emacs config had different behaviors.
 
-## How is agy doing
+## How agy did
 
-So I start the agy in my `jj-diff` folder on my personal laptop, I cannot use gemini in my work laptop so I can only tell agy what can I see. Agy first move is changing the code, with its own assumption. Which I didn't commit it, I just for some reason feel it isn't right. 
+So I started agy in my `jj-diff` folder on my personal laptop. I couldn't use Gemini on my work laptop, so I could only tell agy what I saw. agy's first move was changing the code based on its own assumptions. I didn't commit that—for some reason, I just felt it wasn't right. 
 
-So I run severl more tests on my work laptop and personal laptop. Then tell agy what's the differences between. In my personal laptop, look like everything is fine, so I start to think if it is someting wrong with some share pkg? emacs version? (so I update my emacs) straight.el cache? Github problem (it had incent in that morning really).
+So I ran several more tests on my work laptop and personal laptop, then told agy what the differences were. On my personal laptop, everything looked fine, so I started wondering if something was wrong with a shared package? Emacs version? (so I updated my Emacs) `straight.el` cache? GitHub incident? (there really was an incident that morning).
 
-I keep trying and sync what I get with agy. Agy still trying to change the code until I stop it. Then let me try some emacs function to get the information. TBH, the information it let me check aint matter at all. They are just 99% issues test function. But what I got it, is that 1%.
+I kept trying things and syncing what I found with agy. agy kept trying to change the code until I stopped it. Then it had me try some Emacs functions to get information. TBH, the information it asked me to check didn't matter at all. Those were just test functions for the 99% of common issues. But what I got was that 1%.
 
-## Ah ha, I won
+## Aha, I won
 
-Then, I suddenly find the problem. I use the jj-mode in my laptop before for playing around. And I forgot to comment it, which I not even load it in my personal laptop. So the jj-mode's `jj-diff` function loaded. And it re-write the `jj-diff`'s `jj-diff` function. That's it. Delete the `jj-mode` and everything is fine now.
+Then, I suddenly found the problem. I had used `jj-mode` on my work laptop before to play around, and I forgot to comment it out (which I hadn't even loaded on my personal laptop). So `jj-mode`'s `jj-diff` function was loaded, and it overwrote my `jj-diff` package's `jj-diff` function. That was it. I deleted `jj-mode`, and everything is fine now.
 
-## Toughts
+## Thoughts
 
-There are a lot conversations these years talk about what's value of human if AI will take everything. 
+There have been a lot of conversations in recent years about what the value of humans is if AI takes over everything. 
 
-There are a lot answers from a lot where. I agree some of them. Beside I truly find some values in this debugging processing only for me. 
+There are a lot of answers from all over the place. I agree with some of them. Besides, I truly found some value in this debugging process that was unique to me:
 
-> 1. I have some ability of getting some context that AI cannot reach. 
-> 2. I jump out some idea/spark that to check the config upper.
+> 1. I have the ability to get context that AI cannot reach. 
+> 2. I had a sudden spark/idea to check the config higher up.
 
-AI not even think about the possiblity that I screw up the config which is the problem can match all symtoms: 
+AI didn't even think about the possibility that I screwed up the config, which was the only root cause that matched all the symptoms: 
 
 + Keybinding issue
 + Function error output
-+ Back to work after I manully load the `jj-diff`.
++ Back to working after I manually loaded `jj-diff`.
 
-Yes, because AI cannot read my laptop, that's maybe why AI keep repeating it self; Keep asking me to run the functions again and again that I already know the results; Keep trying to change the code those not nessasery at all. But, it is just approve my idea of the value of my role in this situation.
+Yes, because AI cannot read my laptop, that's probably why AI kept repeating itself; kept asking me to run functions again and again whose results I already knew; kept trying to change code that wasn't necessary at all. But it just proved my point about the value of my role in this situation.
 
 # Wrap up
 
-I actually get two thoughts about this `jj-diff` writing and debugging journey.
+I actually have two takeaways from this `jj-diff` writing and debugging journey:
 
-+ I think I find a vibe coding workflow. Brainstorming ideas with AI's API/doc reading ability, then make it as the guideline/document, let agent write it.
-+ Even in some area that everyone think AI gonna domminated, human's value might appear somewhere.
++ I think I found a vibe coding workflow: brainstorm ideas with AI, because its API/doc reading ability, make it into a guideline/document, and let the agent write it.
++ Even in areas where everyone thinks AI is going to dominate, human value can still show up somewhere.
