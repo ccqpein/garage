@@ -2,7 +2,7 @@
 title: "The journey of making lisp-rpc"
 date: "2026-07-23"
 slug: "the-journey-of-making-lisp-rpc"
-tags: ["rust", "lisp", "llm"]
+tags: ["rust", "lisp", "llm", "lisp-rpc"]
 ---
 
 Once upon a time, I was exploring the internet for some LLM stuff, and I found a protocol called JSON-RPC. It sparked an idea: why not write it in Lisp?
