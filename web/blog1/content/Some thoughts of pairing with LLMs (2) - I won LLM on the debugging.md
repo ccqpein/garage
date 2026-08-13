@@ -1,7 +1,7 @@
 ---
-title: "Some thoughts of pairing with LLMs (2) - I won LLM on the debugging.md"
+title: "Some thoughts of pairing with LLMs (2) - I won LLM on the debugging"
 date: "2026-08-21"
-slug: ""
+slug: "some-thoughts-of-pairing-with-llms-2"
 tags: ["elisp", "llm", "antigravity"]
 ---
 
