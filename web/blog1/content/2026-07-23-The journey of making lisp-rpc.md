@@ -2,7 +2,7 @@
 title: "The journey of making lisp-rpc"
 date: "2026-07-23"
 slug: "the-journey-of-making-lisp-rpc"
-tags: ["rust", "lisp", "mac", "llm"]
+tags: ["rust", "lisp", "llm"]
 ---
 
 Once upon a time, I was exploring the internet for some LLM stuff, and I found a protocol called JSON-RPC. It sparked an idea: why not write it in Lisp?
@@ -30,7 +30,7 @@ At the beginning, I wanted to make it as simple as possible. There were only a f
 Like: 
 
 + JSON-RPC: `{"jsonrpc": "2.0", "method": "getUser", "params": {"id": 42}}`
-+ Lisp-RPC: `(rpc-call :method "getUser" :params (:id 42))`
++ Lisp-RPC: `(rpc-call-name :argument0 "getUser" :argument1 '(:id 42))`
 
 In spec definition mode, write the declaration in Lisp and generate native code, just like gRPC generates Golang code from proto files.
 
