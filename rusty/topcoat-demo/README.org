@@ -1,0 +1,11 @@
+#+TITLE: Topcoat demo
+
+This is the demo playground of [[https://github.com/tokio-rs/topcoat][topcoat lib]]
+
+* Run the server
+
+#+begin_src shell
+  cargo run
+#+end_src
+
+Then visit the [[http://127.0.0.1:3000][http://127.0.0.1:3000]]
