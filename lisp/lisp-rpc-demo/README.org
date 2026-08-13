@@ -2,7 +2,7 @@
 
 This is the demos of the [[https://github.com/ccqpein/lisp-rpc/tree/main/lisp][lisp-rpc (lisp version)]]
 
-* Homoiconic
+* Homoiconicity
 
 #+begin_quote
 Programs as Data, Data as Programs
@@ -13,4 +13,50 @@ Lisp rpc data is legal lisp s-expression. So it can /run/ it directly.
 Check the [[file:homoiconic.lisp][code]]
 
 * Raw data mode
+
+This mode will treat the lisp-rpc like the JSON object.
+
+Check the [[file:raw-data.lisp][code]]. 
+
+Need to ~(ql:quickload "lisp-rpc")~ to load the ~lisp-rpc~
+
 * Spec mode
+
+Use the generator to generate the lib code:
+
+#+begin_src shell
+  lisp-rpc-gen gen spec-demo.lisp
+#+end_src
+
+** Run the lisp-rpc server 
+
+#+begin_src lisp
+  (load "./output/demo.asd")
+  
+  (ql:quickload '("lisp-rpc" "demo"))
+
+  (use-package :lisp-rpc-server)
+  (use-package :demo)'
+
+  ;; 1. Initialize server
+  (defparameter *server* (make-rpc-server))
+
+  ;; 2. Register handler (validated against rpc-endpoint-p)
+  (register-rpc-handler *server*
+                        'demo:get-book
+                        (lambda (req)
+                          ;; req is automatically deserialized into a
+                          ;; #S(DEMO:GET-BOOK ...) struct
+                          (demo:make-book-info
+                           :title (demo:get-book-title req)
+                           :id "12345")))
+
+  ;; 3. Start server
+  (start-server *server*)
+#+end_src
+
+#+begin_src shell
+  curl -X POST http://localhost:5432 \
+       -H "Content-Type: text/plain" \
+       -d '(GET-BOOK :TITLE "Land of Lisp" :VERSION "1.0" :LANG (:LANG "en" :ENCODING 1))'
+#+end_src
