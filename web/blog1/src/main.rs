@@ -197,8 +197,8 @@ fn markdown_to_html(markdown: &str) -> String {
                 html::push_html(&mut inner_html, inner_events.into_iter());
 
                 let heading_html = format!(
-                    "<h{lvl} id=\"{slug}\" class=\"group relative flex items-center\">\
-                        <a href=\"#{slug}\" class=\"heading-permalink no-underline text-inherit hover:text-indigo-300 transition-colors inline-flex items-center gap-2\">\
+                    "<h{lvl} id=\"{slug}\" class=\"group relative\">\
+                        <a href=\"#{slug}\" class=\"heading-permalink\">\
                             <span>{inner}</span>\
                             <span class=\"opacity-0 group-hover:opacity-100 text-indigo-400 font-mono text-sm transition-opacity select-none\" aria-hidden=\"true\">#</span>\
                         </a>\
@@ -551,7 +551,7 @@ mod tests {
         let md = "# Main Title\n\nSome text.\n\n## Section 1\n\nContent here.\n\n## Section 1\n\nDuplicate section.\n\n### Sub `Code` Heading";
         let html = markdown_to_html(md);
 
-        assert!(html.contains("<h1 id=\"main-title\" class=\"group relative flex items-center\"><a href=\"#main-title\" class=\"heading-permalink no-underline text-inherit hover:text-indigo-300 transition-colors inline-flex items-center gap-2\"><span>Main Title</span><span class=\"opacity-0 group-hover:opacity-100 text-indigo-400 font-mono text-sm transition-opacity select-none\" aria-hidden=\"true\">#</span></a></h1>"));
+        assert!(html.contains("<h1 id=\"main-title\" class=\"group relative\"><a href=\"#main-title\" class=\"heading-permalink\"><span>Main Title</span><span class=\"opacity-0 group-hover:opacity-100 text-indigo-400 font-mono text-sm transition-opacity select-none\" aria-hidden=\"true\">#</span></a></h1>"));
         assert!(html.contains("id=\"section-1\""));
         assert!(html.contains("id=\"section-1-1\""));
         assert!(html.contains("id=\"sub-code-heading\""));

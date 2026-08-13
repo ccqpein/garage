@@ -5,6 +5,7 @@
 @layer base {
   html {
     @apply scroll-smooth;
+    scroll-padding-top: 6.5rem;
   }
   body {
     @apply bg-slate-950 text-slate-100 antialiased font-sans min-h-screen selection:bg-indigo-500 selection:text-white;
@@ -46,7 +47,7 @@
 }
 
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
-  scroll-margin-top: 5rem;
+  scroll-margin-top: 6.5rem;
 }
 
 .prose h1 {
@@ -69,12 +70,23 @@
   @apply text-base font-medium text-slate-300 tracking-tight mt-4 mb-2;
 }
 
+.prose a:not(.heading-permalink) {
+  @apply text-indigo-400 hover:text-indigo-300 underline underline-offset-4 transition-colors;
+}
+
 .prose .heading-permalink {
-  @apply no-underline text-inherit inline-flex items-center gap-2;
+  color: inherit !important;
+  text-decoration: none !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  cursor: pointer;
 }
 
 .prose .heading-permalink:hover {
-  @apply text-indigo-300;
+  color: inherit !important;
+  text-decoration: none !important;
 }
 
 .prose p {
@@ -91,8 +103,4 @@
 
 .prose blockquote {
   @apply border-l-4 border-indigo-500 pl-4 italic text-slate-400 my-4;
-}
-
-.prose a {
-  @apply text-indigo-400 hover:text-indigo-300 underline underline-offset-4 transition-colors;
 }

@@ -43,5 +43,54 @@
             <p>© 2026 {{ config.blog.author }}</p>
         </div>
     </footer>
+
+    <script>
+        (function() {
+            function getHeaderOffset() {
+                const header = document.querySelector('header');
+                return header ? header.getBoundingClientRect().height + 24 : 96;
+            }
+
+            function scrollToHash() {
+                if (!window.location.hash) return;
+                const id = decodeURIComponent(window.location.hash.substring(1));
+                const target = document.getElementById(id);
+                if (target) {
+                    const offset = getHeaderOffset();
+                    const targetTop = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({
+                        top: Math.max(0, targetTop),
+                        behavior: 'smooth'
+                    });
+                }
+            }
+
+            // Clicking a heading adds the #tag to the URL without jumping/scrolling
+            document.addEventListener('click', function(e) {
+                const link = e.target.closest('.heading-permalink');
+                if (link) {
+                    const href = link.getAttribute('href');
+                    if (href && href.startsWith('#')) {
+                        e.preventDefault();
+                        history.pushState(null, '', href);
+                    }
+                }
+            });
+
+            // Visiting or refreshing the page with a #tag scrolls to the heading
+            window.addEventListener('DOMContentLoaded', function() {
+                if (window.location.hash) {
+                    setTimeout(scrollToHash, 60);
+                }
+            });
+
+            // Back/Forward browser navigation with #tag
+            window.addEventListener('popstate', function() {
+                if (window.location.hash) {
+                    setTimeout(scrollToHash, 20);
+                }
+            });
+        })();
+    </script>
 </body>
 </html>
