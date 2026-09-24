@@ -1,5 +1,257 @@
 #+Title: README
 
-the demo of [[https://github.com/linebender/fearless_simd][fearless_simd]]
+The demo of [[https://github.com/linebender/fearless_simd][fearless_simd]]
 
+* Run the demo
+
+#+begin_src shell
+cargo run
+#+end_src
+
+#+begin_quote
+Detected SIMD level: Neon(Neon { _private: () })
+first (dispatch autovec, 5 items): 208ns
+second (plain scalar, 5 items):   84ns
+
+--- Large slice (1,000,000 elements) ---
+scalar:        2.613791ms
+explicit SIMD: 16.991125ms
+
+--- Complex Math 1: Polynomial + Sqrt (1,000,000 elements) ---
+scalar:        4.300333ms
+explicit SIMD: 60.866542ms
+
+--- Complex Math 2: 3D Euclidean Distance (1,000,000 points) ---
+scalar:        10.852ms
+explicit SIMD: 78.672167ms
+
+--- Complex Math 3: Mandelbrot Escape-Time (200,000 points) ---
+scalar:        34.708125ms
+explicit SIMD: 334.878292ms
+Speedup:       0.10x
+#+end_quote
+
+#+begin_src shell
+cargo run --release
+#+end_src
+
+#+begin_quote
+Detected SIMD level: Neon(Neon { _private: () })
+first (dispatch autovec, 5 items): 0ns
+second (plain scalar, 5 items):   42ns
+
+--- Large slice (1,000,000 elements) ---
+scalar:        63.666µs
+explicit SIMD: 121.125µs
+
+--- Complex Math 1: Polynomial + Sqrt (1,000,000 elements) ---
+scalar:        176.875µs
+explicit SIMD: 253.167µs
+
+--- Complex Math 2: 3D Euclidean Distance (1,000,000 points) ---
+scalar:        474.75µs
+explicit SIMD: 541.875µs
+
+--- Complex Math 3: Mandelbrot Escape-Time (200,000 points) ---
+scalar:        9.332458ms
+explicit SIMD: 2.8225ms
+Speedup:       3.31x
+#+end_quote
+
+* Why: Performance Analysis
+
+** 0. The Golden Rule of Rust SIMD: Debug vs. Release
+
+Before diving into individual examples, notice the stark contrast between ~cargo run~ and ~cargo run --release~:
+
+| Benchmark              | Debug (~cargo run~) | Release (~cargo run --release~) | Release Speedup |
+|------------------------+-------------------+-------------------------------+-----------------|
+| Large Slice (1M ints)  | 16.99 ms          | 0.12 ms (121.1 µs)            | ~140x faster    |
+| Complex Math 1 (Poly)  | 60.86 ms          | 0.25 ms (253.1 µs)            | ~240x faster    |
+| Complex Math 2 (3D)    | 78.67 ms          | 0.54 ms (541.8 µs)            | ~145x faster    |
+| Complex Math 3 (Fract) | 334.87 ms         | 2.82 ms                       | ~118x faster    |
+
+*** Why is Debug Mode (~cargo run~) so slow for Explicit SIMD?
+Rust provides *"Zero-Cost Abstractions"*, but they are only zero-cost *after the compiler optimizes them*:
+- In debug mode (~opt-level = 0~), compiler inlining is *completely disabled*.
+- Every SIMD step calls ~chunks_exact_mut()~, ~from_slice()~, ~try_into().unwrap()~, bounds checks, operator overloads (~Mul::mul~, ~Add::add~), and ~store_slice()~.
+- For 1,000,000 items (250,000 iterations), this generates roughly *2 million un-inlined function calls and stack frame allocations*!
+- Meanwhile, the scalar ~for value in values~ loop in debug mode is just a plain pointer increment with no traits.
+
+*Rule:* Never benchmark SIMD in debug mode. Debug mode exists only for quick compilation and debugging stack traces.
+
+*** What Release Mode (~cargo run --release~) does:
+- LLVM inlines all traits, wrappers, and slice conversions into direct hardware instructions.
+- LLVM applies loop vectorization, instruction scheduling, and register allocation.
+
+** 1. Example 1: Tiny Slice (5 items) — Dynamic Dispatch Overhead
+
+#+begin_quote
+first (dispatch autovec, 5 items): 208ns (debug) / 0ns (release)
+second (plain scalar, 5 items):    84ns (debug) / 42ns (release)
+#+end_quote
+
+*** Why is the first one slower than the second one in Debug?
+1. *Dynamic Dispatch Cost*:
+   ~dispatch!(level, simd => ...)~ expands into a runtime ~match Level::__dispatch_target(level)~ to inspect CPU features, followed by invoking the kernel through a closure.
+   This runtime branch and indirect call takes ~40–80 ns~.
+2. *Computation is too small*:
+   Doubling 5 integers takes less than ~2 ns~ of CPU time. The ~50 ns~ dispatch overhead accounts for over 95% of the total measured time.
+3. *Scalar is a direct call*:
+   ~double_u32(&mut values)~ is a plain, direct function call (or directly inlined), with zero runtime feature detection overhead.
+4. *In Release Mode*:
+   LLVM evaluates the constant array ~[1, 2, 3, 4, 5]~ and inlines it completely, dropping the duration down to ~0–42 ns~ (which is simply the measurement resolution of ~Instant::now()~).
+
+---
+
+** 2. Example 2: Large Slice Integer Doubling (1,000,000 elements) — Memory Bandwidth Bound
+
+#+begin_quote
+Debug:   scalar: 2.61 ms  | explicit SIMD: 16.99 ms
+Release: scalar: 63.66 µs | explicit SIMD: 121.12 µs
+#+end_quote
+
+*** Why is Scalar faster than Explicit SIMD in Release (63 µs vs 121 µs)?
+Looking at the actual machine code emitted by LLVM for Apple Silicon (ARM64 / Apple M series) reveals the secret:
+
+**** What LLVM compiled ~double_u32~ (the "scalar" loop) into:
+
+#+begin_src asm
+LBB6_6:
+    ldp     q0, q1, [x8, #-32]   ; Pair-load 32 bytes (8 x u32) into 2 NEON registers
+    ldp     q2, q3, [x8]         ; Pair-load 32 bytes (8 x u32) into 2 NEON registers
+    add.4s  v0, v0, v0           ; Double 4 integers (NEON SIMD)
+    add.4s  v1, v1, v1           ; Double 4 integers (NEON SIMD)
+    add.4s  v2, v2, v2           ; Double 4 integers (NEON SIMD)
+    add.4s  v3, v3, v3           ; Double 4 integers (NEON SIMD)
+    stp     q0, q1, [x8, #-32]   ; Pair-store 32 bytes
+    stp     q2, q3, [x8], #64    ; Pair-store 32 bytes
+    subs    x25, x25, #16
+    b.ne    LBB6_6
+#+end_src
+
+*The "scalar" loop was not scalar at all!*
+In ~--release~, LLVM's auto-vectorizer recognized the simple loop, vectorized it with NEON, and *unrolled it 4x*. It processed *16 integers (64 bytes = 4 vector registers) per loop iteration* using Apple Silicon's dual-register pair load/store instructions (~ldp~ / ~stp~).
+
+**** What LLVM compiled ~double_u32s_explicit~ into:
+#+begin_src asm
+LBB6_12:
+    ldr     q0, [x20, x8]        ; Single-load 16 bytes (1 NEON register = 4 x u32)
+    add.4s  v0, v0, v0           ; Double 4 integers
+    str     q0, [x20, x8]        ; Single-store 16 bytes
+    add     x8, x8, #16
+    cmp     x24, x8
+    b.ne    LBB6_12
+#+end_src
+
+Because ~double_u32s_explicit~ iterated over ~chunks_exact_mut(4)~ one vector at a time, the compiler generated a loop processing only *4 integers (16 bytes) per iteration*. It executed *4x more loop counter increments and branch checks* than the auto-vectorized loop.
+
+**** Memory Bandwidth Saturation:
+Doubling an integer array (~x * 2~) takes only 1 CPU cycle per vector, but requires reading 4 MB from RAM and writing 4 MB back. At ~50–80 GB/s~ bus speed, 8 MB total traffic takes *~60–90 µs*.
+At *63 µs*, the chip is completely bottlenecked by memory bandwidth, not arithmetic throughput.
+
+
+** 3. Example 3: Complex Math 1 (Polynomial + Sqrt on 1,000,000 elements)
+
+#+begin_quote
+Formula: f(x) = sqrt(|x * (x * (x * 1.5 + 2.0) - 3.0) + 1.0|)
+Debug:   scalar: 4.30 ms   | explicit SIMD: 60.86 ms
+Release: scalar: 176.87 µs | explicit SIMD: 253.16 µs
+#+end_quote
+
+*** Why are Scalar and SIMD so close in Release (~176 µs vs ~253 µs)?
+- *What the function does*: Evaluates a 3rd-degree polynomial via Horner's method, clears the sign bit (~abs~), and takes the square root (~sqrt~) in-place on 1,000,000 floats.
+- *What LLVM does in Scalar*:
+  Because there are *no branches*, *no early exits*, and *no pointer aliasing* (single contiguous array), LLVM's auto-vectorizer easily vectorizes the scalar code into NEON instructions:
+  #+begin_src asm
+  fmul.4s  v4, v4, v5    ; Vector multiply (4 floats)
+  fadd.4s  v4, v4, v2    ; Vector add
+  fabs.4s  v4, v4        ; Clear sign bits for 4 floats at once
+  fsqrt.4s v4, v4        ; Compute 4 hardware square roots simultaneously!
+  #+end_src
+  LLVM also unrolls the scalar loop 4x, giving it a slight edge over manual 1x-chunked SIMD.
+- *Conclusion*: Both scalar and explicit SIMD execute on the exact same NEON vector ALUs using ~fsqrt.4s~.
+
+
+** 4. Example 4: Complex Math 2 (3D Euclidean Distance on 1,000,000 points)
+
+#+begin_quote
+Formula: dist = sqrt(x^2 + y^2 + z^2) across 3 input slices (xs, ys, zs) into out
+Debug:   scalar: 10.85 ms  | explicit SIMD: 78.67 ms
+Release: scalar: 474.75 µs | explicit SIMD: 541.87 µs
+#+end_quote
+
+*** Why does SIMD perform similarly to Scalar here (~474 µs vs ~541 µs)?
+- *Multi-Slice Memory Traffic*:
+  Computing 1,000,000 3D distances requires reading 3 float arrays (~3 x 4 MB = 12 MB~) and writing 1 output array (~4 MB~), totaling *16 MB of memory bus traffic*.
+- *Bandwidth Bottleneck*:
+  Moving 16 MB through the memory controller and L2/L3 cache takes ~450–550 µs on Apple Silicon. The execution time is dominated by memory bus load/store latency, not ALU math.
+- *What LLVM does in Scalar*:
+  LLVM performs a runtime pointer aliasing check (verifying ~out~ does not overlap with ~xs~, ~ys~, or ~zs~). Once proven disjoint, it vectorizes the scalar loop with paired NEON loads and ~fsqrt.4s~.
+- *What SIMD does*:
+  Explicitly loads 4 X's, 4 Y's, and 4 Z's into vector registers ~q0~, ~q1~, ~q2~, computes the dot product, takes ~fsqrt.4s~, and stores 4 distances.
+
+
+** 5. Example 5: Complex Math 3 (Mandelbrot Escape-Time on 200,000 points) — The True SIMD Breakthrough!
+
+#+begin_quote
+Algorithm: z_{n+1} = z_n^2 + c (up to 50 iterations per point, escape when |z|^2 > 4.0)
+Debug:     scalar: 34.70 ms | explicit SIMD: 334.87 ms (0.10x)
+Release:   scalar: 9.33 ms  | explicit SIMD: 2.82 ms   (3.31x SPEEDUP!)
+#+end_quote
+
+*** Why does Explicit SIMD crush Scalar in Release (2.82 ms vs 9.33 ms, 3.31x faster)?
+
+**** 1. Why LLVM Auto-Vectorization FAILS on Scalar Mandelbrot:
+The scalar implementation contains an inner ~while~ loop with an unpredictable early exit:
+#+begin_src rust
+while iter < max_iters {
+    let z_r2 = z_r * z_r;
+    let z_i2 = z_i * z_i;
+    if z_r2 + z_i2 > 4.0 {
+        break; // <-- Data-dependent early exit!
+    }
+    ...
+}
+#+end_src
+- Every pixel escapes at a *different, unpredictable iteration count* (pixel A escapes at step 2, pixel B escapes at step 49, pixel C never escapes).
+- Compilers *cannot auto-vectorize loops with non-uniform control flow and variable trip counts*.
+- LLVM is forced to emit purely scalar code: executing 1 multiplication (~fmul s0, s0~) and 1 branch at a time.
+- The CPU branch predictor suffers frequent mispredictions on the data-dependent ~break~ condition.
+
+**** 2. What Explicit SIMD does differently:
+In ~mandelbrot_simd~, 4 complex numbers are packed into 128-bit NEON registers (~S::f32s~ and ~S::u32s~).
+Instead of per-pixel branching, it uses *SIMD masking and branchless selection*:
+
+1. *Parallel Arithmetic*:
+   All 4 coordinates execute ~z = z^2 + c~ simultaneously in the vector ALU.
+2. *Branchless Vector Mask*:
+   #+begin_src rust
+   let active = mag2.simd_le(four); // Vector comparison -> mask32s
+   #+end_src
+   Emits NEON ~fcmgt.4s~ / ~fcmge.4s~. Compares all 4 lanes in parallel, producing a 4-channel bitmask.
+3. *Branchless Bitwise Selection*:
+   #+begin_src rust
+   iters = active.select(iters + one_u, iters);
+   #+end_src
+   Emits NEON ~bsl.16b~ (Bitwise Select). Conditionally increments *only the lanes that have not escaped yet* without any CPU branching! *Zero branch mispredictions!*
+4. *Chunk-Level Early Exit*:
+   #+begin_src rust
+   if active.to_bitmask() == 0 { break; }
+   #+end_src
+   Exits early only when *all 4 lanes* have finished.
+
+**** Result:
+Because all 4 vector lanes do useful work simultaneously and eliminate branching penalties, explicit SIMD achieves a *3.31x – 3.8x speedup*, approaching the theoretical hardware maximum of 4x on 4-lane 128-bit NEON!
+
+
+** Summary: When should you write explicit SIMD?
+
+| Workload Characteristic        | Example                           | LLVM Auto-Vectorization      | Explicit SIMD Benefit                               |
+|--------------------------------+-----------------------------------+------------------------------+-----------------------------------------------------|
+| *Micro-data (< 16 items)*        | Tiny array                        | Inlines to 0–40ns            | Slower (runtime dispatch overhead)                  |
+| *Simple 1-pass math (ALU-light)* | ~x * 2~, array copy                 | Auto-vectorizes + 4x unrolls | Equal or slower (memory bus saturated)              |
+| *Straight-line float math*       | Polynomials, simple ~sqrt~          | Auto-vectorizes effectively  | Equal (both run on NEON vector ALUs)                |
+| *Branchy / Iterative math*       | Mandelbrot, ray marching, solvers | *FAILS completely*             | *3.3x – 4x+ SPEEDUP (Massive Win!)*                   |
+| *Debug Mode*                     | Any                               | Normal scalar execution      | Extremely slow (zero-cost abstractions not inlined) |
 

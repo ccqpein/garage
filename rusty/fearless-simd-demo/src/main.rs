@@ -10,25 +10,6 @@ use fearless_simd_macros::simd;
 // ===========================================================================
 
 /// What the function does:
-///   Doubles each `u32` in a slice using a conventional scalar `for` loop.
-///
-/// What LLVM does:
-///   In `--release` mode (`-O3`), LLVM detects that iterations are independent
-///   and auto-vectorizes this loop using ARM NEON!
-///   Furthermore, LLVM unrolls it 4x, generating paired 128-bit loads (`ldp q0, q1`)
-///   and vector additions (`add.4s`), processing 16 integers (64 bytes) per loop pass.
-///
-/// What SIMD does here:
-///   Because doubling is just 1 addition cycle, the loop is completely memory-bandwidth
-///   bound (~80µs to read/write 4MB). Since LLVM's auto-vectorizer already uses NEON
-///   under the hood with aggressive 4x unrolling, manual 1x SIMD cannot be faster.
-fn double_u32(values: &mut [u32]) {
-    for value in values {
-        *value = *value * 2;
-    }
-}
-
-/// What the function does:
 ///   A SIMD-generic function using the `#[simd]` attribute with an unused token `_: S`.
 ///
 /// What LLVM does:
@@ -43,6 +24,25 @@ fn double_u32(values: &mut [u32]) {
 ///   this 50ns dispatch overhead dwarfs the 2ns calculation!
 #[simd]
 fn double_u32s<S: Simd>(_: S, values: &mut [u32]) {
+    for value in values {
+        *value = *value * 2;
+    }
+}
+
+/// What the function does:
+///   Doubles each `u32` in a slice using a conventional scalar `for` loop.
+///
+/// What LLVM does:
+///   In `--release` mode (`-O3`), LLVM detects that iterations are independent
+///   and auto-vectorizes this loop using ARM NEON!
+///   Furthermore, LLVM unrolls it 4x, generating paired 128-bit loads (`ldp q0, q1`)
+///   and vector additions (`add.4s`), processing 16 integers (64 bytes) per loop pass.
+///
+/// What SIMD does here:
+///   Because doubling is just 1 addition cycle, the loop is completely memory-bandwidth
+///   bound (~80µs to read/write 4MB). Since LLVM's auto-vectorizer already uses NEON
+///   under the hood with aggressive 4x unrolling, manual 1x SIMD cannot be faster.
+fn double_u32(values: &mut [u32]) {
     for value in values {
         *value = *value * 2;
     }
@@ -72,128 +72,6 @@ fn double_u32s_explicit<S: Simd>(simd: S, values: &mut [u32]) {
     }
     for value in chunks.into_remainder() {
         *value = *value * 2;
-    }
-}
-
-// ===========================================================================
-// Complex Math Example 3: Mandelbrot Set Escape-Time Iteration
-// Demonstrates where SIMD delivers HUGE speedups (~3.8x on Apple Silicon):
-// Data-dependent branches & early exits where LLVM auto-vectorization fails.
-// ===========================================================================
-
-/// What the function does:
-///   Computes the Mandelbrot fractal escape-time for each complex coordinate `c = cr + i*ci`.
-///   Starting from `z = 0`, it computes `z = z^2 + c` up to `max_iters`:
-///     z_r_new = z_r^2 - z_i^2 + c_r
-///     z_i_new = 2 * z_r * z_i + c_i
-///   If `|z|^2 = z_r^2 + z_i^2 > 4.0`, the point has escaped and the loop breaks early.
-///
-/// What LLVM does:
-///   LLVM's auto-vectorizer CANNOT vectorize this loop!
-///   Because each coordinate escapes at an unpredictable iteration (variable trip count
-///   with an inner `break`), LLVM cannot prove uniform control flow. LLVM is forced to
-///   emit purely scalar assembly: 1 float multiplication and 1 scalar branch at a time.
-///   CPU branch predictors also suffer penalties from unpredictable escape conditions.
-///
-/// What SIMD does (why it's 3.8x faster):
-///   See `mandelbrot_simd` below for the vector implementation.
-fn mandelbrot_scalar(cr: &[f32], ci: &[f32], out: &mut [u32], max_iters: u32) {
-    for i in 0..out.len() {
-        let c_r = cr[i];
-        let c_i = ci[i];
-        let mut z_r = 0.0f32;
-        let mut z_i = 0.0f32;
-        let mut iter = 0;
-        while iter < max_iters {
-            let z_r2 = z_r * z_r;
-            let z_i2 = z_i * z_i;
-            if z_r2 + z_i2 > 4.0 {
-                break;
-            }
-            z_i = 2.0 * z_r * z_i + c_i;
-            z_r = z_r2 - z_i2 + c_r;
-            iter += 1;
-        }
-        out[i] = iter;
-    }
-}
-
-/// What the function does:
-///   Explicitly computes Mandelbrot escape times for 4 complex coordinates simultaneously
-///   using 128-bit vector registers (`S::f32s` and `S::u32s` on NEON).
-///
-/// What LLVM does:
-///   In `--release`, LLVM compiles each vector operation directly to native NEON instructions:
-///   - Vector multiplies & adds: `fmul.4s`, `fadd.4s`, `fsub.4s`
-///   - Vector comparison: `fcmgt.4s`
-///   - Vector selection: `bsl.16b` (Bitwise Select)
-///   Because we explicitly structured the data parallelism, LLVM doesn't have to guess.
-///
-/// What SIMD does (how it achieves ~3.8x speedup):
-///   1. **Parallel arithmetic**: All 4 coordinates execute `z = z^2 + c` in the exact same cycles.
-///   2. **Branchless lane masking**: Instead of branching, `mag2.simd_le(four)` creates a vector mask.
-///   3. **Branchless conditional select**: `active.select(iters + one, iters)` uses the hardware
-///      bitmask to increment ONLY the lanes that haven't escaped yet—with ZERO branch mispredictions!
-///   4. **Early exit for the whole chunk**: `if active.to_bitmask() == 0 { break; }` breaks only
-///      when all 4 lanes have finished.
-#[simd]
-fn mandelbrot_simd<S: Simd>(simd: S, cr: &[f32], ci: &[f32], out: &mut [u32], max_iters: u32) {
-    let len = S::f32s::LEN;
-    let mut cr_chunks = cr.chunks_exact(len);
-    let mut ci_chunks = ci.chunks_exact(len);
-    let mut out_chunks = out.chunks_exact_mut(len);
-
-    let four = S::f32s::splat(simd, 4.0);
-    let zero_f = S::f32s::splat(simd, 0.0);
-    let zero_u = S::u32s::splat(simd, 0);
-    let one_u = S::u32s::splat(simd, 1);
-
-    for ((c_r_c, c_i_c), out_c) in cr_chunks
-        .by_ref()
-        .zip(ci_chunks.by_ref())
-        .zip(out_chunks.by_ref())
-    {
-        let c_r = S::f32s::from_slice(simd, c_r_c);
-        let c_i = S::f32s::from_slice(simd, c_i_c);
-        let mut z_r = zero_f;
-        let mut z_i = zero_f;
-        let mut iters = zero_u;
-
-        for _ in 0..max_iters {
-            let z_r2 = z_r * z_r;
-            let z_i2 = z_i * z_i;
-            let mag2 = z_r2 + z_i2;
-            let active = mag2.simd_le(four);
-            if active.to_bitmask() == 0 {
-                break;
-            }
-            iters = active.select(iters + one_u, iters);
-            z_i = z_r * z_i * 2.0 + c_i;
-            z_r = z_r2 - z_i2 + c_r;
-        }
-        iters.store_slice(out_c);
-    }
-
-    let rem_cr = cr_chunks.remainder();
-    let rem_ci = ci_chunks.remainder();
-    let rem_out = out_chunks.into_remainder();
-    for i in 0..rem_out.len() {
-        let c_r = rem_cr[i];
-        let c_i = rem_ci[i];
-        let mut z_r = 0.0f32;
-        let mut z_i = 0.0f32;
-        let mut iter = 0;
-        while iter < max_iters {
-            let z_r2 = z_r * z_r;
-            let z_i2 = z_i * z_i;
-            if z_r2 + z_i2 > 4.0 {
-                break;
-            }
-            z_i = 2.0 * z_r * z_i + c_i;
-            z_r = z_r2 - z_i2 + c_r;
-            iter += 1;
-        }
-        rem_out[i] = iter;
     }
 }
 
@@ -328,11 +206,133 @@ fn euclidean_distance_3d_simd<S: Simd>(
         rem_out[i] = (rem_x[i] * rem_x[i] + rem_y[i] * rem_y[i] + rem_z[i] * rem_z[i]).sqrt();
     }
 }
+// ===========================================================================
+// Complex Math Example 3: Mandelbrot Set Escape-Time Iteration
+// Demonstrates where SIMD delivers HUGE speedups (~3.8x on Apple Silicon):
+// Data-dependent branches & early exits where LLVM auto-vectorization fails.
+// ===========================================================================
+
+/// What the function does:
+///   Computes the Mandelbrot fractal escape-time for each complex coordinate `c = cr + i*ci`.
+///   Starting from `z = 0`, it computes `z = z^2 + c` up to `max_iters`:
+///     z_r_new = z_r^2 - z_i^2 + c_r
+///     z_i_new = 2 * z_r * z_i + c_i
+///   If `|z|^2 = z_r^2 + z_i^2 > 4.0`, the point has escaped and the loop breaks early.
+///
+/// What LLVM does:
+///   LLVM's auto-vectorizer CANNOT vectorize this loop!
+///   Because each coordinate escapes at an unpredictable iteration (variable trip count
+///   with an inner `break`), LLVM cannot prove uniform control flow. LLVM is forced to
+///   emit purely scalar assembly: 1 float multiplication and 1 scalar branch at a time.
+///   CPU branch predictors also suffer penalties from unpredictable escape conditions.
+///
+/// What SIMD does (why it's 3.8x faster):
+///   See `mandelbrot_simd` below for the vector implementation.
+fn mandelbrot_scalar(cr: &[f32], ci: &[f32], out: &mut [u32], max_iters: u32) {
+    for i in 0..out.len() {
+        let c_r = cr[i];
+        let c_i = ci[i];
+        let mut z_r = 0.0f32;
+        let mut z_i = 0.0f32;
+        let mut iter = 0;
+        while iter < max_iters {
+            let z_r2 = z_r * z_r;
+            let z_i2 = z_i * z_i;
+            if z_r2 + z_i2 > 4.0 {
+                break;
+            }
+            z_i = 2.0 * z_r * z_i + c_i;
+            z_r = z_r2 - z_i2 + c_r;
+            iter += 1;
+        }
+        out[i] = iter;
+    }
+}
+
+/// What the function does:
+///   Explicitly computes Mandelbrot escape times for 4 complex coordinates simultaneously
+///   using 128-bit vector registers (`S::f32s` and `S::u32s` on NEON).
+///
+/// What LLVM does:
+///   In `--release`, LLVM compiles each vector operation directly to native NEON instructions:
+///   - Vector multiplies & adds: `fmul.4s`, `fadd.4s`, `fsub.4s`
+///   - Vector comparison: `fcmgt.4s`
+///   - Vector selection: `bsl.16b` (Bitwise Select)
+///   Because we explicitly structured the data parallelism, LLVM doesn't have to guess.
+///
+/// What SIMD does (how it achieves ~3.8x speedup):
+///   1. **Parallel arithmetic**: All 4 coordinates execute `z = z^2 + c` in the exact same cycles.
+///   2. **Branchless lane masking**: Instead of branching, `mag2.simd_le(four)` creates a vector mask.
+///   3. **Branchless conditional select**: `active.select(iters + one, iters)` uses the hardware
+///      bitmask to increment ONLY the lanes that haven't escaped yet—with ZERO branch mispredictions!
+///   4. **Early exit for the whole chunk**: `if active.to_bitmask() == 0 { break; }` breaks only
+///      when all 4 lanes have finished.
+#[simd]
+fn mandelbrot_simd<S: Simd>(simd: S, cr: &[f32], ci: &[f32], out: &mut [u32], max_iters: u32) {
+    let len = S::f32s::LEN;
+    let mut cr_chunks = cr.chunks_exact(len);
+    let mut ci_chunks = ci.chunks_exact(len);
+    let mut out_chunks = out.chunks_exact_mut(len);
+
+    let four = S::f32s::splat(simd, 4.0);
+    let zero_f = S::f32s::splat(simd, 0.0);
+    let zero_u = S::u32s::splat(simd, 0);
+    let one_u = S::u32s::splat(simd, 1);
+
+    for ((c_r_c, c_i_c), out_c) in cr_chunks
+        .by_ref()
+        .zip(ci_chunks.by_ref())
+        .zip(out_chunks.by_ref())
+    {
+        let c_r = S::f32s::from_slice(simd, c_r_c);
+        let c_i = S::f32s::from_slice(simd, c_i_c);
+        let mut z_r = zero_f;
+        let mut z_i = zero_f;
+        let mut iters = zero_u;
+
+        for _ in 0..max_iters {
+            let z_r2 = z_r * z_r;
+            let z_i2 = z_i * z_i;
+            let mag2 = z_r2 + z_i2;
+            let active = mag2.simd_le(four);
+            if active.to_bitmask() == 0 {
+                break;
+            }
+            iters = active.select(iters + one_u, iters);
+            z_i = z_r * z_i * 2.0 + c_i;
+            z_r = z_r2 - z_i2 + c_r;
+        }
+        iters.store_slice(out_c);
+    }
+
+    let rem_cr = cr_chunks.remainder();
+    let rem_ci = ci_chunks.remainder();
+    let rem_out = out_chunks.into_remainder();
+    for i in 0..rem_out.len() {
+        let c_r = rem_cr[i];
+        let c_i = rem_ci[i];
+        let mut z_r = 0.0f32;
+        let mut z_i = 0.0f32;
+        let mut iter = 0;
+        while iter < max_iters {
+            let z_r2 = z_r * z_r;
+            let z_i2 = z_i * z_i;
+            if z_r2 + z_i2 > 4.0 {
+                break;
+            }
+            z_i = 2.0 * z_r * z_i + c_i;
+            z_r = z_r2 - z_i2 + c_r;
+            iter += 1;
+        }
+        rem_out[i] = iter;
+    }
+}
 
 fn main() {
     let mut values = [1, 2, 3, 4, 5];
     let level = Level::new();
     println!("Detected SIMD level: {:?}", level);
+
     let now = Instant::now();
     dispatch!(level, simd => double_u32s(simd, &mut values));
     println!(
