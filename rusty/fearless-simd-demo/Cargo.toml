@@ -1,0 +1,8 @@
+[package]
+name = "fearless-simd-demo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fearless_simd = "1.0"
+fearless_simd_macros = "0.1"
