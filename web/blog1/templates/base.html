@@ -84,10 +84,42 @@
                 }
             });
 
-            // Back/Forward browser navigation with #tag
+            // Sync search input and results when navigating via Back/Forward buttons
+            function syncSearchFromUrl() {
+                const input = document.querySelector('input[name="q"]');
+                if (!input) return;
+                const params = new URLSearchParams(window.location.search);
+                const q = params.get('q') || '';
+                if (input.value !== q) {
+                    input.value = q;
+                    if (window.htmx) {
+                        window.htmx.trigger(input, 'input');
+                    }
+                }
+            }
+
+            // Back/Forward browser navigation
             window.addEventListener('popstate', function() {
                 if (window.location.hash) {
                     setTimeout(scrollToHash, 20);
+                }
+                syncSearchFromUrl();
+            });
+
+            document.body.addEventListener('htmx:historyRestore', function() {
+                syncSearchFromUrl();
+            });
+
+            // Pressing Escape while focused on the search input clears it
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    const input = document.querySelector('input[name="q"]');
+                    if (input && document.activeElement === input && input.value !== '') {
+                        input.value = '';
+                        if (window.htmx) {
+                            window.htmx.trigger(input, 'input');
+                        }
+                    }
                 }
             });
         })();

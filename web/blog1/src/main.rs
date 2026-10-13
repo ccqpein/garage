@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Form, Path, State},
-    http::{HeaderMap, StatusCode},
+    extract::{Form, Path, Query, State},
+    http::{HeaderMap, HeaderValue, StatusCode},
     response::{Html, IntoResponse},
     routing::{get, post},
     Router,
@@ -361,15 +361,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _watcher = setup_watcher(state.clone())?;
 
-    let static_service = tower_http::services::ServeDir::new("./static");
-
-    let app = Router::new()
-        .route("/", get(index_handler))
-        .route("/posts/:slug", get(post_handler))
-        .route("/api/search", post(search_handler))
-        .nest_service("/static", static_service)
-        .layer(tower_http::trace::TraceLayer::new_for_http())
-        .with_state(state.clone());
+    let app = create_app(state.clone());
 
     let addr = format!("{}:{}", state.config.server.host, state.config.server.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -380,19 +372,75 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn index_handler(State(state): State<AppState>) -> impl IntoResponse {
+pub fn create_app(state: AppState) -> Router {
+    let static_service = tower_http::services::ServeDir::new("./static");
+
+    Router::new()
+        .route("/", get(index_handler))
+        .route("/search", get(index_handler))
+        .route("/posts/:slug", get(post_handler))
+        .route("/api/search", post(search_handler).get(index_handler))
+        .nest_service("/static", static_service)
+        .layer(tower_http::trace::TraceLayer::new_for_http())
+        .with_state(state)
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct SearchQuery {
+    pub q: Option<String>,
+}
+
+pub fn filter_posts(posts: &PostIndex, query: &str) -> Vec<Post> {
+    let query_lower = query.trim().to_lowercase();
+    let mut filtered: Vec<Post> = posts
+        .values()
+        .filter(|p| {
+            if query_lower.is_empty() {
+                true
+            } else {
+                p.meta.title.to_lowercase().contains(&query_lower)
+                    || p.meta.summary.as_ref().is_some_and(|s| s.to_lowercase().contains(&query_lower))
+                    || p.meta.tags.iter().any(|t| t.to_lowercase().contains(&query_lower))
+            }
+        })
+        .cloned()
+        .collect();
+
+    filtered.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
+    filtered
+}
+
+async fn index_handler(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(params): Query<SearchQuery>,
+) -> impl IntoResponse {
+    let raw_query = params.q.unwrap_or_default().trim().to_string();
+
     let posts_guard = state.posts.read().await;
-    let mut posts: Vec<Post> = posts_guard.values().cloned().collect();
-    posts.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
+    let posts = filter_posts(&posts_guard, &raw_query);
     drop(posts_guard);
 
+    let is_hx_request = headers.get("HX-Request").is_some_and(|v| v == "true");
+    let is_history_restore = headers
+        .get("HX-History-Restore-Request")
+        .is_some_and(|v| v == "true");
+
+    let is_partial = is_hx_request && !is_history_restore;
+    let template_name = if is_partial {
+        "partials/search_results.html"
+    } else {
+        "index.html"
+    };
+
     let env_guard = state.templates.read().await;
-    let tmpl = match env_guard.get_template("index.html") {
+    let tmpl = match env_guard.get_template(template_name) {
         Ok(t) => t,
         Err(e) => {
-            tracing::error!("Failed to get template 'index.html': {}", e);
+            tracing::error!("Failed to get template '{}': {}", template_name, e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                HeaderMap::new(),
                 Html("<h1>Template Error</h1>".to_string()),
             );
         }
@@ -401,18 +449,25 @@ async fn index_handler(State(state): State<AppState>) -> impl IntoResponse {
     let rendered = match tmpl.render(minijinja::context! {
         config => &state.config,
         posts => &posts,
+        query => &raw_query,
     }) {
         Ok(html) => html,
         Err(e) => {
-            tracing::error!("Failed to render 'index.html': {}", e);
+            tracing::error!("Failed to render '{}': {}", template_name, e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                HeaderMap::new(),
                 Html("<h1>Render Error</h1>".to_string()),
             );
         }
     };
 
-    (StatusCode::OK, Html(rendered))
+    let mut res_headers = HeaderMap::new();
+    if is_partial && raw_query.is_empty() {
+        res_headers.insert("HX-Replace-Url", HeaderValue::from_static("/"));
+    }
+
+    (StatusCode::OK, res_headers, Html(rendered))
 }
 
 async fn post_handler(
@@ -471,41 +526,32 @@ async fn search_handler(
     headers: HeaderMap,
     Form(form): Form<SearchForm>,
 ) -> impl IntoResponse {
-    let query = form.q.unwrap_or_default().trim().to_lowercase();
+    let raw_query = form.q.unwrap_or_default().trim().to_string();
 
     let posts_guard = state.posts.read().await;
-    let mut posts: Vec<Post> = posts_guard
-        .values()
-        .filter(|p| {
-            if query.is_empty() {
-                true
-            } else {
-                p.meta.title.to_lowercase().contains(&query)
-                    || p.meta.summary.as_ref().is_some_and(|s| s.to_lowercase().contains(&query))
-                    || p.meta.tags.iter().any(|t| t.to_lowercase().contains(&query))
-            }
-        })
-        .cloned()
-        .collect();
-
-    posts.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
+    let posts = filter_posts(&posts_guard, &raw_query);
     drop(posts_guard);
 
     let is_hx_request = headers.get("HX-Request").is_some_and(|v| v == "true");
+    let is_history_restore = headers
+        .get("HX-History-Restore-Request")
+        .is_some_and(|v| v == "true");
 
-    let env_guard = state.templates.read().await;
-    let template_name = if is_hx_request {
+    let is_partial = is_hx_request && !is_history_restore;
+    let template_name = if is_partial {
         "partials/search_results.html"
     } else {
         "index.html"
     };
 
+    let env_guard = state.templates.read().await;
     let tmpl = match env_guard.get_template(template_name) {
         Ok(t) => t,
         Err(e) => {
             tracing::error!("Failed to get search template '{}': {}", template_name, e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                HeaderMap::new(),
                 Html("<h1>Template Error</h1>".to_string()),
             );
         }
@@ -514,19 +560,25 @@ async fn search_handler(
     let rendered = match tmpl.render(minijinja::context! {
         config => &state.config,
         posts => &posts,
-        query => &query,
+        query => &raw_query,
     }) {
         Ok(html) => html,
         Err(e) => {
             tracing::error!("Failed to render search template: {}", e);
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
+                HeaderMap::new(),
                 Html("<h1>Render Error</h1>".to_string()),
             );
         }
     };
 
-    (StatusCode::OK, Html(rendered))
+    let mut res_headers = HeaderMap::new();
+    if is_partial && raw_query.is_empty() {
+        res_headers.insert("HX-Replace-Url", HeaderValue::from_static("/"));
+    }
+
+    (StatusCode::OK, res_headers, Html(rendered))
 }
 
 #[cfg(test)]
@@ -565,6 +617,128 @@ mod tests {
         for (slug, post) in posts {
             assert!(!post.content_html.is_empty(), "Post {} html should not be empty", slug);
         }
+    }
+
+    #[test]
+    fn test_filter_posts() {
+        let mut posts = HashMap::new();
+        posts.insert(
+            "p1".to_string(),
+            Post {
+                meta: PostMeta {
+                    title: "Building a Rust Blog".to_string(),
+                    date: "2026-01-01".to_string(),
+                    slug: "building-rust-blog".to_string(),
+                    tags: vec!["rust".to_string(), "htmx".to_string()],
+                    summary: Some("How to build a blog engine in Rust".to_string()),
+                },
+                content_html: "<p>body</p>".to_string(),
+                markdown_body: "body".to_string(),
+            },
+        );
+        posts.insert(
+            "p2".to_string(),
+            Post {
+                meta: PostMeta {
+                    title: "Lisp RPC Generator".to_string(),
+                    date: "2026-01-02".to_string(),
+                    slug: "lisp-rpc".to_string(),
+                    tags: vec!["lisp".to_string(), "compiler".to_string()],
+                    summary: Some("Generating RPC structures".to_string()),
+                },
+                content_html: "<p>body</p>".to_string(),
+                markdown_body: "body".to_string(),
+            },
+        );
+
+        // Empty query returns all
+        let all = filter_posts(&posts, "");
+        assert_eq!(all.len(), 2);
+
+        // Query by title
+        let rust_results = filter_posts(&posts, "Rust");
+        assert_eq!(rust_results.len(), 1);
+        assert_eq!(rust_results[0].meta.slug, "building-rust-blog");
+
+        // Query by tag
+        let htmx_results = filter_posts(&posts, "htmx");
+        assert_eq!(htmx_results.len(), 1);
+        assert_eq!(htmx_results[0].meta.slug, "building-rust-blog");
+
+        // Query by summary
+        let rpc_results = filter_posts(&posts, "structures");
+        assert_eq!(rpc_results.len(), 1);
+        assert_eq!(rpc_results[0].meta.slug, "lisp-rpc");
+
+        // No match
+        let nomatch = filter_posts(&posts, "nonexistent");
+        assert_eq!(nomatch.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_index_handler_full_and_partial() {
+        let posts = scan_posts_dir("./content");
+        let templates = create_template_env();
+        let state = AppState {
+            posts: Arc::new(RwLock::new(posts)),
+            templates: Arc::new(RwLock::new(templates)),
+            config: Config::default(),
+        };
+
+        // 1. Direct visit with query param renders full HTML with query
+        let mut headers = HeaderMap::new();
+        let res = index_handler(
+            State(state.clone()),
+            headers.clone(),
+            Query(SearchQuery {
+                q: Some("rust".to_string()),
+            }),
+        )
+        .await
+        .into_response();
+        assert_eq!(res.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let html = String::from_utf8(body.to_vec()).unwrap();
+        assert!(html.contains("Search: rust"));
+        assert!(html.contains("value=\"rust\""));
+        assert!(html.contains("<!DOCTYPE html>"));
+
+        // 2. HTMX partial request renders search results partial without full page
+        headers.insert("HX-Request", HeaderValue::from_static("true"));
+        let htmx_res = index_handler(
+            State(state.clone()),
+            headers.clone(),
+            Query(SearchQuery {
+                q: Some("rust".to_string()),
+            }),
+        )
+        .await
+        .into_response();
+        assert_eq!(htmx_res.status(), StatusCode::OK);
+        let htmx_body = axum::body::to_bytes(htmx_res.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let htmx_html = String::from_utf8(htmx_body.to_vec()).unwrap();
+        assert!(!htmx_html.contains("<!DOCTYPE html>"));
+        assert!(htmx_html.contains("<article") || htmx_html.contains("No matching articles found"));
+
+        // 3. Empty query with HTMX returns HX-Replace-Url header "/"
+        let empty_htmx_res = index_handler(
+            State(state),
+            headers,
+            Query(SearchQuery {
+                q: Some("".to_string()),
+            }),
+        )
+        .await
+        .into_response();
+        assert_eq!(empty_htmx_res.status(), StatusCode::OK);
+        assert_eq!(
+            empty_htmx_res.headers().get("HX-Replace-Url").unwrap(),
+            "/"
+        );
     }
 }
 
