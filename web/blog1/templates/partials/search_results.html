@@ -3,9 +3,9 @@
         {% for post in posts %}
         <article class="glass-card p-6 rounded-xl flex flex-col justify-between group">
             <div>
-                <div class="flex items-center justify-between text-xs text-slate-400 font-mono mb-2">
+                <div class="flex flex-wrap items-center justify-between gap-y-2 text-xs text-slate-400 font-mono mb-2">
                     <time datetime="{{ post.meta.date }}">{{ post.meta.date }}</time>
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap gap-2">
                         {% for tag in post.meta.tags %}
                         <a href="/?q={{ tag }}" class="px-2 py-0.5 rounded-md bg-indigo-950/80 border border-indigo-800/50 text-indigo-300 hover:border-indigo-600 hover:text-white font-mono text-[11px] transition-colors relative z-10">
                             #{{ tag }}
